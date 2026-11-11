@@ -33,8 +33,8 @@ certificate covers only one subdomain level.
 | File | What |
 |---|---|
 | `deploy.sh` | `npm run build` with `VITE_API_URL`, then `wrangler pages deploy` |
-| `../../web/public/_redirects` | SPA fallback to `index.html` |
-| `../../web/public/_headers` | Security and cache headers |
+| `../../frontend/public/_redirects` | SPA fallback to `index.html` |
+| `../../frontend/public/_headers` | Security and cache headers |
 
 One-time Pages setup (owner): create the Pages project `tazko-web`, attach the
 custom domain `tazko-dev.hugepigstudio.com`, set `VITE_API_URL` for production.

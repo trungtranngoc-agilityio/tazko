@@ -22,7 +22,7 @@ docs/decisions.md overrides the build plan where they differ (D13 replaces "the 
 - backend/src/tazko/migrations/control and .../tenant (shipped in the wheel). backend/tests/unit and tests/integration; fixtures in tests/conftest.py.
 - frontend/src: app/ (providers, router, layouts, styles) -> pages/<screen>/ -> features/<name>/ (components, api.ts, hooks; public index.ts) -> shared/ (api, i18n, ui, lib). ESLint blocks upward and deep imports; see frontend/src/shared/README.md.
 - Every UI string in frontend/src/shared/i18n. Every API call through frontend/src/shared/api.
-- deploy/backend and deploy/frontend are written by the agent and run by the owner. design/ is never edited.
+- deploy/backend and deploy/frontend are written by the agent and run by the owner. Run the deploy-reviewer agent on every change there before asking the owner to run it. design/ is never edited.
 
 ## How we work
 - One milestone per branch: milestone/m2-core. One task per commit. Task list lives in docs/milestones/Mx.md.
