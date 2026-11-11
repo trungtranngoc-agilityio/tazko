@@ -1,0 +1,28 @@
+{
+  "attribution": { "commit": "", "pr": "" },
+  "permissions": {
+    "allow": [
+      "Bash(cargo build:*)", "Bash(cargo test:*)", "Bash(cargo run:*)",
+      "Bash(cargo fmt:*)", "Bash(cargo clippy:*)", "Bash(cargo add:*)",
+      "Bash(npm --prefix web:*)", "Bash(npx playwright:*)", "Bash(npx vitest:*)",
+      "Bash(scripts/ci.sh)", "Bash(node tools/:*)",
+      "Bash(git status)", "Bash(git diff:*)", "Bash(git log:*)",
+      "Bash(git add:*)", "Bash(git commit:*)", "Bash(git switch:*)",
+      "Bash(gh pr create:*)", "Bash(gh pr view:*)"
+    ],
+    "deny": [
+      "Bash(sudo:*)", "Bash(systemctl:*)", "Bash(cloudflared:*)", "Bash(ssh:*)",
+      "Bash(git push --force:*)", "Bash(git push -f:*)", "Bash(git push origin main:*)",
+      "Bash(gh pr merge:*)", "Bash(rm -rf:*)",
+      "Read(./.env)", "Read(./.env.*)", "Read(./data/secret)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [{ "type": "command", "command": "node .claude/hooks/fmt-on-edit.mjs" }]
+      }
+    ]
+  }
+}

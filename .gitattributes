@@ -1,0 +1,7 @@
+* text=auto eol=lf
+*.sh text eol=lf
+*.png binary
+*.jpg binary
+*.ico binary
+design/tazko-prototype.html linguist-documentation
+docs/sources/** linguist-documentation

@@ -1,0 +1,49 @@
+/*
+ * Tazko design tokens — light and dark.
+ *
+ * PLACEHOLDER. The real values must be read from design/tazko-prototype.html
+ * (computed styles of the rendered screens, light and dark) in task M1-01,
+ * written here once, and then this folder is read-only again.
+ *
+ * The token names are the contract used by web/src/styles/index.css.
+ * The few values already visible in the prototype source are filled in.
+ */
+:root {
+  --tz-bg: #f5f5fa;
+  --tz-surface: #ffffff;
+  --tz-ink: #12121c;
+  --tz-muted: #9a9ab5;
+  --tz-line: #e9e9f6;
+  --tz-accent: #4b4fd8;
+  --tz-accent-soft: #b9bbfa;
+  --tz-danger: #f08196;
+  --tz-warning: #f59e0b;
+  --tz-success: #5dd3a0;
+  --tz-list-bg: rgba(243, 243, 250, 0.95);
+  --tz-list-shadow: 0 1px 3px rgba(20, 20, 40, 0.18);
+  --tz-radius-sm: 6px;
+  --tz-radius-md: 10px;
+  --tz-radius-lg: 14px;
+  --tz-font-sans: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --tz-font-mono: ui-monospace, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --tz-bg: #12121c;
+    --tz-surface: #181826;
+    --tz-ink: #f5f5fa;
+    --tz-line: #2a2a3c;
+    --tz-accent: #8b8ef5;
+    --tz-list-bg: rgba(24, 24, 38, 0.95);
+  }
+}
+
+:root[data-theme="dark"] {
+  --tz-bg: #12121c;
+  --tz-surface: #181826;
+  --tz-ink: #f5f5fa;
+  --tz-line: #2a2a3c;
+  --tz-accent: #8b8ef5;
+  --tz-list-bg: rgba(24, 24, 38, 0.95);
+}

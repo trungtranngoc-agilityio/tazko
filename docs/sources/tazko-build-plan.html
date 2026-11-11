@@ -1,0 +1,791 @@
+<!doctype html><html><head><!-- frame-runtime --><script>window.__FRAME_PREAMBLE={"v":1,"capabilities":{"artifact":"artifact.BrWEr2aK.js","assets":"assets.DG69nuOE.js","comments":"comments.DuepbrNZ.js","db":"db.CCPy_cYa.js","desktop":"desktop.CXuIZ5Ts.js","dictation":"dictation.C9bJoIZV.js","downloads":"downloads.WsdFaoeg.js","embed":"embed.DL8CVLpf.js","endpoints":"endpoints.Cgd32w2P.js","files":"files.BWjhUR2a.js","mcp":"mcp.RT0IhfK0.js","network":"network.B5UA9Su4.js","paste":"paste.BXT-6GsY.js","permissions":"permissions.YN66judO.js","reads":"reads.Ch7Jwxh7.js","room":"room.DcZfm17Q.js","sample":"sample.DwGzO02I.js","self":"artifact.BrWEr2aK.js","tts":"tts.DT7xqCtz.js","user":"user.DWCNmu2k.js"},"transforms":"_transforms.C2429h8f.js","comments":"_comments.BA-4Fjvp.js","translate":"_translate.DnEmLa3t.js"}                                                                                                                                                                                                                                                                                                               </script><script>(function(){"use strict";function ir(t){return t==="cookie"||t==="query"?t:void 0}function lr(t){return typeof t=="number"&&Number.isSafeInteger(t)&&t>0?t:void 0}var Jn=3e5;function cr(t,e){try{const r=t("navigation")[0],n=[r.responseStart,r.redirectEnd-r.redirectStart,r.domContentLoadedEventStart,e(),r.connectEnd-r.domainLookupStart,r.responseStart-r.requestStart];r.requestStart>0||(n.length=4);for(let a=0;a<n.length;a++)if(n[a]>=0&&n[a]<=3e5)n[a]=n[a]|0;else{if(a<4)return;n.length=4}return n}catch{return}}var ur=["light","dark","system"],fr=/^[A-Za-z0-9_-]{1,64}$/,St=/^[a-zA-Z_:][a-zA-Z0-9_:.-]{0,127}$/,dr=new Set(["class","hidden","value","checked","style","title","alt","placeholder","lang","dir","role","tabindex","disabled","readonly","contenteditable","open","colspan","rowspan"]);function hr(t){const e=t.toLowerCase();return e.startsWith("data-")||e.startsWith("aria-")||dr.has(e)}var Zn="http://www.w3.org/1999/xhtml",pr="http://www.w3.org/2000/svg",mr=new Set(["script","style","iframe","noscript","noframes","noembed","xmp","plaintext","template","title","textarea","object","embed"]),vr=new Set(["script","style"]);function _r(t){const e=t.localName.toLowerCase();return t.namespaceURI==="http://www.w3.org/1999/xhtml"?!mr.has(e):t.namespaceURI===pr?!vr.has(e):!1}function et(t,e){return t===e||(t===160||t===32)&&(e===160||e===32)}function yr(t,e){const r=t.length,n=e.length;let a=0;for(;a<r&&a<n&&et(t.charCodeAt(a),e.charCodeAt(a));)a++;let s=0;for(;s<r-a&&s<n-a&&et(t.charCodeAt(r-1-s),e.charCodeAt(n-1-s));)s++;return{p:a,s}}function gr(t,e){const r=t.firstChild;if(t.childNodes.length!==1||r===null||r.nodeType!==Node.TEXT_NODE){t.textContent=e;return}const n=r.data,a=n.length,s=e.length,{p:l,s:u}=yr(n,e);l===a&&u===0&&a===s||r.replaceData(l,a-l-u,e.slice(l,s-u));const S=r.data,E=t.ownerDocument.getSelection?.()??null,g=E!==null&&E.rangeCount>0&&(E.anchorNode===r||E.focusNode===r)?{anchor:E.anchorNode,anchorOffset:E.anchorOffset,focus:E.focusNode,focusOffset:E.focusOffset}:null;let h=-1,k=-1;for(let b=0;b<S.length&&b<e.length;b++){const T=S.charCodeAt(b),C=e.charCodeAt(b);T!==C&&et(T,C)&&(h<0&&(h=b),k=b)}const M=h>=0;if(M&&r.replaceData(h,k-h+1,e.slice(h,k+1)),M&&g!==null&&g.anchor!==null&&g.focus!==null)try{E.setBaseAndExtent(g.anchor,g.anchorOffset,g.focus,g.focusOffset)}catch{}}var wr=new Set(["html","head","body","frameset"]);function br(t){return t.namespaceURI==="http://www.w3.org/1999/xhtml"&&wr.has(t.localName)}function Er(t){if(t===null||typeof t!="object")return!1;const e=t;if(typeof e.target!="string"||!fr.test(e.target)||e.text!==void 0&&typeof e.text!="string")return!1;if(e.attrsSet!==void 0){if(e.attrsSet===null||typeof e.attrsSet!="object")return!1;for(const[r,n]of Object.entries(e.attrsSet))if(!St.test(r)||typeof n!="string")return!1}if(e.attrsRemoved!==void 0){if(!Array.isArray(e.attrsRemoved))return!1;for(const r of e.attrsRemoved)if(typeof r!="string"||!St.test(r))return!1}return!0}function Sr(t,e){if(t===null||typeof t!="object")return!1;const{seq:r,elements:n}=t;if(typeof r!="number"||!Number.isSafeInteger(r)||!Array.isArray(n)||n.length===0||n.length>64)return!1;for(let a=0;a<n.length;a++)if(!e(n[a]))return!1;return!0}function kr(t){return t===null||typeof t!="object"?!1:Sr(t.__frame_patch,Er)}function Rr(t){if(t===null||typeof t!="object")return!1;const e=t.__frame_init;return e!==null&&typeof e=="object"}function Ar(t){return t!==null&&typeof t=="object"&&t.__frame_size_poke===!0}function Tr(t){if(t===null||typeof t!="object")return!1;const e=t.__frame_host_visible;return e!==null&&typeof e=="object"&&typeof e.visible=="boolean"}function Or(t){if(t===null||typeof t!="object")return!1;const e=t.__frame_theme;if(e===null||typeof e!="object")return!1;const r=e.theme;return typeof r=="string"&&ur.includes(r)}var Lr=["ok","empty","snapshot_error","snapshot_timeout","unclonable","oversize","unavailable","restore_error","withheld"],Mr=["TypeError","RangeError","ReferenceError","SyntaxError","DataCloneError","QuotaExceededError","AbortError","TimeoutError","SecurityError","Error","other"];function Pr(t){return typeof t=="string"&&Mr.includes(t)?t:"other"}var Nr=Object.freeze({until:null,now:!1}),Cr="__claude_hot",Fr="__claude_hot_in",Hr=/^__claude_hot(?:_in)?(?::|$)/,kt=/^[0-9a-z]{1,32}$/,tt=t=>t===void 0?Cr:"__claude_hot:"+t,Oe=t=>t===void 0?Fr:"__claude_hot_in:"+t;function Ir(t,e){const r=[];for(let n=0;n<t.length;n++){const a=t.key(n);a!==null&&a!==e&&Hr.test(a)&&r.push(a)}for(const n of r)t.removeItem(n)}function jr(t){let e=null;try{e=x(JSON.parse(t)?.hot)}catch{return null}return e===null||typeof e.k!="string"||!kt.test(e.k)?null:pe(e.g)?{k:e.k,g:e.g}:{k:e.k}}var Qn=262144,Br=5e3,Rt=/^[a-z0-9._:-]{1,64}$/,Dr=["none","hot-restart","hard-reload"],qr=["asset","doc","added","removed"],Ur=1500,xr=/^[0-9a-f]{64}$/;function x(t){return t!==null&&typeof t=="object"?t:null}function pe(t){return typeof t=="number"&&Number.isInteger(t)&&t>=0&&t<2**31}function At(t){return t===void 0||typeof t=="number"&&Number.isFinite(t)}function Kr(t){return t===void 0||typeof t=="string"&&Rt.test(t)}function Tt(t){const e=x(t);return e!==null&&(e.until===null||typeof e.until=="number"&&Number.isFinite(e.until))&&typeof e.now=="boolean"}function rt(t){const e=x(t);return e!==null&&typeof e.ver=="string"&&e.ver.length<=128&&At(e.seq)&&typeof e.handoff=="string"&&Lr.includes(e.handoff)&&Kr(e.note)}function Ot(t){const e=x(t);return e!==null&&pe(e.gen)&&(e.phase==="final"||e.phase==="pending")&&(e.from===null||rt(e.from))}function $r(t){const e=x(t);return e!==null&&e.kv===1&&pe(e.gen)&&rt(e.from)&&Object.hasOwn(e,"data")}function zr(t){const e=x(t);return e!==null&&e.__frame_hot_snapshot===!0&&pe(e.gen)&&typeof e.timeoutMs=="number"&&e.timeoutMs>=0&&e.timeoutMs<=6e4&&(e.handoff===void 0||typeof e.handoff=="boolean")&&(e.deadline===void 0||Tt(e.deadline))&&At(e.seq)&&(e.note===void 0||typeof e.note=="string")&&(e.key===void 0||typeof e.key=="string")}function Wr(t){const e=x(t);return e!==null&&e.__frame_hot_start===!0&&pe(e.gen)&&rt(e.from)}function Gr(t){return typeof t=="string"&&t.length>=1&&t.length<=128}function Lt(t){return x(t)!==null&&!Array.isArray(t)}function Vr(t){const e=x(t);return e!==null&&e.__frame_cap_grant===!0&&typeof e.cap=="string"&&Gr(e.ver)&&(e.grant===void 0||Lt(e.grant))&&(e.budgets===void 0||Lt(e.budgets)&&Object.values(e.budgets).every(Number.isFinite))&&(e.brokerGen===void 0||pe(e.brokerGen))}function Yr(t){const e=x(t);return e!==null&&e.__frame_cap_rewired===!0&&(e.caps===void 0||Array.isArray(e.caps)&&e.caps.every(r=>typeof r=="string"))&&(e.brokerGen===void 0||pe(e.brokerGen))}function Ue(t){const e=x(t);return e!==null&&typeof e.ver=="string"&&e.ver.length<=128&&Number.isFinite(e.seq)}function Mt(t){if(t==null||typeof t=="string")return!0;const e=x(t);return e!==null&&typeof e.doc=="string"&&typeof e.profile=="string"}function Xr(t){const e=x(t);return e!==null&&typeof e.path=="string"&&qr.includes(e.kind)&&Mt(e.from)&&Mt(e.to)}function Jr(t){return t===null?null:Object.freeze(t.filter(Xr))}function Zr(t){const e=x(t);return e!==null&&e.__frame_hot_update===!0&&Number.isFinite(e.id)&&Ue(e.from)&&Ue(e.to)&&(e.changed===null||Array.isArray(e.changed))&&Dr.includes(e.required)&&Tt(e.deadline)&&typeof e.verdictTimeoutMs=="number"&&e.verdictTimeoutMs>=0&&e.verdictTimeoutMs<=6e4&&(e.preflight===void 0||typeof e.preflight=="string"&&xr.test(e.preflight))}function Qr(t){const e=x(t);return e!==null&&e.__frame_hot_readdress===!0&&Ue(e.from)&&Ue(e.to)}var ye=/^[\w.-]+\.js$/;function en(t,e,r){return r?"inert":typeof e=="string"&&ye.test(e)?t?[e]:"inert":t?"inert":"framed"}var Pt=Object.freeze({[Symbol("claude.hot.restart")]:!0});function Nt(t,e){let r;try{r=t??sessionStorage}catch{return null}const n=tt(e?.k),a=Oe(e?.k);let s=null;try{s=r.getItem(n)}catch{}try{r.removeItem(n)}catch{}try{Ir(r,a)}catch{}let l=null;if(s!==null&&!(e!==null&&e.g===void 0))try{const u=JSON.parse(s);$r(u)&&(e===null||u.gen===e.g)&&(l=u)}catch{}if(l===null)try{r.removeItem(a)}catch{}return l}function Ct(){const t=/^\/_f\/([^/]{1,128})\//.exec(location.pathname);return t?t[1]:""}var tn=/^[^/\\?#]{1,128}$/,nt=t=>tn.test(t)&&t!=="."&&t!=="..";function Ft(t,e,r){const n=new URL(t),a="/_f/"+e+"/";if(!e||!n.pathname.startsWith(a)||!nt(r))return null;const s=n.search.slice(1).split("&").filter(l=>!/^__frame_t(?:=|$)/.test(l)).join("&");return n.origin+"/_f/"+r+"/"+n.pathname.slice(a.length)+(s?"?"+s:"")+n.hash}var xe="{}";function Le(t){if(!t)return null;const e={ver:t.ver,handoff:t.handoff};return t.seq!==void 0&&(e.seq=t.seq),t.note!==void 0&&(e.note=t.note),e}function Ht(t,e){return t!==null&&t.note===void 0&&e?.note!==void 0?{...t,note:e.note}:t}function It(t){const e=t?.k;return e!==null&&typeof e=="object"?e:void 0}function rn(t,e,r,n=null){const a=setTimeout,s=clearTimeout,l=queueMicrotask,u=performance.now.bind(performance),S=new TextEncoder;let E=null,g=null;try{E=history,g=E.replaceState.bind(E)}catch{}const h=(...o)=>{try{console.warn(...o)}catch{}};let k=Ct(),M=null;try{M=sessionStorage}catch{}const b={storage:M,fetch:typeof fetch=="function"?fetch.bind(globalThis):null,entry:location.origin+location.pathname+location.search,ver:k,priors:[],key:n?.k};let T=n?.k;const C=typeof requestAnimationFrame=="function"?requestAnimationFrame:o=>a(()=>o(u()),16);let p=e?.data??{},K=Le(e?.from),W=e?.gen??0,J=e!==null,$=!1,G=!1,z=null,R=!1;const j=new AbortController;let V=null,H=null,ne=null,me=!1,ie=()=>{};const Y=new Promise(o=>{ie=o});let be=!1,Fe=!1,c=!1,m,v=null,I=!1,D=!1,B=!1,q=!1,Z=!1,le=!1;const Ve=o=>{for(const f of[tt(o),Oe(o)])try{M?.removeItem(f)}catch{}},X=(o,f)=>{try{f!==null&&r.post(o,f)}catch{}},He=()=>Z||=B&&(H===null||q),oe=()=>{const o={__frame_hot:!0,ready:H!==null,accept:ne!==null,demand:!0};le=!Z,le&&(o.booting=!0),be&&(o.readData=!0),c&&(o.threw=!0),v?.assess&&(o.preflight=!0),X(o,z)};let Ie=!1,ce=!1,ve=!1,je=!1;const Ye=()=>{Ie||!R||ve||(Ie=!0,X({__frame_reveal_hold:!0},"*"))},_e=()=>new Promise(o=>{let f,d=0;const w=P=>{if(f===void 0)f=P;else if(P!==f||++d>=8){o();return}try{C(w)}catch{o()}};try{C(w)}catch{o()}}),Be=()=>{ve=!0,X({__frame_reveal_ready:!0},"*")},Ee=o=>{ce||(ce=!0,o.then(f=>{if(f===!1)return;let d=null;try{d=v?.settle?.()??null}catch{}return(d===null?_e():new Promise(w=>{a(w,50),Promise.resolve(d).then(w,w)}).then(_e)).then(Be)}))},_t=()=>{if(je||!ve)return;je=!0;const o=()=>{try{v?.afterReveal?.()}catch{}};o(),_e().then(()=>{o(),Be()})},Se=(o=!1)=>{if(me||H===null||!J||!G)return;me=!0;const f=H,d=p;l(()=>{let w;try{w=f(d)}catch(N){throw ie(!1),N}let P=!1;try{P=typeof w?.then=="function"}catch{}if(!P){ie(!0);return}Promise.resolve(w).then(()=>ie(!0),N=>{ie(!1),l(()=>{throw N})})}),Ee(o?Y:r.dcl.then(()=>Y))},ae=o=>typeof o=="string"&&Rt.test(o)?o:void 0,ke=o=>{const f={__frame_hot_restart:!0},d=ae(o?.note);d!==void 0&&(f.note=d),o?.required==="hard-reload"&&(f.required="hard-reload"),X(f,z)},De=Object.freeze({get data(){return G||(Fe=!0),!J&&!be&&(be=!0,G&&oe()),p},get from(){return K},get gen(){return W},signal:j.signal,snapshot(o){typeof o=="function"&&(V=o)},ready(o){typeof o!="function"||H!==null||(H=o,Ye(),oe(),$&&X({__frame_hot_ready:!0,gen:W},z),Se())},accept(o){typeof o=="function"&&(ne=o,oe())},restart(o){const f={note:o?.note,required:o?.required};if(G){ke(f);return}const d=m;m={note:ae(d?.note)??f.note,required:d?.required==="hard-reload"||f.required==="hard-reload"?"hard-reload":void 0}}}),Xe=()=>{if(!I||D||v===null)return;D=!0;const o=v;r.dcl.then(()=>{try{ve||o.afterStart(It(e),!1)}catch{}})},qe=o=>{e!==null&&Fe&&(be=!0),p={},K=null,W=0;try{M?.removeItem(Oe(n?.k))}catch{}e!==null&&!o&&Ee(r.dcl.then(()=>H!==null?Y:void 0))},i=()=>{I=!0,Ee(r.dcl.then(()=>H!==null?Y:void 0)),Xe()};try{addEventListener("error",()=>{c||H!==null||(c=!0,oe())})}catch{}const _=()=>{a(()=>{!Z&&He()&&le&&oe()},0)};try{B=document.readyState==="complete",B||addEventListener("load",()=>{B=!0,_()},{once:!0})}catch{B=!0}He(),Y.then(()=>{q=!0,_()});let y=-1,O,te,U=!0,se=!1,yt,Je=null;const gt=o=>{const f=Je===null;Je=U&&o[0]!=="withheld"?o:["withheld",o[1],xe];let d=o[0];if(U&&d!=="withheld"){const P={ver:k,handoff:d};O!==void 0&&(P.seq=O),te!==void 0&&(P.note=te);try{if(M===null)throw new Error("no storage");M.setItem(tt(T),'{"kv":1,"gen":'+y+',"from":'+JSON.stringify(P)+(yt!==void 0?',"k":'+JSON.stringify(yt):"")+',"data":'+(d==="ok"?o[2]:xe)+"}")}catch{d="unavailable"}}else{d="withheld",Ve(T);try{v?.release?.()}catch{}}const w={__frame_hot_snapshotted:!0,gen:y,handoff:d,bytes:o[1]};o[3]!==void 0&&(w.errName=o[3]),X(w,z),f&&(d==="snapshot_error"||d==="unclonable"||d==="oversize")&&h("claude.hot: snapshot",d,o[3])},Re=o=>{try{return Pr(o?.name)}catch{return"other"}},Ae=(o,f,d=0)=>gt(f===void 0?[o,d,xe]:[o,d,xe,Re(f)]),xn=o=>{if(o.gen<=y)return;const f=y>=0;if(y=o.gen,O=o.seq,te=ae(o.note),typeof o.key=="string"&&kt.test(o.key)&&o.key!==T&&(Ve(T),T=o.key),U&&=o.handoff!==!1,f){Je!==null?gt(Je):se&&X({__frame_hot_held:!0,gen:y},z);return}j.abort();const d=Object.freeze({handoff:U,timeoutMs:o.timeoutMs,deadline:o.deadline??Nr}),w=V,P=()=>{if(U)try{yt=v?.capture()}catch{}if(w===null){Ae("empty");return}let A=!1;const Q=a(()=>{A||(A=!0,Ae("snapshot_timeout"))},Math.max(0,d.timeoutMs));Promise.resolve().then(()=>w(d)).then(Te=>{if(A)return;A=!0,s(Q);let ue;try{ue=JSON.stringify(Te)}catch(wt){Ae("unclonable",wt);return}if(typeof ue!="string"){Ae("unclonable");return}let fe=ue.length;try{fe=S.encode(ue).length}catch{}if(fe>262144){Ae("oversize",void 0,fe);return}gt(["ok",fe,ue])},Te=>{A||(A=!0,s(Q),Ae("snapshot_error",Te))})};let N=null;try{N=v?.holdForIme()??null}catch{}if(N===null)P();else{se=!0,X({__frame_hot_held:!0,gen:y},z);const A=()=>{se=!1,P()};N.then(A,A)}},Kn=o=>{if(!$||J||H===null||o.gen!==W)return;let f=null;try{f=Nt(M,n&&{k:n.k,g:o.gen})}catch{}if(f!==null&&f.gen!==o.gen){f=null;try{M?.removeItem(Oe(n?.k))}catch{}}p=f?.data??{},K=Ht(Le(f?.from??o.from),Le(o.from)),f!==null&&(W=f.gen),J=!0,$=!1;const d=It(f);Y.then(w=>{try{w&&v?.afterStart(d,!0)}catch{}}),Se(!0)},nr=o=>{const f=k,d=b.entry;let w="",P,N=null;try{if(w=location.href,P=E.state,N=Ft(w,f,o),N!==null)if(g(P,"",N),location.pathname.startsWith("/_f/"+o+"/"))N=location.href;else return{failed:"navigate event canceled"}}catch(A){return{failed:Re(A)}}k=b.ver=o,b.priors.push(f)>8&&b.priors.splice(1,1);try{b.entry=Ft(d,f,o)??d}catch{}return[N,f,d,w,P]},$n=({from:o,to:f})=>{let d,w;if(!nt(f.ver))d="adopt_failed",w="not a version path segment";else if(f.ver===k)d="adopted";else if(!k||o.ver!==k)d="stale";else{const N=nr(f.ver);"failed"in N?(d="adopt_failed",w=N.failed):d=N[0]===null?"adopt_skipped":"adopted"}w!==void 0&&h(`claude.hot: could not move this page's URL to its new version folder /_f/${f.ver}/ (${w})`);const P={__frame_hot_readdressed:!0,to:f.ver,at:k,outcome:d};X(P,z)};let Ze=0;const zn=o=>{const f=ne;if(f===null||o.id<=Ze)return;Ze=o.id;const d=v?.assess;if(o.preflight===void 0||d===void 0){or(o,f);return}let w=!1;const P=Q=>{w||(w=!0,s(A),o.id===Ze&&or(o,f,Q))},N=()=>P(d.timeout(o)),A=a(N,Ur+100);d.run(o,window).then(P,N)},or=(o,f,d)=>{let w,P=!1,N=!1,A,Q,Te=null;const ue=F=>{if(N)return!1;if(A!==void 0&&A!==F)return h(`claude.hot: u.${F}() ignored - u.${A}() was called first`),!1;const de=A===void 0;return A=F,de},fe=F=>{A="restart",h(`claude.hot: ${F} - restarting`)},wt=()=>{if(!ue("adopt")||o.id!==Ze)return;const F=o.to.ver;if(Qe.required!=="none"){fe(`u.adopt() needs required 'none', it is '${Qe.required}'`);return}if(!nt(F)){fe("u.adopt() cannot address this version");return}if(!k||F===k)return;const de=nr(F);if("failed"in de){Q="adopt_failed",fe(`adopt_failed ${de.failed}; URL not changed`);return}const[re,Et,Vn,sr,Yn]=de;re===null?(Q="adopt_skipped",h(`claude.hot: adopt_skipped - page already left /_f/${Et}/; URL not changed, update still applied`)):Q="adopted",Te=()=>{if(k===F){if(re!==null)try{if(location.href!==re)h("claude.hot: adopt_revert_skipped - update not applied; URL left where the page navigated");else{if(g(Yn,"",sr),location.href!==sr){h("claude.hot: adopt_revert_failed navigate event canceled - URL still at the new version");return}Q="adopt_reverted",h("claude.hot: adopt_reverted - adopt() was called but the handler threw; URL restored")}}catch(Xn){h(`claude.hot: adopt_revert_failed ${Re(Xn)} - URL still at the new version`);return}k=b.ver=Et,b.entry=Vn,b.priors[b.priors.length-1]===Et&&b.priors.pop(),re===null&&(Q=void 0)}}},Qe=Object.freeze({from:{ver:o.from.ver,seq:o.from.seq},to:{ver:o.to.ver,seq:o.to.seq},changed:Jr(o.changed),required:o.required,deadline:o.deadline,adopt:wt,defer(){return ue("defer")&&Qe.deadline.now&&fe("u.defer() past the deadline"),Pt},restart(F){return ue("restart"),A==="restart"&&!N&&(w??=ae(F?.note),P||=F?.required==="hard-reload"),Pt},...d?.update}),Wn=(F,de)=>{N=!0,F==="threw"?(Te?.(),w??=Re(de).toLowerCase()):A===void 0&&h(F==="timeout"?"claude.hot: accept handler did not answer in time - restarting":"claude.hot: accept handler settled without defer/restart/adopt - restarting");const re={__frame_hot_verdict:!0,id:o.id};re.verdict=F==="threw"||A===void 0||A==="restart"?"restart":A==="adopt"?"applied":"deferred",re.verdict==="restart"&&(P&&(re.required="hard-reload"),w!==void 0&&(re.note=w)),Q!==void 0&&(re.verdict==="applied"||Q!=="adopted")&&(re.adopt=Q),X(Object.assign(re,d?.verdict),z)};let ar=!1;const bt=(F,de)=>ar?!1:(ar=!0,s(Gn),Wn(F,de),!0),Gn=a(()=>bt("timeout"),o.verdictTimeoutMs);Promise.resolve().then(()=>f(Qe)).then(()=>bt("settled"),F=>{!bt("threw",F)&&A==="adopt"&&ke({note:Re(F).toLowerCase()}),h("claude.hot: accept",Re(F))})};try{t.hot===void 0&&Object.defineProperty(t,"hot",{value:De,writable:!1,configurable:!1,enumerable:!1})}catch{}return{hot:De,boot:b,afterConnect(){R=!0,(e!==null||H!==null)&&Ye()},onInit(o,f){z=f,G=!0;const d=Ot(o)?o:null;d?.phase==="final"&&e!==null&&e.gen===d.gen?(J=!0,K=Ht(K,Le(d.from)),i()):($=d?.phase==="pending",qe($),J=!$,W=d?.gen??0,K=Le(d?.from)),oe(),le&&a(()=>{Z||(Z=!0,oe())},Br),$&&H!==null&&X({__frame_hot_ready:!0,gen:W},f),m!==void 0&&(ke(m),m=void 0),Se()},onNoInit(){G=!0,qe(!1),J=!0,Se()},onShell(o){return o?.__frame_revealed===!0?(_t(),!1):zr(o)?(xn(o),!0):Wr(o)?(Kn(o),!0):Zr(o)?(zn(o),!0):Qr(o)?($n(o),!0):!1},attachExtras(o){v=o,Xe(),o.assess&&oe()},inSlot:()=>Oe(T)}}var nn=256;function ot(t,e,r){for(const n of t)r(n)&&t.delete(n);t.size>=nn&&!t.has(e)&&t.delete(t.values().next().value),t.add(e)}function Me(t,e,r,n){try{const a=t[e];if(typeof a!="function")return;t[e]=function(...s){if(n){let u;try{u=n(this)}catch{}if(u!==void 0)return u}const l=a.apply(this,s);try{r?.(this)}catch{}return l}}catch{}}var on=()=>{},at;function an(){if(at)return at;const t={media:new Set,contexts:new Set,wakeLocks:new Set,gate:null,refuse:null,onStart:null,onStop:null};at=t;const e=l=>t.gate?.(l),r=l=>{t.onStop?.(l)},n=window.HTMLMediaElement?.prototype;n&&(Me(n,"play",l=>{ot(t.media,l,u=>u.paused),t.onStart?.(l)},e),Me(n,"pause",r));const a=window.AudioContext,s=window.AudioNode?.prototype;a&&s&&(Me(s,"connect",l=>{const u=l.context;u instanceof a&&(ot(t.contexts,u,S=>S.state==="closed"),t.onStart?.(u))}),Me(a.prototype,"resume",void 0,e),Me(a.prototype,"suspend",r));try{const l=window.WakeLock?.prototype,u=l?.request;l&&typeof u=="function"&&(l.request=function(...S){if(t.refuse)return t.refuse();const E=u.apply(this,S);return Promise.resolve(E).then(g=>{ot(t.wakeLocks,g,h=>h.released),t.onStart?.(g)},on),E})}catch{}return t}function sn(t){let e=window;for(let r=0;e.parent&&e.parent!==e&&r<8;r++)if(e=e.parent,t(e))return!0;return!1}function ln(){let t=null;const e=()=>t??parent,r=n=>t?n===t:sn(a=>a===n);return{post(n,a){if(t){e().postMessage(n,a);return}let s=parent;for(let l=0;l<8&&(s.postMessage(n,a),!(!s.parent||s.parent===s));l++)s=s.parent},on(n){const a=s=>{const l=s.source;r(l)&&n(s.data,s.origin,s.isTrusted,()=>{t??=l})};return addEventListener("message",a),()=>removeEventListener("message",a)},port:n=>({post(a,s){if(s?.activation){e().postMessage(a,{targetOrigin:n,includeUserActivation:!0});return}if(s?.transfer){e().postMessage(a,n,s.transfer);return}e().postMessage(a,n)},on(a,s){const l=u=>{r(u.source)&&u.origin===n&&a(u.data,u)};return addEventListener("message",l,s),()=>removeEventListener("message",l,s)}})}}function cn(){const t={post:()=>{},on:()=>()=>{}};return{...t,port:()=>t}}var un=500,fn=2e4,dn="data-token-reads",hn="data-frame-refused-watch",pn="data-frame-unsupported",mn=/(?:^|\s)stylesheet(?:\s|$)/i;function vn(t,e){let r="";if(t instanceof HTMLScriptElement?r=t.src:t instanceof HTMLLinkElement&&mn.test(t.rel)&&(r=t.href),!r)return null;try{const n=new URL(r);return n.origin===location.origin&&n.pathname.startsWith(e)?n.origin+n.pathname:null}catch{return null}}function _n(t,e,r){if(!t||e!=="query")return;const n="/_f/"+t+"/";document.documentElement.setAttribute(hn,"");const a=location.href,s=fetch,l=setTimeout,u={method:"HEAD",cache:"no-store",credentials:"same-origin"},S=b=>b.ok||b.status===304;let E=!1,g=!1;const h=()=>removeEventListener("error",M,!0),k=async b=>{const T=await s(b,u);if(S(T))g=!0;else if(T.status===403){const C=await s(a,u);if(S(C)){const p=(await s(b,u)).status;p===403?(g=!0,document.documentElement.setAttribute(pn,""),r()):p<500&&(g=!0)}else C.status>=400&&C.status<500&&(g=!0)}},M=b=>{if(g||E)return;if(document.documentElement.hasAttribute(dn)){g=!0,h();return}const T=vn(b.target,n);T&&(E=!0,l(()=>{k(T).catch(()=>{}).finally(()=>{E=!1,g&&h()})},un))};addEventListener("error",M,!0),addEventListener("load",h,{once:!0}),l(h,fn)}var jt="__frame_scroll",Bt="__frame_scroll_framed",yn=150,gn=310,wn=160,bn=3e4,Dt="p,h1,h2,h3,h4,h5,h6,li,pre,blockquote,tr,dt,dd,figcaption,summary",qt=()=>innerWidth<=gn&&innerHeight<=wn,Ut=t=>{const e=document.createTreeWalker(t,NodeFilter.SHOW_TEXT);let r="";for(;r.length<600&&e.nextNode();)r+=e.currentNode.nodeValue.slice(0,600-r.length);const n=r.replace(/\s+/g," ").trim().slice(0,120);let a=2166136261;for(let s=0;s<n.length;s++)a=Math.imul(a^n.charCodeAt(s),16777619);return n.length>11?a>>>0||1:0},xt=t=>{for(let e=t;e&&e!==document.scrollingElement;e=e.parentElement){const r=getComputedStyle(e).position;if(r==="fixed"||r==="sticky"||e!==t&&e.scrollTop)return!1}return!0},En=()=>{const t=[],e=[];try{for(let r=0;r<16;r++){const n=document.elementFromPoint(innerWidth/(r%2?4:2),innerHeight*(r>>1)/8+1);let a=n?.closest(Dt)??n;for(;a&&!a.matches(Dt)&&![...a.childNodes].some(l=>l.nodeType===3&&l.nodeValue?.trim());)a=a.parentElement;const s=a&&!e.includes(a)?Ut(a):0;s&&!t.some(l=>l[0]===s&&l[2]===a.tagName)&&xt(a)&&(e.push(a),t.push([s,Math.round(a.getBoundingClientRect().top),a.tagName]))}}catch{}return t.sort((r,n)=>+(r[1]<0)-+(n[1]<0)),t.length?t.slice(0,3):void 0},Sn=t=>{try{for(const[e,r,n]of t.a??[]){const a=document.getElementsByTagName(n);let s;for(let u=0;u<a.length&&a.length<5e3;u++)Ut(a[u])===e&&(s=s===void 0||s?.contains(a[u])?a[u]:null);const l=s?.getBoundingClientRect();if(l?.height&&s.checkVisibility?.()!==!1&&xt(s)&&isFinite(r))return Math.max(0,Math.round(scrollY+l.top-r))}}catch{}return t.y};function kn(){try{const t=location.ancestorOrigins;return t&&(origin==="null"||t[0]!==origin)?{frame:null}:{frame:frameElement??null,nested:t&&t[1]===origin}}catch{return{frame:null}}}function Rn(){const{frame:t,nested:e}=kn(),r=t!==null,n=()=>{try{return t.inert===!0||(e??!!t?.ownerDocument.defaultView?.frameElement)}catch{return!0}};let a;const s=()=>{if(a===void 0)try{a=location.pathname.replace(/^\/_f\/[^/]{1,128}\//,"")}catch{a=null}return a};let l=0,u=!1,S=!1,E=!1,g={y:0},h=null;const k=R=>{try{if(!r){sessionStorage.setItem(jt,JSON.stringify(R));return}const j=s();j!==null&&!n()&&sessionStorage.setItem(Bt,JSON.stringify({...R,p:j}))}catch{}},M=R=>{if(clearTimeout(l),h===null)return;const j=h;h=null,k({y:j,a:R&&j>0?En():void 0})},b=()=>{if(u){u=!1;return}S=!0,h=scrollY,clearTimeout(l),l=setTimeout(M,yn,!0)};try{addEventListener("scroll",b,{passive:!0}),addEventListener("pagehide",()=>M())}catch{}const T=()=>{if(r&&n())return null;const R=r?Bt:jt;let j;try{j=sessionStorage.getItem(R)}catch{return null}if(j===null)return null;let V;try{V=JSON.parse(j)}catch{V=null}const{y:H,a:ne,p:me}=V??{};if(!(typeof H=="number"&&Number.isFinite(H)&&H>=0)){try{sessionStorage.removeItem(R)}catch{}return null}if(r&&me!==s())return null;const ie=Y=>Array.isArray(Y)&&typeof Y[0]=="number"&&Number.isFinite(Y[1])&&typeof Y[2]=="string";return{y:H,a:Array.isArray(ne)&&ne.length<4&&ne.every(ie)?ne:void 0}};let C=!1,p=-1;const K=R=>{try{const j=scrollY,V=Sn(R);scrollTo({top:V,left:0,behavior:"instant"}),g=qt()?R:{y:V,a:R.a},E=!0,clearTimeout(l),h=null,k(g),p=scrollY,p!==j&&(u=!0);const H=V!==R.y&&document.readyState!=="complete";(p!==V||H)&&!C&&(C=!0,addEventListener("load",()=>{try{scrollY===p&&K(T()??g)}catch{}},{once:!0}))}catch{}},W=()=>{try{return!!location.hash}catch{return!0}};let J=!1;const $=()=>{try{if(J||!qt())return;J=!0;const R=Date.now(),j=()=>{try{removeEventListener("resize",j)}catch{}Date.now()-R>bn||S||W()||K(T()??g)};addEventListener("resize",j)}catch{}};let G=!1,z=!1;return{restore(){if(G)return;if(G=!0,r&&T()===null){k({y:0});return}if(W())return;const R=T();R!==null&&(K(R),$())},promoted(){if(z||(z=!0,W()))return;const R=T();R!==null?(K(R),$()):E&&K(g)}}}function An(t,e,r,n){let a=null;try{a=window.trustedTypes?.createPolicy("frame-runtime",{createScriptURL:S=>S})??null}catch{}const s=window.Worker,l=s?.prototype,u=Object.freeze({Worker:s,workerOn:l?.addEventListener,workerPost:l?.postMessage,workerTerminate:l?.terminate,fetch:window.fetch.bind(window),preventDefault:Event.prototype.preventDefault,now:Date.now,policy:a,origins:e});r(t).then(S=>S?.bootTopLevel?S.bootTopLevel(u,n):n.settle()).catch(()=>n.settle())}var eo="modulepreload",to=function(t){return"/"+t},ro={},no=function(e){return e.pathname.endsWith(".css")},oo=function(e,r,n){if(r in e)return e[r];const a=n();if(!a){e[r]=void 0;return}const s=a.then(()=>{e[r]=void 0},l=>{throw e[r]=void 0,l});return e[r]=s,s},Tn=function(e,r,n){let a=Promise.resolve();function s(l){const u=new Event("vite:preloadError",{cancelable:!0});if(u.payload=l,window.dispatchEvent(u),!u.defaultPrevented)throw l}return a.then(l=>{for(const u of l||[])u.status==="rejected"&&s(u.reason);return e().catch(s)})},On=window===top,Kt=Object.getOwnPropertyDescriptor(window,"claude"),Ke=en(On,window.__FRAME_PREAMBLE?.topLevel,Kt?.writable===!1),st=typeof Ke=="object"&&Ke[0],L=st?cn():ln();(function(){const t=Object.defineProperty,e=globalThis,r=["RTCPeerConnection","webkitRTCPeerConnection","RTCDataChannel","RTCIceCandidate","RTCSessionDescription","RTCRtpSender","RTCRtpReceiver"];let n=0;for(let a=0;a<r.length;a++){const s=r[a];try{t(e,s,{value:void 0,writable:!1,configurable:!1})}catch{try{delete e[s]}catch{}try{t(e,s,{value:void 0,writable:!1,configurable:!0})}catch{}}typeof e[s]=="function"&&n++}if(n&&Ke==="framed")try{L.post({__frame_rtc_lockdown_failed:n},"*")}catch{}})();var $t=1e4,Ln=2e3,it=2e3,lt=Object.freeze([...window.__FRAME_PREAMBLE?.origins??["https://claude.ai","https://preview.claude.ai"]]),Mn="https://*.";function zt(t){for(const e of lt)if(e.endsWith(":*"))try{const r=new URL(t);if(`${r.protocol}//${r.hostname}:*`===e)return!0}catch{}else if(e.startsWith(Mn)){if(Pn(e.slice(10),t))return!0}else if(t===e)return!0;return!1}function Pn(t,e){if(!/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(t))return!1;let r;try{r=new URL(e)}catch{return!1}if(r.protocol!=="https:"||r.port!==""||r.origin!==e)return!1;const n=r.hostname;if(!n.endsWith(`.${t}`))return!1;const a=n.slice(0,n.length-t.length-1);return/^[a-z0-9-]+$/.test(a)}var Pe=Object.freeze({...window.__FRAME_PREAMBLE?.capabilities}),Ne=window.__FRAME_PREAMBLE?.transforms,ct=window.__FRAME_PREAMBLE?.comments,ut=window.__FRAME_PREAMBLE?.translate,$e=ir(window.__FRAME_PREAMBLE?.cred),Wt=(()=>{try{const[t]=performance.getEntriesByType("navigation"),e=t?.serverTiming?.find(r=>r.name==="frame-cred-exp");return e!==void 0&&/^\d{1,15}$/.test(e.description)?lr(Number(e.description)):void 0}catch{return}})();function Gt(t){return Tn(()=>import("/_runtime/"+t),void 0)}var ze=new Set,Vt=setTimeout,Nn=fetch,Cn=AbortController,Fn=800+800*Math.random(),Hn=3e3,We=null,Yt=new Map;function In(t,e){let r=Yt.get(t);return r||Yt.set(t,r=jn(t,e)),r}function jn(t,e){if(We?.has(t))return Promise.resolve("csp");if(navigator.onLine===!1)return Promise.resolve("offline");const r=new Cn;let n=!1;return Vt(()=>{n=!0,r.abort()},Hn),Nn("/_runtime/"+t,{signal:r.signal}).then(a=>(r.abort(),a.ok?/javascript/i.test(a.headers.get("content-type")??"")?e instanceof Error&&/:\d+:\d+\)?$/m.test(e.stack??"")?"eval":"served":"mime":"http"),()=>n?"timeout":We?.has(t)?"csp":"net")}function ge(t){if(!We){const e=We=new Set;try{document.addEventListener("securitypolicyviolation",r=>{const n=/\/_runtime\/([^/?#]+)/.exec(r.blockedURI);n&&r.disposition!=="report"&&e.add(n[1])})}catch{}}return Gt(t).catch(()=>new Promise(e=>Vt(e,Fn)).then(()=>Gt(t+"?r=1")).then(e=>(e!==void 0&&ze.add(t),e)))}function Xt(t,e,r){return{contract:t.contract,changes:new Set(t.changes??[]),flags:new Set(t.flags??[]),capabilities:t.capabilities??{},capBudgets:t.capBudgets??{},brokerGen:t.brokerGen,transforms:new Map,shellOrigin:e,shell:r,mount:vt,hooks:Ge,pipe:()=>({wrap:(n,a)=>(...s)=>{try{return a(...s)}catch(l){return Promise.reject(l)}}})}}var we=null,ee=null;function Jt(t,e,r){try{Object.defineProperty(t,e,{value:r,writable:!1,configurable:!1,enumerable:!0})}catch{try{Object.defineProperty(t,e,{value:r,writable:!1,configurable:!0,enumerable:!0})}catch{}}}var ft=!1,Ge={editBefore:null,edit:null};function Bn(t,e,r=!1){const n=[];let a;if(r)try{Ge.editBefore?.(t)}catch{}for(const s of t.elements){const l=document.querySelector(`[data-id="${s.target}"]`);if(!l){a=s.target;break}if([...Object.keys(s.attrsSet??{}),...s.attrsRemoved??[]].some(u=>!hr(u))){a=s.target;break}if(s.text!==void 0&&(!_r(l)||br(l))){a=s.target;break}for(const[u,S]of Object.entries(s.attrsSet??{}))if(!Qt(l,u)){try{l.setAttribute(u,S)}catch{}Zt(l,u,S)}for(const u of s.attrsRemoved??[])Qt(l,u)||(l.removeAttribute(u),Zt(l,u,null));typeof s.text=="string"&&gr(l,s.text),n.push(s.target)}if(r)try{Ge.edit?.(t.seq,n,a)}catch{}if(a!==void 0){L.post({__frame_patch_miss:{seq:t.seq}},e);return}try{document.dispatchEvent(new CustomEvent("claude:edit",{detail:{seq:t.seq,targets:n}}))}catch{}}function Zt(t,e,r){if(!(t instanceof HTMLInputElement))return;const n=e.toLowerCase();n==="checked"?t.checked=r!==null:n==="value"&&t.type!=="file"&&(t.value=r??"")}function Qt(t,e){const r=e.toLowerCase(),n=t;return r==="data-id"||(r==="value"||r==="checked")&&(n.__artifactSecret===!0||/^(password|hidden|file)$/.test(n.type??"")||/(^|\s)(cc-|one-time-code|current-password|new-password)/i.test(`${t.getAttribute("autocomplete")??""} ${n.autocomplete??""}`))}function er(t){if(t.hostBackground===!0)return 0;const e=t.hostBackgroundPaceMs;return typeof e=="number"&&e>0&&e<1/0?e:void 0}function tr(t){const e=document.documentElement;t==="light"||t==="dark"?(e.dataset.theme=t,e.style.colorScheme=t,ft=!0):ft&&(delete e.dataset.theme,e.style.colorScheme="",ft=!1)}var he=new Map,Dn=(t,e)=>Array.isArray(t)&&t.includes(e),dt=null;function ht(){let t;const e={u:new Promise(r=>{t=r}),r:r=>{e.done=!0,t(r)},done:!1,nulled:!1};return e}function Ce(t,e){t.nulled=!0,t.ver=e,t.r(null)}function pt(t,e){for(const[r,n]of he)n.done||(e&&n.asked?e(r,n):Ce(n,t))}function qn(){for(const t of he.values())if(t.asked&&!t.done)return!0;return!1}var Un=Object.freeze(Object.assign(Object.create(null),{call:Function.prototype.call,apply:Function.prototype.apply,bind:Function.prototype.bind})),mt=!1,vt=(t,e)=>{let r=he.get(t);if(r?.nulled&&mt)r=ht(),he.set(t,r);else if(!r||r.done){r?.nulled&&ee&&L.post({__frame_cap_telemetry:{kind:"cap-load-error",cap:t,phase:"install"}},ee);return}const n=typeof e=="function"?Object.setPrototypeOf(e,Un):Object.assign(Object.create(null),e);typeof n.then=="function"&&delete n.then,r.want=void 0,r.r(Object.freeze(n))};function rr(){const t=Kt?.value??{};Jt(window,"claude",t);for(const e of Object.keys(Pe)){if(t[e]!==void 0){Jt(t,e,t[e]);continue}he.set(e,ht())}if(t.use===void 0){const e=r=>{if(typeof r!="string"||!Object.hasOwn(Pe,r))return Promise.resolve(null);let n=he.get(r);return n?(dt&&(n.nulled||n.want!==void 0)&&(n=dt(r,n)),n.asked=!0,n.u):Promise.resolve(t[r]??null)};try{Object.defineProperty(t,"use",{value:e,writable:!0,configurable:!0,enumerable:!1})}catch{}}return t}if(Ke==="framed"){let t;const e=Ne&&ye.test(Ne)?ge(Ne).catch(c=>{t={f:Ne,e:c}}):Promise.resolve(void 0),r=c=>{if(c.type==="auxclick"&&c.button!==1)return;const m=c.target,v=m&&m.closest?m.closest("a[href],area[href]"):null;if(!v)return;const I=v.getAttribute("href");if(!I)return;let D;try{D=new URL(I,document.baseURI)}catch{return}if((D.protocol==="http:"||D.protocol==="https:")&&D.origin!==location.origin){c.preventDefault();const B=(v.getAttribute("target")??"").toLowerCase(),q=c.type==="auxclick"||c.metaKey||c.ctrlKey||c.shiftKey||c.altKey||!["","_self","_top","_parent"].includes(B);L.post({__frame_nav:!0,url:D.href,newTab:q},"*")}};addEventListener("click",r,!0),addEventListener("auxclick",r,!0);const n={},a=c=>{c.isTrusted&&(n.pointer=!0)},s=c=>{c.isTrusted&&(n.click=!0)};addEventListener("pointermove",a,{capture:!0,passive:!0}),addEventListener("click",s,{capture:!0,passive:!0});const l={cb:null};addEventListener("keydown",c=>l.cb?.(c),!0);const u={cb:null};addEventListener("keydown",c=>u.cb?.(c));const S=an();e.then(c=>c?.installEscapeForward?.(l,m=>{ee&&L.post(m,ee)})),e.then(c=>{try{c?.installFocusKeep?.()}catch{}}),e.then(c=>{if(!c?.wireNav)return;const m=L.port("*");c.wireNav(m,()=>p&&Object.hasOwn(p,"nativeNewTab")?p.nativeNewTab:void 0),removeEventListener("click",r,!0),removeEventListener("auxclick",r,!0),removeEventListener("pointermove",a,!0),removeEventListener("click",s,!0),c.wireEngagement?.(n,m,S)});let E=null;try{E=Rn()}catch{}const g=document.readyState==="loading"?new Promise(c=>document.addEventListener("DOMContentLoaded",()=>c(),{once:!0})):Promise.resolve();let h="dcl",k=!1;g.then(()=>{k=!0});let M=null,b=null;try{b=jr(window.name),M=Nt(null,b)}catch{}const T=rr();let C=null;try{C=rn(T,M,{post:(c,m)=>L.post(c,m),dcl:g},b)}catch{}e.then(c=>{try{C&&c?.installHotExtras?.(C)}catch{}});let p=null,K=null,W=0;const J=L.on((c,m,v,I)=>{zt(m)&&Rr(c)&&(I(),p=c.__frame_init,ee=m,J(),clearTimeout(W),K?.())});if($e){const c=Wt===void 0?{__frame_cred:$e}:{__frame_cred:$e,exp:Wt};for(const m of lt)try{m.includes("*")||L.post(c,m)}catch{}}L.post({__frame_connect:!0},"*");try{C?.afterConnect()}catch{}const $=setTimeout,G=clearTimeout,z=()=>new Promise(c=>$(c,0));let R=()=>NaN,j=()=>[];try{R=performance.now.bind(performance),j=performance.getEntriesByType.bind(performance)}catch{}let V=0;const H=()=>{try{L.post({__frame_alive:!0},"*")}catch{}V=$(H,Ln)},ne=()=>G(V);H(),addEventListener("load",ne,{once:!0});const me=new Promise(c=>{K=c,W=setTimeout(()=>{J(),c()},$t)}),ie=new WeakSet;addEventListener("error",c=>{c.target&&ie.add(c.target)},!0);try{_n(Ct(),$e,()=>{e.then(c=>{try{c?.drawRefusedNotice?.()}catch{}})})}catch{}const Y=()=>{let c=[];try{c=[...document.querySelectorAll("link[rel~=stylesheet]:not([rel~=alternate])")].filter(v=>!v.sheet&&!v.disabled&&!ie.has(v)&&v.getAttribute("href")&&URL.canParse(v.href)&&(!v.media||matchMedia(v.media).matches))}catch{}let m=c.length;return m===0?Promise.resolve():new Promise(v=>{try{const I=it-R();I>0&&(h="sheets");const D=$(v,I>0?I<it?I:it:0),B=()=>{--m===0&&(G(D),v())};for(const q of c)q.addEventListener("load",B,{once:!0}),q.addEventListener("error",B,{once:!0})}catch{v()}})};g.then(()=>{try{E?.restore()}catch{}});const be=Promise.all([me,g,e]).then(c=>{if(!p||!ee)return;const m=er(p),v=p.hostOverlays===!0;if(!v&&!m)return;const I=c[2],D=Z=>{try{return Z?.()===!0}catch{return!1}},B={cover:D(I?.declaresCover),...p.hostSides===!0&&{sides:D(I?.declaresSides)},...I?.answerLayoutCheck&&{checks:!0}};if(v&&L.post({__frame_layout:B},ee),m===void 0)return;const q=ee;return z().then(Y).then(()=>{try{I?.watchBackground?.(Z=>L.post({__frame_layout:{...B,background:Z}},q),m)}catch{}})}),Fe={cb:null};L.on((c,m)=>{if(zt(m)&&Ar(c)){try{E?.promoted()}catch{}Fe.cb?.()}}),me.then(async()=>{if(!p||!ee){pt();try{C?.onNoInit()}catch{}return}if(tr(p.theme),p.hostVisible===!1&&e.then(i=>i?.applyHostVisible?.(!1,S)),p.hostKeys!==void 0){const i=ee,_=p.hostKeys;e.then(y=>y?.installHostKeyForward?.(u,_,O=>L.post(O,i),L.port(i)))}try{C?.onInit(p.hot,ee)}catch{}const c=ee,m=L.port(c),v=(i,_)=>L.post({__frame_cap_telemetry:{kind:"cap-load-error",cap:i,phase:_}},c),I=(i,_,y)=>{new Promise(O=>O(In(_,y))).then(O=>v(i,O),()=>v(i))},D=i=>L.post({__frame_cap_recovered:{cap:i}},c);let B=p.brokerGen;const q=()=>C?.boot.ver??"",Z=q(),le=(i,_)=>{const y=q();G(_.t),_.sent=!0,_.want=y,_.t=$(()=>{_.done||(_.sent=!1,Ce(_,y))},$t),L.post({__frame_cap_want:!0,cap:i,ver:y},c)},Ve=(i,_)=>{const y=he.get(i.cap),O=Pe[i.cap];if(!_||!y||y.done||y.want!==i.ver||!ye.test(O))return;if(G(y.t),y.want=void 0,B=i.brokerGen??B,i.ver!==q()){le(i.cap,y);return}if(!i.grant||i.cap==="network"){Ce(y,i.ver);return}const te=we,U=we={...te,capabilities:{...te.capabilities,[i.cap]:i.grant},capBudgets:{...te.capBudgets,[i.cap]:{...te.capBudgets[i.cap],...i.budgets}}};ge(O).then(se=>{ze.has(O)&&D(i.cap),U.brokerGen=B,mt=!0;try{se?.install?.(U)}catch{v(i.cap,"install")}finally{mt=!1}},se=>I(i.cap,O,se)).then(()=>{y.done||Ce(y,i.ver)})};let X=!1,He=!1;L.on((i,_,y)=>{if(_!==c)return;try{if(C?.onShell(i))return}catch{}if(Or(i)&&tr(i.__frame_theme.theme),Vr(i)&&Ve(i,y),y&&Yr(i)&&(B=i.brokerGen??B),Tr(i)){const U=i.__frame_host_visible.visible;e.then(se=>se?.applyHostVisible?.(U,S))}i?.__frame_native_new_tab_off&&delete p?.nativeNewTab,i?.__frame_layout_check&&e.then(U=>U?.answerLayoutCheck?.(i,se=>L.post({__frame_layout_verdict:se},c))),kr(i)&&Bn(i.__frame_patch,c,y);const O=i?.__fc_mode;O&&typeof O=="object"&&!X&&ct&&ye.test(ct)&&(X=!0,ge(ct).then(U=>U.install?.(c,O.on===!0,m)).catch(()=>{}));const te=i?.__ft_cmd;te&&typeof te=="object"&&!He&&ut&&ye.test(ut)&&(He=!0,ge(ut).then(U=>U.install?.(c,te,m)).catch(()=>{}))});const oe=Object.keys(p.capabilities??{}),Ie=oe.filter(i=>Object.hasOwn(Pe,i)).map(i=>[i,Pe[i]]).filter(i=>typeof i[1]=="string"&&ye.test(i[1])),ce=c;let ve=!1,je=()=>{};const Ye=new Promise(i=>{je=()=>{ve=!0,i()}}),_e=()=>(ve||(h="caps"),Ye),Be=M!==null||Ot(p.hot)||p.hostVisible===!1||p.hostOverlays===!0;k&&(h="init");const Ee=er(p)!==void 0,_t=g.then(()=>(Ee&&_e(),Ee?be:void 0)).then(()=>Be?_e():z()).then(Y).then(()=>{let i=!0;try{i=Be||qn()}catch{}return i?_e():void 0}).then(()=>{ne();const i=cr(j,R);L.post(i?{__frame_ready:!0,nav:i,gate:h}:{__frame_ready:!0,gate:h},ce),e.then(_=>{_?.installSizeReporter?.(ce,Fe,m),_?.installPaintReporter?.(m)})}),Se=await Promise.allSettled(Ie.map(([,i])=>ge(i))),ae=await e;if(ae?.buildBoot||(t?I("_transforms",t.f,t.e):v("_transforms")),ae?.buildBoot)try{we=ae.buildBoot(p,ae.TRANSFORMS??{},{shellOrigin:ce,mount:vt,hooks:Ge,shell:m},i=>L.post({__frame_cap_telemetry:i},ce))}catch{v("_transforms","install"),we=Xt(p,ce,m)}else we=Xt(p,ce,m);ae?.buildBoot&&ze.has(Ne??"")&&D("_transforms");const ke=we;ke.brokerGen=B;try{ae?.installAnchorMirror?.(m)}catch{}Se.forEach((i,_)=>{const[y,O]=Ie[_];if(i.status!=="fulfilled"){I(y,O,i.reason);return}ze.has(O)&&D(y);try{i.value?.install?.(ke)}catch{v(y,"install")}});const De=p.capWants===!0,Xe=p.usable,qe=i=>!!q()&&Dn(Xe,i)&&!oe.includes(i);De&&(dt=(i,_)=>{const y=q();if(!y)return _;if(!_.nulled)return _.want!==y&&le(i,_),_;if(y===_.ver&&(_.sent||!qe(i)))return _;const O=ht();return he.set(i,O),le(i,O),O}),pt(Z,De?(i,_)=>q()!==Z||qe(i)?le(i,_):Ce(_,Z):void 0),je(),await _t})}else st&&(rr(),An(st,lt,ge,{settle:pt,mount:vt}))})();</script><!-- /frame-runtime --><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Tazko Build Plan</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: the plan is shown first as a kanban board (milestones = lists), then each list is expanded below. */
+:root{
+  --bg:#F2F5F3; --surface:#FFFFFF; --ink:#14201D; --muted:#5A6B66; --line:#D5DDD9;
+  --accent:#0B6B5C; --accent-ink:#FFFFFF; --warm:#C9761F; --warm-bg:#FBEBD6;
+  --ok-bg:#DDF0E9; --out-bg:#E9ECEB; --code-bg:#13201C; --code-ink:#D8E8E2;
+  --display:"Bricolage Grotesque","Segoe UI",system-ui,sans-serif;
+  --body:"IBM Plex Sans","Segoe UI",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0E1613; --surface:#16211D; --ink:#E4EEEA; --muted:#93A59F; --line:#2A3a35;
+  --accent:#3FC4A8; --accent-ink:#06221C; --warm:#F0A455; --warm-bg:#3A2A14;
+  --ok-bg:#16352D; --out-bg:#1E2A26; --code-bg:#0A100E; --code-ink:#CFE3DC; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0E1613; --surface:#16211D; --ink:#E4EEEA; --muted:#93A59F; --line:#2A3a35;
+  --accent:#3FC4A8; --accent-ink:#06221C; --warm:#F0A455; --warm-bg:#3A2A14;
+  --ok-bg:#16352D; --out-bg:#1E2A26; --code-bg:#0A100E; --code-ink:#CFE3DC; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:16px/1.6 var(--body);margin:0;
+  padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1080px;margin:0 auto}
+h1,h2,h3{font-family:var(--display);line-height:1.15;text-wrap:balance;margin:0}
+h1{font-size:clamp(2rem,5vw,3.2rem);letter-spacing:-.02em}
+h2{font-size:1.6rem;margin-top:56px;letter-spacing:-.01em}
+h3{font-size:1.1rem}
+p{max-width:68ch;margin:.6em 0}
+a{color:var(--accent)}
+code{font-family:var(--mono);font-size:.88em;background:var(--out-bg);padding:.1em .35em;border-radius:3px}
+.lede{font-size:1.1rem;color:var(--muted);max-width:64ch}
+.eyebrow{font:500 .75rem/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.meta{display:flex;flex-wrap:wrap;gap:8px 20px;margin-top:20px;font:400 .85rem var(--mono);color:var(--muted)}
+.board{display:flex;gap:12px;overflow-x:auto;padding:4px 2px 16px;margin-top:28px}
+.col{flex:0 0 230px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.col h3{font-size:.95rem;display:flex;justify-content:space-between;gap:8px}
+.col h3 span{font:500 .75rem var(--mono);color:var(--muted)}
+.card{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:.85rem;line-height:1.35}
+.col.out{background:transparent;border-style:dashed}
+.col.out .card{background:var(--out-bg);color:var(--muted)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-top:16px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px 18px;min-width:0}
+.panel h3{margin-bottom:6px}
+.panel ul{margin:.4em 0 0;padding-left:1.1em}
+.panel li{margin:.25em 0}
+.tbl{overflow-x:auto;margin-top:12px;border:1px solid var(--line);border-radius:8px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.92rem}
+th,td{text-align:left;padding:9px 14px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:500 .72rem var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+tr:last-child td{border-bottom:0}
+.tag{display:inline-block;font:500 .72rem var(--mono);padding:2px 8px;border-radius:99px;background:var(--ok-bg);color:var(--accent);white-space:nowrap}
+.ms{margin-top:20px;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.ms>header{display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;padding:14px 18px;border-bottom:1px solid var(--line)}
+.ms>header b{font:600 .8rem var(--mono);background:var(--accent);color:var(--accent-ink);padding:3px 8px;border-radius:4px}
+.ms>header h3{font-size:1.2rem}
+.ms .body{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:0}
+.ms .body>div{padding:14px 18px;min-width:0}
+.ms .body>div+div{border-left:1px solid var(--line)}
+@media (max-width:700px){.ms .body>div+div{border-left:0;border-top:1px solid var(--line)}}
+.ms ul{margin:.3em 0 0;padding:0;list-style:none}
+.ms li{padding-left:22px;position:relative;margin:.35em 0;font-size:.93rem}
+.ms li::before{content:"";position:absolute;left:0;top:.35em;width:12px;height:12px;border:1.5px solid var(--muted);border-radius:3px}
+.ms .acc li::before{border-color:var(--accent);background:var(--ok-bg)}
+.sub{font:500 .72rem var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.codebox{position:relative;margin-top:12px}
+pre.code{background:var(--code-bg);color:var(--code-ink);font:400 .83rem/1.55 var(--mono);padding:16px 18px;border-radius:8px;overflow-x:auto;margin:0;white-space:pre}
+.copy{position:absolute;top:8px;right:8px;font:500 .72rem var(--mono);background:var(--accent);color:var(--accent-ink);border:0;border-radius:4px;padding:5px 10px;cursor:pointer}
+.copy:focus-visible,a:focus-visible{outline:2px solid var(--warm);outline-offset:2px}
+.mermaid-wrap{margin-top:12px;background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:16px;overflow-x:auto}
+.note{border-left:3px solid var(--warm);background:var(--warm-bg);padding:10px 14px;border-radius:0 6px 6px 0;margin-top:14px;max-width:80ch}
+ol.steps{margin:.5em 0;padding-left:1.3em}
+ol.steps li{margin:.35em 0}
+</style>
+
+<div class="wrap">
+<p class="eyebrow">Build plan · single binary behind a Cloudflare Tunnel · for handoff to a Linux build session</p>
+<h1>Tazko</h1>
+<p class="lede">A self-hosted kanban work tracker for several companies. One Rust binary, one SQLite file per company, a super admin console to run the companies, and Google sign-in for both Workspace and personal accounts.</p>
+<div class="meta"><span>One static Rust binary</span><span>Web app and admin console embedded</span><span>SQLite per company</span><span>Google: Workspace + Gmail</span><span>Cloudflare Tunnel, no open port</span></div>
+
+<h2>The plan as a board</h2>
+<p>Milestones are lists. Each one ships something usable. The dashed column is what we decided not to build.</p>
+<div class="board" role="list">
+  <div class="col" role="listitem"><h3>M1 Platform <span>7</span></h3>
+    <div class="card">Binary with embedded web app</div><div class="card">Tunnel, systemd, deploy with rollback</div><div class="card">Google sign-in, Workspace and Gmail</div><div class="card">Super admin console</div><div class="card">Create, suspend, delete companies</div><div class="card">Invite owners and members</div><div class="card">Nightly backup</div></div>
+  <div class="col" role="listitem"><h3>M2 Projects and boards <span>12</span></h3>
+    <div class="card">Boards, lists, cards, drag and drop</div><div class="card">Card detail, checklists, comments</div><div class="card">Labels, assignees, due dates</div><div class="card">Manage projects (company owners)</div><div class="card">Project settings, owners, members, observers</div><div class="card">Board access inside a project</div><div class="card">Card and list actions, shortcuts</div><div class="card">Personal settings</div><div class="card">Rich-text description</div><div class="card">Search, filter, activity log</div><div class="card">Zen mode, key help, key map</div><div class="card">Card menu, side comments, long cards</div></div>
+  <div class="col" role="listitem"><h3>M3 Live and files <span>6</span></h3>
+    <div class="card">Real-time board sync</div><div class="card">File attachments</div><div class="card">In-app notifications, @mentions</div><div class="card">Custom fields</div><div class="card">Reactions on comments</div><div class="card">Uploaded board backgrounds</div></div>
+  <div class="col" role="listitem"><h3>M4 Views and templates <span>5</span></h3>
+    <div class="card">Table view</div><div class="card">My cards page</div><div class="card">Board and card templates</div><div class="card">Dashboard view</div><div class="card">Command palette</div></div>
+  <div class="col" role="listitem"><h3>M5 Card depth <span>5</span></h3>
+    <div class="card">Checklist item assignee and due date</div><div class="card">Recurring cards</div><div class="card">Links between cards</div><div class="card">Voting</div><div class="card">Card aging (project setting)</div></div>
+  <div class="col" role="listitem"><h3>M6 Integration and email <span>6</span></h3>
+    <div class="card">API tokens and webhooks</div><div class="card">Command line tool</div><div class="card">Email invites and notifications</div><div class="card">Reminders by email</div><div class="card">Notification preferences</div><div class="card">REST API reference</div></div>
+  <div class="col" role="listitem"><h3>Later <span>3</span></h3>
+    <div class="card">Desktop app (Tauri)</div><div class="card">Vietnamese interface</div><div class="card">Production host</div></div>
+  <div class="col out" role="listitem"><h3>Not building <span>6</span></h3>
+    <div class="card">Rule-based automation</div><div class="card">Third-party add-ons</div><div class="card">Personal planner and inbox</div><div class="card">Timeline, Calendar</div><div class="card">Map view</div><div class="card">Imports from other products</div></div>
+</div>
+
+<h2>Decisions</h2>
+<div class="tbl"><table>
+<tr><th>Topic</th><th>Decision</th><th>Source</th></tr>
+<tr><td>Why build</td><td>Data ownership and custom workflows. When feature parity with common kanban tools and a company's workflow conflict, the workflow wins.</td><td>You</td></tr>
+<tr><td>Deployment</td><td>One static Rust binary (musl) with the web app compiled in. Runs under systemd on Ubuntu. Cloudflare Tunnel to <code>127.0.0.1:8791</code>. Hostname <code>tazko-dev.hugepigstudio.com</code>.</td><td>You</td></tr>
+<tr><td>Machine</td><td>An existing Ubuntu server (192.168.86.49) that already runs another service and tunnel. Tazko must coexist with it; see Deployment.</td><td>You</td></tr>
+<tr><td>Database</td><td>SQLite in WAL mode. <code>control.db</code> for people, companies, invites, sessions, audit log. One <code>tazko.db</code> per company for everything else.</td><td>You</td></tr>
+<tr><td>Sign-in</td><td>Google only, Workspace and personal accounts. Invite-only: an account can sign in only if its verified email already belongs to a person or a pending invite. After the first sign-in people are identified by Google's <code>sub</code>, so an email change does not lock them out.</td><td>You</td></tr>
+<tr><td>Super admin</td><td>A flag on a person, set from the command line. First one: <code>trungngo@hugepigstudio.com</code>. Manages companies and people from <code>/admin</code>. Sees project names, owners and counts but not boards. Every admin action is audit-logged.</td><td>You, with my default on board access</td></tr>
+<tr><td>Company roles</td><td>Owner and member. Owners manage the company's members, other owners, invites and storage, and manage all projects. Only owners create projects. Members cannot create projects.</td><td>You</td></tr>
+<tr><td>Projects</td><td>Company, then project, then board. Only company owners create projects, choose their owners, and can archive or delete any project. A project has settings (name, description, color, default board background, member switches, card aging) and members. Deleted projects stay in trash for 30 days. People see a project only when they are in it. Company owners manage a project but open its boards only after adding themselves, which is audit-logged.</td><td>You</td></tr>
+<tr><td>Project access</td><td>Project roles: owner (settings, members, invites, restricted boards), member (edit boards and cards), observer (read only). Project members see every board in the project. A board can be restricted to a chosen subset of the project's members. Project switches: members can create boards (default on) and members can invite (default off).</td><td>You</td></tr>
+<tr><td>Inviting</td><td>Project owners invite people to a project; company owners can too. If the person is not yet in the company they join it as a plain member, with access only to that project. Invites match the Google account's verified email, Workspace or personal.</td><td>You</td></tr>
+<tr><td>Backend</td><td>Rust: Axum, rusqlite (bundled SQLite), tokio.</td><td>You</td></tr>
+<tr><td>Web app</td><td>React, TypeScript, Vite, Tailwind, shadcn/ui, dnd-kit. Built to static files, brotli pre-compressed, embedded in the binary. English with strings in an i18n file (Vietnamese later).</td><td>Assumed</td></tr>
+<tr><td>Desktop</td><td>Deferred.</td><td>You</td></tr>
+<tr><td>Command line</td><td>One program, <code>tazko</code>, is both the server (<code>serve</code>, <code>admin</code>, <code>backup</code>, <code>check</code>) and a command-line client for people (<code>auth</code>, <code>project</code>, <code>board</code>, <code>card</code>, <code>my</code>, <code>search</code>, <code>token</code>, <code>webhook</code>, <code>api</code>). The client signs in through the browser with a device code, keeps a personal token in the system keychain and uses the same REST API as the web app. It offers <code>--json</code> and <code>--jq</code> for scripts. Builds for Linux, macOS and Windows are served at <code>/cli</code>.</td><td>You, shape assumed</td></tr>
+<tr><td>Personal settings</td><td>Profile (name, job title, photo source, language), appearance (system, light or dark theme; zoom 80 to 150 percent; comfortable or compact cards; reduce motion; zen mode on or off, zen card density, quiet notices in zen), date and time (time zone, date format, 12 or 24 hour, first day of week), notification choices, personal access tokens and signed-in sessions. Stored per person and the same in every company.</td><td>You</td></tr>
+<tr><td>Email</td><td>Optional, set up in the server settings file (SMTP). When on: invitation emails, mention and assignment emails, due-date reminders, with per-person choices for instant, hourly or daily delivery. When off, everything works in the app and invitations are shared by hand.</td><td>You</td></tr>
+<tr><td>Integrations</td><td>Company API tokens (service identity, limited to chosen projects, with expiry) and webhooks (HMAC signed, retried with growing delay for a day, delivery log, redeliver) are managed by company owners. Personal tokens act as the person and never exceed their access.</td><td>You, details assumed</td></tr>
+<tr><td>Card depth</td><td>Checklist items can have an assignee and a due date. Cards can repeat: completing a repeating card reopens it with the next due date. Cards can be linked (relates to, blocks, is blocked by, duplicates); an open blocker shows a Blocked badge. Comments have emoji reactions. Descriptions use a rich-text editor and are sanitized on the server. Cards can be voted on (one vote per person), with the count on the card, a Votes column in the table and a Most votes chart on the dashboard. Card aging fades cards that have had no activity: it is a project setting, on by default, starting after 7 days (3, 7, 14 or 30 to choose), and never applied to completed cards.</td><td>You</td></tr>
+<tr><td>Look and feel</td><td>The clickable prototype in <code>design/</code> is the specification for how the product looks and behaves: layout, spacing, colors, type, icons, wording, empty states, keyboard and motion. The finished product must look and feel like it, in light and dark themes. See the section on the prototype below. Where the prototype and this plan differ on data, permissions or limits, this plan wins; where they differ on look or interaction, the prototype wins.</td><td>You</td></tr>
+<tr><td>Card layout</td><td>The card opens as one wide dialog in two columns that scroll on their own. On the left: title, list, members, labels, votes, dates, description, custom fields, checklists, linked cards, attachments. On the right: comments and activity, with the comment box at the top, so a person can read and write comments while viewing the details. A top strip holds a Card menu button and Close (on the cover when there is one), so nothing covers the comments. The Card menu has two groups: Add to card (members, labels, checklist, linked cards, dates, attachment, cover, custom fields) and Actions (move, copy, watch, archive, share link). On a narrow screen, and in zen mode, the card is one column with the comments below.</td><td>You</td></tr>
+<tr><td>Long cards</td><td>A card shows only the most recent few of anything long and offers Show all N and Show fewer: checklist items first 6 per checklist; linked cards the 3 newest; attachments the 3 newest; comments and activity the 4 newest. A link with no name shows shortened: protocol and www removed, and when longer than 44 characters the first 30, an ellipsis and the last 10, with the full address as a tooltip. Checklists can be added at any time and reordered (up and down buttons when a card has two or more). Checklist items reorder by a drag handle that appears on hover, also across checklists, or with Alt and the up or down arrow on the item.</td><td>You</td></tr>
+<tr><td>Zen mode</td><td>A personal mode, toggled with the Z key or a button, that gives the cards the whole window. It hides the app header, board header and filter bar, and works on the board, table and dashboard views. Controls live in a strip at the top edge that appears when the pointer or keyboard focus goes there: board name, view tabs, Just mine, Hide done, Hide stale, card density (comfortable, compact, minimal), command palette, search, notifications and Exit zen. Quiet by default: only toasts with an Undo are shown. Keys select and move between cards, and a card opens as a side panel with previous and next buttons. Pasting several lines into the new-card box creates one card per line. It stays on across boards until turned off; Esc or Z leaves it. Not part of zen: lists that fill the screen, focusing a single list, and browser full screen.</td><td>You</td></tr>
+<tr><td>Keyboard</td><td>Shortcuts act on the card selected with the keys, or the one under the pointer, and are off while typing. See the key map below. The backtick key shows or hides the key list, and Ctrl K opens the command palette. The Add a card row of a list is visible only while the pointer is over the list, focus is inside it, a card in it is selected by key, or the list is empty (always visible on touch screens).</td><td>You</td></tr>
+<tr><td>Board backgrounds</td><td>Gradients, colors and uploaded pictures (up to 5 MB, stored with the company files).</td><td>You</td></tr>
+<tr><td>Ordering</td><td>Fractional-index strings; a drag changes one row.</td><td>Assumed</td></tr>
+</table></div>
+
+<h2>Architecture</h2>
+<p>A request arrives over HTTPS at Cloudflare, travels through the tunnel to <code>cloudflared</code>, and reaches the binary on the loopback address. The session cookie names a person. The URL names a company. The binary checks membership in <code>control.db</code>, opens that company's file (cached after first use) and does the work there. Every change also writes an event row in the same transaction; after the commit the binary pushes it to open WebSockets from an in-memory hub.</p>
+<div class="mermaid-wrap"><pre class="mermaid">
+flowchart LR
+  B[Browser] -->|HTTPS| CF[Cloudflare]
+  CF --> CD[cloudflared]
+  CD -->|127.0.0.1:8791| S
+  subgraph S[tazko binary]
+    UI[web app and /admin console]
+    API[REST and WebSocket]
+    HUB[in-memory event hub]
+    API --> HUB
+  end
+  S --> C[(control.db)]
+  S --> D1[(orgs/acme/tazko.db)]
+  S --> D2[(orgs/beta/tazko.db)]
+  S --> F[files on disk]
+  G[Google] <-->|OAuth| S
+</pre></div>
+
+<div class="grid2">
+  <div class="panel"><h3>Data layout on disk</h3>
+<pre class="code" style="margin-top:8px">/var/lib/tazko/data/
+  control.db
+  secret               random, made on first start
+  orgs/
+    acme/
+      tazko.db
+      files/ab/ab12...
+  trash/               deleted companies, kept 30 days</pre></div>
+  <div class="panel"><h3>Google sign-in, step by step</h3><ol style="margin:.4em 0 0;padding-left:1.2em">
+    <li><code>/auth/google/start</code> sends the browser to Google with a random state, nonce and PKCE challenge.</li>
+    <li><code>/auth/google/callback</code> exchanges the code and verifies the ID token signature, audience, expiry and nonce against Google's public keys (<code>https://www.googleapis.com/oauth2/v3/certs</code>).</li>
+    <li>Requires <code>email_verified</code>. Looks up the person by <code>sub</code>, else by email. If neither exists, looks for a pending invite. Otherwise refuses with a clear message and writes an audit entry.</li>
+    <li>Creates a session: HTTP-only, Secure, SameSite=Lax cookie, 30 days from last use, stored in <code>control.db</code>.</li>
+  </ol></div>
+  <div class="panel"><h3>Workspace and personal accounts</h3><p>The OAuth consent screen is External and published (out of Testing mode), which admits any Google account. Invites match on the lower-cased email address. A Workspace person and a Gmail person are the same kind of account to Tazko. Google's <code>hd</code> claim is stored only to show which domain an account belongs to.</p></div>
+  <div class="panel"><h3>Tenant isolation</h3><p>No <code>org_id</code> column and no policy to forget. A handler gets a handle to exactly one company's file. Backup, export and deletion of a company are file operations.</p></div>
+  <div class="panel"><h3>Speed</h3><p>One writer thread per company owns that file's write connection, plus a few readers. WAL mode, <code>synchronous=NORMAL</code>, <code>foreign_keys=ON</code>. A busy company never blocks another.</p></div>
+  <div class="panel"><h3>Schema changes</h3><p>Each database file carries its schema version (<code>PRAGMA user_version</code>) and migrates when first opened. Control and company databases have separate migration folders.</p></div>
+</div>
+
+<h3 style="margin-top:28px">Super admin console and invites</h3>
+<div class="tbl"><table>
+<tr><th>Page</th><th>What it does</th></tr>
+<tr><td>Companies</td><td>List with member count, boards, storage used and last activity. Create a company (makes its folder and database). Suspend and resume. Delete with a typed confirmation; the folder moves to <code>trash/</code> for 30 days.</td></tr>
+<tr><td>Company detail</td><td>Members and roles, pending invites, storage limit. Invite a person as owner or member; change a role; remove a person. A read-only Projects tab lists project names with owners and member and board counts.</td></tr>
+<tr><td>People</td><td>Everyone across companies, with their memberships and last sign-in. Disable or re-enable. Grant or revoke super admin.</td></tr>
+<tr><td>Invites</td><td>Pending invites across all companies; revoke one.</td></tr>
+<tr><td>Audit log</td><td>Who did what and when: company created or deleted, invite created or revoked, role changed, person disabled, sign-in refused.</td></tr>
+<tr><td>Server</td><td>Version, uptime, data size, last backup result, email status with a send-test-email button.</td></tr>
+</table></div>
+<p><b>Company owners</b> get the same member and invite screens for their own company only, inside the normal app (Company settings). <b>An invite</b> authorizes one email address for one company and role. Until email is set up (M6) the admin sends the person the site address by hand; with email on, the invitation can be emailed from the invite form. When they sign in with that Google account they join automatically. Invites stay valid until revoked.</p>
+
+<h2>Command line</h2>
+<p>People can work from a terminal the way developers use the GitHub command line: one program, sign in once through the browser, then short commands. The same program, <code>tazko</code>, also runs the server on the server machine, so there is one thing to build, download and version.</p>
+<div class="grid2">
+  <div class="panel"><h3>Signing in</h3><ol class="steps">
+    <li><code>tazko auth login --host tazko-dev.hugepigstudio.com</code> asks the server for a one-time device code and prints it.</li>
+    <li>The browser opens <code>/cli/authorize</code>. The signed-in person checks that the code matches, sees the access requested, and approves.</li>
+    <li>The program receives a personal token, keeps it in the system keychain (or a private file where there is none) and shows who is signed in.</li>
+    <li><code>TAZKO_TOKEN</code> and <code>TAZKO_HOST</code> override this for scripts. A token never has more access than its owner and can be revoked under Settings.</li></ol></div>
+  <div class="panel"><h3>Conventions</h3><ul>
+    <li>Nouns, then verbs: <code>tazko card move</code>, <code>tazko board list</code>.</li>
+    <li>Readable tables in a terminal. <code>--json fields</code> and <code>--jq</code> for scripts. <code>--web</code> opens the item in the browser.</li>
+    <li>Boards and cards by name inside a project, or by id.</li>
+    <li>Exit codes: 0 success, 1 failure, 2 wrong usage, 4 not signed in.</li>
+    <li>Shell completion, <code>tazko update</code>, and <code>tazko config</code> for defaults.</li>
+    <li>Linux, macOS and Windows builds and an install script, served by the server at <code>/cli</code>.</li></ul></div>
+</div>
+<div class="tbl"><table>
+<tr><th>Command</th><th>Subcommands</th><th>What it does</th></tr>
+<tr><td><code>tazko auth</code></td><td>login, logout, status, token</td><td>Sign in with the browser, see who you are, print a token for scripts</td></tr>
+<tr><td><code>tazko project</code></td><td>list, view, members</td><td>Projects you belong to and who is in them</td></tr>
+<tr><td><code>tazko board</code></td><td>list, view, create, open</td><td>Work with boards; open launches the web app on that board</td></tr>
+<tr><td><code>tazko card</code></td><td>list, view, create, edit, move, done, assign, comment, link, archive</td><td>Everything on a card from the terminal</td></tr>
+<tr><td><code>tazko my</code></td><td>cards, checklist</td><td>Cards and checklist items assigned to you</td></tr>
+<tr><td><code>tazko search</code></td><td>"query"</td><td>Same operators as the app: @name, #label, is:overdue</td></tr>
+<tr><td><code>tazko token</code>, <code>tazko webhook</code></td><td>list, create, revoke, test, deliveries</td><td>Personal tokens; company tokens and webhooks for owners</td></tr>
+<tr><td><code>tazko api</code></td><td>METHOD /path</td><td>Call any API endpoint and filter the answer with <code>--jq</code></td></tr>
+<tr><td><code>tazko config</code>, <code>completion</code>, <code>update</code></td><td></td><td>Defaults, shell completions, install the newest version from the server</td></tr>
+</table></div>
+
+<h2>Personal settings, integrations and email</h2>
+<div class="grid2">
+  <div class="panel"><h3>Personal settings</h3><ul>
+    <li><b>Profile:</b> display name, job title, photo from Google or initials, language (English now; Vietnamese later).</li>
+    <li><b>Appearance:</b> theme follows the device or is set to light or dark; zoom from 80 to 150 percent; card density; reduce motion; labels as names or small bars; zen mode (a switch, its card density, and quiet notices).</li>
+    <li><b>Date and time:</b> time zone (with detect), date format, 12 or 24 hour, first day of the week. Due dates and times everywhere use these.</li>
+    <li><b>Notifications:</b> a table of events by channel (in the app, by email), email delivery (instant, hourly digest, daily digest, never), reminder lead time, and a preview of each email.</li>
+    <li><b>Access tokens and Sessions:</b> personal tokens, and a list of browsers, terminals and phones that are signed in, each with Sign out.</li></ul></div>
+  <div class="panel"><h3>Integrations (company owners)</h3><ul>
+    <li><b>API tokens:</b> name, access level (read, read and write cards, manage), projects, expiry, last used. The secret is shown once.</li>
+    <li><b>Webhooks:</b> address, events (card created, updated, moved, completed, archived; comment created; member added; board created), projects, a signing secret shown once, pause switch, delivery log with redeliver and a test event.</li>
+    <li>All of it is also reachable from the command line and the REST API.</li></ul></div>
+  <div class="panel"><h3>Email</h3><ul>
+    <li>Set up in the server settings file. The admin Server page shows its status and can send a test email.</li>
+    <li>Every invite form has an Email the invitation option. The email leads to Google sign-in.</li>
+    <li>Mention, assignment and due-date emails follow each person's choices. Reminders always appear in the app.</li>
+    <li>Emails come from one address and carry no tracking.</li></ul></div>
+</div>
+
+<h2>Keyboard, zen mode and card layout</h2>
+<p>These come from the prototype and are part of the product, not extras. Shortcuts are off while typing in a field or editing a description, and while a popover is open.</p>
+<div class="grid2">
+  <div class="panel"><h3>Key map</h3><div class="tbl"><table>
+  <tr><th>Key</th><th>Does</th></tr>
+  <tr><td><code>`</code> or <code>?</code></td><td>Show or hide the key list</td></tr>
+  <tr><td><code>Z</code></td><td>Zen mode on or off</td></tr>
+  <tr><td><code>Ctrl K</code></td><td>Command palette</td></tr>
+  <tr><td><code>/</code></td><td>Search</td></tr>
+  <tr><td><code>F</code>, <code>Q</code></td><td>Filter; show only my cards</td></tr>
+  <tr><td><code>N</code></td><td>New card in the selected card's list (or the first list)</td></tr>
+  <tr><td><code>J K H L</code></td><td>Move the selection: next or previous card, previous or next list. Arrow keys do the same once a card is selected, and always in zen mode</td></tr>
+  <tr><td><code>Enter</code>, <code>E</code></td><td>Open the selected card; quick edit</td></tr>
+  <tr><td><code>Space</code></td><td>Mark done</td></tr>
+  <tr><td><code>A</code>, <code>D</code>, <code>T</code>, <code>M</code></td><td>Assign members, dates, labels, move</td></tr>
+  <tr><td><code>V</code>, <code>X</code></td><td>Vote; archive</td></tr>
+  <tr><td><code>1</code> to <code>8</code></td><td>Toggle the label in that position</td></tr>
+  <tr><td>With a card open: <code>J K H L</code></td><td>Step to the next, previous, left or right card. Arrow keys too in zen mode, so they still scroll a long card otherwise</td></tr>
+  <tr><td><code>Alt</code> with up or down arrow</td><td>Move a checklist item up or down</td></tr>
+  <tr><td><code>Ctrl Enter</code></td><td>Save the comment being written</td></tr>
+  <tr><td><code>Esc</code></td><td>Close what is open, one layer at a time; then leave zen</td></tr>
+  </table></div></div>
+  <div class="panel"><h3>Command palette</h3><ul>
+    <li>Opens with Ctrl K, or from the button in the zen strip. Type to filter; arrows and Enter run the highlighted item.</li>
+    <li>Groups: Actions (zen, switch view, new card), Filter (just mine, hide done, hide stale, clear), Density, Zen quiet mode, and Card actions for the selected card (open, done, assign, dates, labels, move, vote, archive). A card action always works on the selected card; when none is selected the palette says so.</li>
+    <li>Shows the key beside an item when one exists.</li></ul></div>
+  <div class="panel"><h3>Zen mode</h3><ul>
+    <li>The Z key, the Zen button on a board, the palette, or Settings, Appearance. It stays on across boards and sessions as a personal setting.</li>
+    <li>Header, board header, filter bar and read-only banner are hidden. The strip at the top edge appears on pointer or focus and shows the controls named in Decisions.</li>
+    <li>Card density: comfortable, compact (smaller text, badges on one line) and minimal (titles only).</li>
+    <li>A card opens as a panel on the right, 520 px wide, with previous and next buttons; the board stays visible behind it.</li>
+    <li>On a touch device the controls stay visible, since there is no pointer to bring them out.</li></ul></div>
+  <div class="panel"><h3>Cards on the board</h3><ul>
+    <li>The selected card has a clear outline while keys drive the selection; moving the pointer by more than a few pixels hands control back to the pointer.</li>
+    <li>Pasting text with several lines into the new-card box creates one card for each non-empty line.</li>
+    <li>The Add a card row follows the rule in Decisions: shown on hover, on focus, for the list holding the selected card, for an empty list, and always on touch screens.</li></ul></div>
+</div>
+
+<h2>Data model</h2>
+<div class="tbl"><table>
+<tr><th>File</th><th>Tables</th></tr>
+<tr><td><code>control.db</code></td><td><code>users</code> (id, email, google_sub, name, avatar, hd, is_super_admin, disabled, last_seen), <code>orgs</code> (id, slug, name, status, storage_limit), <code>org_members</code> (user, org, role), <code>invites</code> (org, email, company role, optional project, optional project role, created_by, revoked_at; kept here so a project-only invite can sign in), <code>sessions</code>, <code>audit_log</code>, <code>user_settings</code> (theme, zoom, time zone, formats, zen mode choices, notification choices), <code>personal_tokens</code> (hash, access, expiry, last used), <code>device_codes</code> (command-line sign-in), <code>email_queue</code></td></tr>
+<tr><td><code>tazko.db</code>: structure</td><td><code>people</code> (copy of id, name, avatar), <code>projects</code> (name, description, color, default background, members_can_create_boards, members_can_invite, aging_enabled (default on), aging_days (default 7), archived_at, deleted_at), <code>project_members</code> (user, role: owner, member, observer), <code>boards</code> (project, name, background, restricted), <code>board_access</code> (only for restricted boards), <code>lists</code>, <code>cards</code>, <code>labels</code>, <code>card_labels</code>, <code>card_members</code></td></tr>
+<tr><td><code>tazko.db</code>: card content</td><td><code>checklists</code>, <code>checklist_items</code> (text, done, assignee, due), <code>comments</code>, <code>comment_reactions</code> (comment, emoji, person), <code>card_links</code> (card, other card, type), <code>card_votes</code> (card, person), <code>attachments</code>, <code>custom_field_defs</code>, <code>custom_field_values</code>, <code>cards_fts</code> (FTS5)</td></tr>
+<tr><td><code>tazko.db</code>: activity</td><td><code>events</code> (type, actor, board, payload, created_at), <code>notifications</code>, <code>board_templates</code>, <code>api_tokens</code> (company), <code>webhooks</code>, <code>webhook_deliveries</code> (status, attempts, next try), uploaded background images in the company files folder</td></tr>
+</table></div>
+
+<h2>Deployment</h2>
+<p>This section is complete enough to follow on a machine that has never seen the project. Target: Ubuntu 24.04 or later, 4 GB of memory, a second disk or folder for backups. The machine is <code>192.168.86.49</code> and the hostname is <code>tazko-dev.hugepigstudio.com</code>, a name in a domain already on the owner's Cloudflare account.</p>
+
+<div class="note"><b>The machine is shared.</b> It already runs another service on <code>127.0.0.1:8790</code> and an existing Cloudflare tunnel whose configuration is <code>/etc/cloudflared/config.yml</code> with a rule for another hostname. Do not touch those, that service's accounts, or its folders under <code>/opt</code>, <code>/etc</code> and <code>/var/lib</code>. Never rerun a tunnel setup script that rewrites <code>config.yml</code>. Tazko only adds a rule.</div>
+
+<div class="grid2">
+  <div class="panel"><h3>Accounts and folders</h3>
+  <ul>
+    <li><code>tazko</code>: system user, no login. Runs the service. Writes only <code>/var/lib/tazko</code> (systemd sandbox).</li>
+    <li><code>tazko-deploy</code>: system user. Owns <code>/opt/tazko</code> and <code>/etc/tazko</code>. Through sudo it may run only <code>systemctl restart tazko.service</code> and read that unit's log.</li>
+    <li>The administrator (a normal sudo user) runs the release script as <code>tazko-deploy</code>.</li>
+    <li><code>/var/lib/tazko/data</code> data; <code>/var/backups/tazko</code> backups; <code>/var/lib/tazko-incoming</code> uploaded bundles.</li>
+    <li>Port <code>8791</code> on <code>127.0.0.1</code> only. Nothing else is opened on the network.</li>
+  </ul></div>
+  <div class="panel"><h3>Settings file</h3>
+  <p><code>/etc/tazko/tazko.env</code>, mode 640, readable by <code>tazko-deploy</code>, the <code>tazko</code> group and root.</p>
+  <ul>
+    <li><code>TAZKO_HOST=127.0.0.1</code>, <code>TAZKO_PORT=8791</code></li>
+    <li><code>TAZKO_PUBLIC_URL=https://tazko-dev.hugepigstudio.com</code> (redirect addresses start with it)</li>
+    <li><code>TAZKO_DATA_DIR=/var/lib/tazko/data</code></li>
+    <li><code>TAZKO_GOOGLE_CLIENT_ID</code>, <code>TAZKO_GOOGLE_CLIENT_SECRET</code></li>
+    <li><code>TAZKO_SECRET</code> (32+ characters; empty means a random <code>secret</code> file in the data folder, made on first start)</li>
+    <li>Email, optional: <code>TAZKO_SMTP_HOST</code>, <code>TAZKO_SMTP_PORT</code>, <code>TAZKO_SMTP_USER</code>, <code>TAZKO_SMTP_PASSWORD</code>, <code>TAZKO_MAIL_FROM</code></li>
+  </ul></div>
+</div>
+
+<h3 style="margin-top:24px">1. Install and configure the tunnel (adds a rule, keeps the existing one)</h3>
+<ol class="steps">
+  <li>Read <code>/etc/cloudflared/config.yml</code> and note the tunnel name or id and the existing rules. <code>cloudflared</code> is already installed if that file exists.</li>
+  <li>If the tunnel exists: insert a rule above the final catch-all <code>- service: http_status:404</code>:
+<pre class="code" style="margin-top:6px">  - hostname: tazko-dev.hugepigstudio.com
+    service: http://127.0.0.1:8791
+    originRequest:
+      connectTimeout: 30s
+      noHappyEyeballs: true</pre></li>
+  <li>Create the DNS record against that tunnel, using the account certificate that is already on the machine: <code>sudo env TUNNEL_ORIGIN_CERT=/etc/cloudflared/cert.pem cloudflared tunnel route dns &lt;existing tunnel name&gt; tazko-dev.hugepigstudio.com</code>. If that certificate is missing, run <code>cloudflared tunnel login</code> and have the owner open the printed link and pick the domain.</li>
+  <li>Check with <code>cloudflared tunnel ingress validate --config /etc/cloudflared/config.yml</code>, then <code>sudo systemctl restart cloudflared</code> and confirm the unit is active and the old hostname still works.</li>
+  <li>If no tunnel exists on the machine, create one instead: install <code>cloudflared</code> from Cloudflare's apt repository, run it as its own <code>cloudflared</code> user, and write a new config with the same rule plus the 404 catch-all.</li>
+</ol>
+
+<h3 style="margin-top:24px">2. The service</h3>
+<div class="codebox"><pre class="code">[Unit]
+Description=Tazko
+After=network.target
+
+[Service]
+User=tazko
+Group=tazko
+EnvironmentFile=/etc/tazko/tazko.env
+ExecStart=/opt/tazko/current/tazko serve
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/tazko
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target</pre></div>
+
+<h3 style="margin-top:24px">3. Releases, deploy and rollback</h3>
+<ol class="steps">
+  <li>Build on the server: <code>cargo build --release --target x86_64-unknown-linux-musl</code>. The build embeds the web app, so the bundle is one executable plus a small <code>VERSION</code> file. Name it <code>tazko-&lt;time&gt;-&lt;commit&gt;.tar.gz</code>.</li>
+  <li>Copy it to <code>/var/lib/tazko-incoming</code>, then run the release script as <code>tazko-deploy</code> (installed at <code>/usr/local/bin/tazko-release</code>, root-owned).</li>
+  <li>The script unpacks into <code>/opt/tazko/releases/&lt;time&gt;-&lt;commit&gt;</code>, points the symlink <code>/opt/tazko/current</code> at it, and runs <code>sudo systemctl restart tazko.service</code>.</li>
+  <li>It then polls <code>http://127.0.0.1:8791/health</code> for up to 20 seconds. If there is no healthy answer it points the link back at the previous release, restarts the service and exits with an error. Options: <code>--rollback</code> (go back one release) and <code>--list</code>. Keep the last 5 releases.</li>
+</ol>
+
+<h3 style="margin-top:24px">4. First super admin</h3>
+<div class="codebox"><pre class="code">sudo -u tazko /opt/tazko/current/tazko admin \
+  --data /var/lib/tazko/data --email trungngo@hugepigstudio.com</pre></div>
+<p>The server starts empty: no companies, no people. This command creates that one person with the super admin flag. They sign in with Google at the hostname and open <code>/admin</code>.</p>
+
+<h3 style="margin-top:24px">5. Google sign-in (the owner does this in a browser)</h3>
+<ol class="steps">
+  <li>In the Google Cloud console create a new project named <b>Tazko</b>.</li>
+  <li>Open the OAuth consent screen (called Google Auth platform in the newer console). Audience: <b>External</b>. App name Tazko, a support email, authorized domain <code>hugepigstudio.com</code>. Scopes: <code>openid</code>, <code>email</code>, <code>profile</code> only; these need no Google review.</li>
+  <li><b>Publish the app</b> (move it from Testing to In production). While in Testing, only listed test users can sign in, which would shut out most people.</li>
+  <li>Credentials, Create credentials, OAuth client ID, type <b>Web application</b>. Authorized redirect URI: <code>https://tazko-dev.hugepigstudio.com/auth/google/callback</code>. No JavaScript origin is needed.</li>
+  <li>Put the client ID and secret into <code>/etc/tazko/tazko.env</code> as root, then restart the service. Never put them in the repository or in a chat.</li>
+</ol>
+
+<h3 style="margin-top:24px">6. Cloudflare settings</h3>
+<ul>
+  <li>No Cloudflare Access application: Tazko does its own sign-in.</li>
+  <li>Optional and free: Security, WAF, rate limiting rule on URI path starting with <code>/auth/</code>, for example 20 requests per 10 seconds per IP, then block.</li>
+</ul>
+
+<h3 style="margin-top:24px">7. Backups and restore</h3>
+<ol class="steps">
+  <li>A systemd timer <code>tazko-backup.timer</code> runs at 02:30 and calls <code>tazko backup --data /var/lib/tazko/data --to /var/backups/tazko --keep-days 30</code> while the server runs. It copies each SQLite database with the online backup API, copies the <code>files/</code> folders, and keeps dated snapshots.</li>
+  <li>It then runs <code>tazko check</code> on the copy: open every database, run <code>PRAGMA integrity_check</code>, and verify that every attachment file matches its hash.</li>
+  <li>Optional: <code>rclone sync</code> of <code>/var/backups/tazko</code> to an object-storage bucket.</li>
+  <li>Restore: stop the service, run <code>tazko backup --data /var/backups/tazko --to /var/lib/tazko/data.new</code>, run <code>tazko check</code> on it, move <code>data</code> to <code>data.old</code> and <code>data.new</code> to <code>data</code>, start the service.</li>
+</ol>
+
+<h2>Milestones</h2>
+
+<div class="ms"><header><b>M1</b><h3>Platform</h3><span class="sub">deployed, signed in, companies managed</span></header>
+<div class="body"><div><div class="sub">Tasks</div><ul>
+<li>Cargo project and <code>web/</code> app (React, Tailwind, shadcn/ui); build step embeds <code>web/dist</code> (disk reload in development)</li>
+<li>Config from environment; commands <code>serve</code>, <code>admin --email</code>, <code>backup</code>, <code>check</code></li>
+<li><code>control.db</code>; open, cache and migrate company databases; writer thread and read pool per company</li>
+<li>Google sign-in as described above; sessions; sign-out; clear refusal page</li>
+<li>Super admin console: companies, company detail, people, invites, audit log, server page</li>
+<li>Company owner screens: members and invites for their own company</li>
+<li>Company switcher for people in several companies; empty company home page</li>
+<li>Everything in the Deployment section as scripts and units under <code>deploy/</code>: host setup, tunnel rule, service, release and rollback, backup timer</li>
+<li><code>/health</code> endpoint; <code>scripts/ci.sh</code> including a dependency license check that allows only permissive licenses (MIT, Apache-2.0, BSD, ISC)</li>
+<li>README deploy guide that repeats the Deployment section for the repository</li>
+</ul></div><div class="acc"><div class="sub">Done when</div><ul>
+<li><code>https://tazko-dev.hugepigstudio.com</code> reaches the app through the tunnel with no new port open, and the other service on the machine still works</li>
+<li><code>tazko admin --email trungngo@hugepigstudio.com</code> then Google sign-in reaches <code>/admin</code></li>
+<li>A Workspace account and a personal Gmail account can both be invited and both sign in</li>
+<li>An account with no person and no invite is refused and the refusal is in the audit log</li>
+<li>A company can be created, suspended, resumed and deleted (folder lands in <code>trash/</code>)</li>
+<li>A person in two companies sees only the chosen company's data; the two files are separate (test)</li>
+<li>Deploying a broken build rolls back by itself</li>
+<li><code>tazko backup</code> produces a copy that <code>tazko check</code> accepts</li>
+</ul></div></div></div>
+
+<div class="ms"><header><b>M2</b><h3>Core boards</h3><span class="sub">one team can run a real board</span></header>
+<div class="body"><div><div class="sub">Tasks</div><ul>
+<li>Boards, lists, cards: create, rename, archive, restore; star a board</li>
+<li>Fractional ordering; drag and drop of cards and lists</li>
+<li>Card modal: markdown description, assignees, labels, due date and done, cover</li>
+<li>Checklists with progress badge and inline expand; comments; tile badges</li>
+<li>Manage projects page for company owners: create a project with its first owner, rename, archive and restore, delete to trash for 30 days, add or remove project owners</li>
+<li>Project settings page for project owners: name, description, color, default board background, switches for members creating boards and inviting, card aging (on by default, after 7 days)</li>
+<li>Project members page: invite by email as owner, member or observer, change role, remove; a project invite also adds a new person to the company as a plain member</li>
+<li>Boards live inside a project; a board can be restricted to chosen project members</li>
+<li>Projects list per person shows only projects they belong to; members cannot create projects</li>
+<li>Search with FTS5; filter by member, label, due date</li>
+<li>Card actions: move, copy, archive and restore with undo, watch, copy share link; quick edit and a complete circle on the card tile on hover</li>
+<li>List actions: rename, collapse, copy, move, sort, move all cards, archive all cards, archive list</li>
+<li>Board menu: about, background (gradients and colors), labels, custom fields, archived items, activity, copy board, save as template, close board</li>
+<li>Global search with operators (@member, #label, is:overdue, has:attachments, is:archived) and keyboard shortcuts</li>
+<li>Rich-text description editor: bold, italic, strikethrough, headings, quotes, lists, inline code, links, clear formatting. The server sanitizes the HTML it stores</li>
+<li>Personal settings: profile, appearance (theme, zoom, density, reduce motion), date and time (time zone, formats, first day of week), sessions. Settings apply immediately and follow the person across devices</li>
+<li>Event row for every change; activity log from it</li>
+<li>Card dialog as in Decisions: two scrolling columns, comments and activity on the right with the comment box on top, a top strip with Card menu and Close, the Card menu with Add to card and Actions, one column on narrow screens</li>
+<li>Long cards: show the first few and Show all or Show fewer for checklist items and comments (and for linked cards and attachments as soon as M3 and M5 add them); shortened display of long unnamed links; Add checklist; reorder checklists; reorder checklist items by drag handle and by Alt and arrow keys</li>
+<li>Zen mode: toggle by key, button and Settings; hover or focus strip; comfortable, compact and minimal density; quiet notices; keyboard selection and movement; side-panel card with previous and next; multi-line paste into the new-card box; Add a card row shown only on hover, focus, key selection or an empty list</li>
+<li>Key map as in the section above, and the backtick key list</li>
+</ul></div><div class="acc"><div class="sub">Done when</div><ul>
+<li>A team runs a real sprint board end to end</li>
+<li>A project observer cannot edit; a company member who is not in a project cannot see it; a company owner can archive and delete it and add owners but cannot open its boards until added (tests)</li>
+<li>A company member who is not an owner is refused when creating a project (test)</li>
+<li>Inviting a new email to a project lets them sign in, join the company, and see only that project (test)</li>
+<li>A restricted board is hidden from project members who were not added to it (test)</li>
+<li>Moving 200 cards creates no rank collisions (test)</li>
+<li>Cold start under a second; idle memory recorded</li>
+<li>Description HTML is sanitized on the server: script tags and event attributes never reach another person's browser (test)</li>
+<li>Changing theme, zoom or time zone applies at once and is still set after signing in on another device</li>
+<li>With the card open the comment box is visible without scrolling and the left and right columns scroll separately; Card menu and Close never cover comments</li>
+<li>A checklist of 9 items shows 6 with Show all 9 items; a feed of 7 shows 4 with Show all 7 comments; Show fewer returns to the short list</li>
+<li>An unnamed 120-character link shows as the first 30 characters, an ellipsis and the last 10, and still opens the full address</li>
+<li>Reordering checklists or items by drag handle, buttons or Alt and arrows saves in the new order and survives a reload and another browser</li>
+<li>Pressing Z hides the header, board header and filter bar and the cards use the window; Z or Esc restores them; the choice is the same after signing in on another device; the same works on the table and dashboard</li>
+<li>In zen mode J K H L and the arrow keys move the selection, Enter opens the card in a side panel, J and K inside it step between cards, and Esc closes layer by layer</li>
+<li>The Add a card row is hidden at rest and appears on pointer, focus and key selection, and stays visible on a touch screen (tests)</li>
+<li>Every shortcut in the key map works and none fires while a field is being edited</li>
+</ul></div></div></div>
+
+<div class="ms"><header><b>M3</b><h3>Live and files</h3><span class="sub">feels like a shared board</span></header>
+<div class="body"><div><div class="sub">Tasks</div><ul>
+<li>WebSocket per board with membership check; in-memory hub; optimistic UI and catch-up by event id (works through the tunnel); presence avatars of who is viewing</li>
+<li>Attachment uploads into the company's <code>files/</code> folder, stored by content hash; size and type limits; link attachments; thumbnails; company storage limit</li>
+<li>@mentions; notification bell with read state; due-soon alerts</li>
+<li>Custom fields: definitions per board, values on cards, show on tile, filter by value</li>
+<li>Reactions on comments: six emoji, one tap to add or remove yours, names on hover, live for everyone on the board</li>
+<li>Uploaded board backgrounds (up to 5 MB, images only) next to the gradients and colors, in the board menu, the project settings and the create-board dialog</li>
+</ul></div><div class="acc"><div class="sub">Done when</div><ul>
+<li>Two browsers on one board see each other's drags within a second</li>
+<li>A dropped connection reconnects and shows missed changes</li>
+<li>A mentioned user gets a notification and opens the card from it</li>
+<li>An upload past the company's limit is refused; a file downloads for members only</li>
+<li>A background image over 5 MB or that is not an image is refused with a clear message</li>
+</ul></div></div></div>
+
+<div class="ms"><header><b>M4</b><h3>Views and templates</h3><span class="sub">repeat the same structure across companies</span></header>
+<div class="body"><div><div class="sub">Tasks</div><ul>
+<li>Board templates: save a board, create a board from it. A template made by a super admin can be offered to every company</li>
+<li>Table view: one row per card with sortable columns, group by list, show or hide columns (board custom fields become columns), edit list, dates, labels, members and fields in place, bulk move, assign and archive, copy as CSV</li>
+<li>Card templates: create a card from a saved template with its checklist and labels</li>
+<li>My cards page: assigned cards, assigned checklist items and watched cards across every project the person belongs to, grouped by due date, with a project filter, title filter and hide-completed</li>
+<li>Dashboard view: cards per list, member, label and due date</li>
+<li>Command palette: Ctrl K, filter as you type, groups and card actions as described above, available on every board view and in zen mode</li>
+</ul></div><div class="acc"><div class="sub">Done when</div><ul>
+<li>Ctrl K opens the palette; typing narrows it; Enter runs the item; a card action acts on the selected card and says so when none is selected</li>
+<li>A template creates an identical board in another company</li>
+<li>Sorting and grouping in the table never change card order on the board</li>
+<li>My cards lists only projects the person belongs to and updates when a card is reassigned</li>
+<li>Editing a due date in the table updates the card on the board and appears in its activity</li>
+<li>Dashboard totals equal the counts on the board view</li>
+</ul></div></div></div>
+
+<div class="ms"><header><b>M5</b><h3>Card depth</h3><span class="sub">richer cards for planning work</span></header>
+<div class="body"><div><div class="sub">Tasks</div><ul>
+<li>Checklist items: optional assignee and due date, shown only when set. Assign and date from a small menu that appears on hover, so a plain checklist stays uncluttered. Assigned items appear in My cards and notify the assignee</li>
+<li>Recurring cards: repeat daily, every weekday, weekly, every 2 weeks or monthly. Completing the card reopens it with the next due date and clears its checklist, with undo</li>
+<li>Card links: relates to, blocks, is blocked by, duplicates. A link shows on both cards, and a card with an open blocker shows a Blocked badge</li>
+<li>Voting: one vote per person on a card, shown as a count on the card tile and with voter avatars in the card; vote from the tile, the card, the quick menu or the V key; sort a list by votes; Votes column in the table; Most votes chart on the dashboard</li>
+<li>Card aging: a switch and a threshold (3, 7, 14 or 30 days) in project settings, on by default at 7 days. Quiet cards fade in three steps at one, two and three times the threshold; completed cards never fade; pointing at a card shows it normally; any activity restores it. A Stale filter, an is:stale search operator, a Stale count on the dashboard and a Last activity column in the table help find quiet work</li>
+</ul></div><div class="acc"><div class="sub">Done when</div><ul>
+<li>A checklist item with an assignee appears in that person's My cards with its due date</li>
+<li>Completing a weekly card moves its due date forward a week and unticks its checklist; undo restores both</li>
+<li>Removing a link removes it from both cards; completing the blocking card clears the Blocked badge</li>
+<li>Voting twice removes the vote; the count on the tile, the table and the dashboard agree</li>
+<li>With aging on, a card quiet for the threshold fades and a comment on it restores it; turning the project setting off makes every card full strength at once; a completed card never fades (tests)</li>
+</ul></div></div></div>
+
+<div class="ms"><header><b>M6</b><h3>Integration and email</h3><span class="sub">connect other tools, work from a terminal</span></header>
+<div class="body"><div><div class="sub">Tasks</div><ul>
+<li>REST API under /api/v1 with an OpenAPI document and a reference page at /api/docs</li>
+<li>Company API tokens for owners: service identity, access level, chosen projects, expiry, last used, revoke. Secret shown once</li>
+<li>Personal access tokens under Settings: act as the person and never more; created by hand or by command-line sign-in</li>
+<li>Webhooks for owners: events and projects, HMAC signature, retries with growing delay for a day, delivery log, redeliver, test event, pause</li>
+<li>Command line tool: device-code sign-in with the /cli/authorize approve screen, command groups (auth, project, board, card, my, search, token, webhook, api, config, completion, update), --json and --jq, install scripts and downloads at /cli</li>
+<li>Email, optional (SMTP in the settings file): an Email the invitation option on every invite form, mention and assignment emails, due-date reminders, instant, hourly or daily delivery, previews in Settings, status and test email on the admin Server page</li>
+<li>Notification preferences per person: in the app and by email for each event type</li>
+</ul></div><div class="acc"><div class="sub">Done when</div><ul>
+<li>tazko auth login signs in through the browser and tazko card create works from a terminal on another machine</li>
+<li>A token limited to one project cannot read another project (test)</li>
+<li>A webhook delivery carries a signature that verifies with the secret; a failing endpoint is retried and visible in the log</li>
+<li>With email on, an invited person gets an email that leads to Google sign-in. With email off, nothing breaks and the invite shows the address to share</li>
+<li>Someone who turns off mention emails still sees mentions in the app</li>
+</ul></div></div></div>
+
+<h2>Clean-room and commit rules</h2>
+<p>Tazko is an original work. These rules apply to every file, commit and message the build session produces.</p>
+<div class="grid2">
+  <div class="panel"><h3>Commits and pull requests</h3><ul>
+    <li>Never mention AI, assistants or code-generation tools. No <code>Co-Authored-By</code> trailer naming one, no "generated with" line, no session or tool links.</li>
+    <li>The author is the user's own git identity. Disable the tool's automatic commit and pull-request attribution in the repository's <code>.claude/settings.json</code> (set <code>attribution.commit</code> and <code>attribution.pr</code> to empty strings) and check the first commit message before going further.</li>
+    <li>Messages describe the change in plain words, for example "Add invite revocation to the admin console".</li>
+  </ul></div>
+  <div class="panel"><h3>No other products by name</h3><ul>
+    <li>Never name any other product, vendor or competitor in code, comments, identifiers, strings, tests, fixtures, sample data, documentation, commit messages, branch names, package names or UI text.</li>
+    <li>Describe features in generic terms. Words such as board, list and card are common kanban vocabulary and are fine.</li>
+    <li>If something seems to need a comparison with another product, ask the user instead.</li>
+  </ul></div>
+  <div class="panel"><h3>Original work only</h3><ul>
+    <li>Do not copy another product's code, text, icons, colors, layout assets, templates, help copy or sample content. Design the visual look, icons and wording from scratch.</li>
+    <li>Do not capture, scrape or reverse engineer another product's pages, scripts, API or network traffic. Work only from this plan.</li>
+    <li>Use only dependencies under permissive licenses and keep the license check in CI.</li>
+  </ul></div>
+</div>
+
+<h2>The prototype is the specification</h2>
+<p>The owner wants the finished product to look and behave like the clickable prototype. It was built screen by screen with the owner and covers every milestone. It is the visual and interaction reference for all of M1 to M6, so a milestone is not finished until its screens match it.</p>
+<div class="grid2">
+  <div class="panel"><h3>What lives in design/</h3><ul>
+    <li><code>design/tazko-prototype.html</code>: the whole prototype in one file. Open it in a browser; start from the index page, which has one tile per screen, grouped by round.</li>
+    <li><code>design/tokens.css</code>: colors, spacing, radii, shadows and type for the light and dark themes, taken from the prototype. Turn these into the Tailwind theme so the product uses the same values.</li>
+    <li><code>design/README.md</code>: the screen index below and how the prototype is used.</li>
+    <li>The folder is read-only reference. Do not edit it in the build; if something should change, ask the owner.</li></ul></div>
+  <div class="panel"><h3>How the build uses it</h3><ul>
+    <li>Before each milestone, open the matching tiles and note layout, states (empty, loading, error, read-only), wording, icons and keyboard behavior.</li>
+    <li>Recreate each screen with real components. The prototype is a mock with sample data; do not copy its scripts or structure. The CSS values, icon shapes and wording may be reused, because the prototype is the owner's own original work.</li>
+    <li>Match: spacing, type, color in light and dark, density, hover and focus states, popovers, toasts with Undo, empty states, and every shortcut.</li>
+    <li>The View as switch in the prototype shows what each role sees (super admin, company owner, project owner, member, observer). Build the same differences, enforced on the server.</li>
+    <li>Things the prototype only pretends: sample data, live updates between browsers, email delivery, file uploads and the command line. Build them for real as the plan describes.</li>
+    <li>If the plan and the prototype disagree, apply the precedence in Decisions, and tell the owner about the difference.</li></ul></div>
+</div>
+<h3 style="margin-top:20px">Screen index by milestone</h3>
+<div class="tbl"><table>
+<tr><th>Milestone</th><th>Prototype screens</th></tr>
+<tr><td>M1</td><td>Sign in, Sign-in refused, Company home (switcher, empty state), Company settings (members and invites), Manage projects, Admin: Companies, Company detail, People, Invites, Audit log, Server</td></tr>
+<tr><td>M2</td><td>Your projects, Project boards, Project members, Project settings (including card aging), Board (drag, composer, shortcuts), Card, Filter, Search with operators, Zen mode, Command palette, Settings: profile and appearance</td></tr>
+<tr><td>M3</td><td>Attachments (upload, link, cover), Custom fields, Live updates and presence, Notifications, Reactions, Board background upload</td></tr>
+<tr><td>M4</td><td>Templates, Table view, Dashboard, My cards</td></tr>
+<tr><td>M5</td><td>Checklist items with assignee and due date, Recurring cards, Linked cards, Rich text, Voting, Card aging, Long cards</td></tr>
+<tr><td>M6</td><td>Settings: notifications, access tokens and command line; Authorize the command line; Integrations: API tokens and webhooks; Email previews; Admin: email status</td></tr>
+</table></div>
+
+<h2>Repository and handoff</h2>
+<p>The Linux session starts in an empty repository. When you say "hand off", I send it the kickoff prompt below together with the full text of this plan, so it needs no access to this page or to any other repository. It builds one milestone at a time and stops for you to check, because M1 needs you for Google and Cloudflare. After M1 passes you can send the Next milestone prompt for each of M2 to M6, or, when you trust the process, the Full run prompt that continues through M6 on its own. The clickable design prototype is committed in design/ and is the specification for the look and behavior of everything built; the build recreates it with real components and does not copy its scripts.</p>
+
+<h3 style="margin-top:20px">Layout</h3>
+<div class="codebox"><pre class="code">tazko/
+  CLAUDE.md
+  README.md             deploy guide
+  design/               prototype, tokens and screen index (read-only reference)
+  Cargo.toml
+  build.rs              builds or checks web/ and embeds web/dist
+  src/
+    main.rs             CLI: serve, admin, backup, check
+    config.rs  auth/  admin/  orgs/  tenant/  boards/  cards/
+    realtime/  files/  notifications/  api/
+  migrations/
+    control/  tenant/
+  web/                  React + TypeScript + Vite + Tailwind + shadcn/ui
+    src/ app/ admin/ components/ lib/i18n/
+  deploy/
+    setup-host.sh  add-tunnel-rule.sh  release.sh  build-bundle.sh
+    tazko.service  tazko-backup.service  tazko-backup.timer
+  tests/
+  scripts/ci.sh</pre></div>
+
+<h3 style="margin-top:20px">Proposed CLAUDE.md</h3>
+<div class="codebox"><button class="copy" data-target="claude-md">Copy</button><pre class="code" id="claude-md"># Tazko
+
+Self-hosted kanban work tracker for several companies. One Rust binary (Axum, rusqlite with bundled SQLite, tokio) that embeds the React/TypeScript web app and a super admin console, and stores each company's data in its own SQLite file. Deployed on Ubuntu behind a Cloudflare Tunnel at https://tazko-dev.hugepigstudio.com.
+
+## Rules
+- Work one milestone at a time (M1 to M6) in the order of the build plan. Do not start the next until every "Done when" check of the current one passes.
+- Data layout: data/control.db (users, orgs, org_members, invites, sessions, audit_log) and data/orgs/<slug>/tazko.db plus files/ per company. Tenant tables have no org_id. A handler receives a handle to exactly one company database.
+- Each company has one writer thread owning the write connection and a small read pool. WAL, synchronous=NORMAL, foreign_keys=ON.
+- Migrations: separate folders for control and tenant; PRAGMA user_version; run when a database is opened.
+- Every state change inserts an events row in the same transaction. After commit, publish to the in-memory hub.
+- Sign-in is Google OIDC only, for Workspace and personal accounts (consent screen External and published, scopes openid email profile). Verify the ID token signature, audience, expiry and nonce. Require email_verified. Identify people by Google sub after first sign-in. Accept a sign-in only for an existing, non-disabled person or a pending invite; otherwise refuse and audit-log it.
+- Super admin is a flag on a person, set only by `tazko admin --email`. Super admins manage companies and people at /admin but do not see a company's boards unless they are members. Every admin action goes to audit_log.
+- Access model: company, then project, then board. Company roles are owner and member. Only owners create projects, choose project owners, and archive or delete any project; owners get no access to a project's boards until they add themselves to it (audit-logged). Project roles are owner, member, observer. Project members see all boards in the project unless a board is restricted to a chosen subset. A project invite also joins the person to the company as a plain member. Invites, including project invites, are stored in control.db so a project-only invite can sign in.
+- The server listens on 127.0.0.1 only (TAZKO_PORT, default 8791). TLS and the public hostname belong to Cloudflare Tunnel. Cookies are HttpOnly, Secure, SameSite=Lax.
+- The deploy machine (192.168.86.49) is shared with another service. Never overwrite /etc/cloudflared/config.yml, never touch that service's accounts, folders or port 8790. Add the tazko-dev.hugepigstudio.com rule to the existing tunnel config and keep the existing rules.
+- Deployment: accounts tazko (runs service, writes /var/lib/tazko only) and tazko-deploy (installs releases, may only restart tazko.service). Releases in /opt/tazko/releases with a current link and automatic rollback if /health does not answer within 20 seconds. Settings in /etc/tazko/tazko.env. Follow the plan's Deployment section.
+- Never write secrets (Google client secret, TAZKO_SECRET) into the repository, logs or chat. The user places them in /etc/tazko/tazko.env.
+- Commits and pull requests never mention AI, assistants or generation tools: no Co-Authored-By trailer naming one, no "generated with" line, no session links. Author is the user's git identity. Set attribution.commit and attribution.pr to empty strings in .claude/settings.json and verify the first commit message. Messages are short plain descriptions of the change.
+- This is a clean-room, original project. Never name any other product, vendor or competitor in code, comments, identifiers, strings, tests, fixtures, docs, commit messages, branch or package names, or UI text. Do not copy another product's code, text, icons, colors, assets or templates; design visuals and wording from scratch. Do not capture, scrape or reverse engineer another product. Work only from the build plan. Use only permissively licensed dependencies (MIT, Apache-2.0, BSD, ISC) and keep the license check in CI. If a comparison seems needed, ask the user.
+- The release build is one static binary (musl). Web build output embedded with brotli pre-compression; in development serve web/dist from disk.
+- Look and behavior: design/ holds the clickable prototype, tokens.css and a screen index. The product must look and behave like it, in light and dark themes: same layout, spacing, colors, type, icons, wording, empty states and keyboard. Use design/tokens.css as the Tailwind theme. Recreate screens with real components; do not copy the prototype's scripts. The plan wins on data, permissions and limits; the prototype wins on look and interaction; tell the user about any difference. Never edit design/.
+- Card dialog: two independently scrolling columns, details left, comments and activity right with the comment box on top; a top strip with Card menu and Close. Long lists show the first few and expand (checklist items 6, linked cards 3, attachments 3, comments 4). Unnamed long links display shortened. Checklists and items can be reordered.
+- Zen mode (Z), the command palette (Ctrl K) and the key map in the plan are part of the product. Shortcuts never fire while typing.
+- Web app: initial JS under 200 KB gzipped; load the card modal on demand; strings in an i18n file; no browser-only assumptions.
+- Tokens (personal and company) are stored only as hashes and shown once. Webhooks are signed with HMAC and never sent to private addresses unless the owner allows it. Description HTML is sanitized on the server with an allow-list.
+- The command line client is part of the same `tazko` binary: noun-then-verb commands, --json and --jq, device-code sign-in, token kept in the system keychain. It uses only the public REST API.
+- Email is optional: nothing may depend on it. Every email-related feature has an in-app fallback.
+- Personal settings (theme, zoom, time zone, formats) are stored per person in control.db and apply in every company.
+- Do not build: rule-based automation, third-party add-ons, a personal planner or inbox, timeline, calendar or map views, imports from other products, desktop app, Postgres, Docker. Email, API tokens, webhooks and the command line client belong to M6; do not start them earlier.
+
+## Commands
+- scripts/ci.sh runs cargo fmt --check, clippy -D warnings, cargo test, web lint and test. Run before every commit.
+- cargo run -- serve starts the app on 127.0.0.1.
+
+## Working style
+- Small commits, one concern each. Test every permission rule, the sign-in refusal paths and the company-isolation guarantee.
+- If the plan is ambiguous, ask the user instead of guessing.</pre></div>
+
+<h3 style="margin-top:20px">Kickoff prompt</h3>
+<div class="codebox"><button class="copy" data-target="kickoff">Copy</button><pre class="code" id="kickoff">You are building Tazko in this empty repository on an Ubuntu server. The full build plan is attached below this prompt. Create CLAUDE.md from it, then build Milestone M1 (Platform) only.
+
+Summary: one static Rust binary (Axum, rusqlite bundled, tokio) that embeds a React + TypeScript + Tailwind + shadcn/ui web app and a super admin console at /admin. SQLite per company: data/control.db plus data/orgs/&lt;slug&gt;/tazko.db. Google sign-in only, invite-only, for both Workspace and personal accounts. Deployed behind a Cloudflare Tunnel.
+
+Values: hostname tazko-dev.hugepigstudio.com; this machine, 192.168.86.49, is shared with another service, so use port 8791, accounts tazko and tazko-deploy, /opt/tazko, /etc/tazko, /var/lib/tazko, and add a rule to the existing cloudflared tunnel without overwriting its config.yml or breaking the existing hostname. First super admin: trungngo@hugepigstudio.com. Google: a new Google Cloud project named Tazko; the user creates it and gives you the client id and secret by placing them in /etc/tazko/tazko.env. Give them exact steps when you reach that point.
+
+The folder design/ holds the clickable prototype, tokens.css and README.md. The finished product must look and behave like it. For M1, match the prototype screens listed for M1 in the plan (sign in, refusal, company home, company settings, and the admin console pages) and use design/tokens.css for the Tailwind theme. Recreate the screens with real components; do not copy the prototype scripts.
+
+Order of work for M1:
+1. Cargo project, web/ app, build step embedding web/dist; commands serve, admin --email, backup, check.
+2. control.db and company databases: open, cache, migrate; writer thread and read pool per company.
+3. Google OIDC with PKCE, state and nonce, ID token verification, invite-only rule, sessions, refusal page, audit log.
+4. Super admin console: companies (create, suspend, resume, delete to trash), company detail (members, roles, invites), people, invites, audit log, server page.
+5. Company owner screens for their own company's members and invites; company switcher.
+6. deploy/ scripts and units exactly as in the plan's Deployment section: host setup, tunnel rule, service, release with rollback, backup timer; README deploy guide.
+7. scripts/ci.sh with tests for isolation between two companies, invite and refusal paths, and permissions.
+
+Clean-room rules, which apply to every file, commit and message: this is an original work. Never name any other product or competitor anywhere in the repository or in commit messages; never copy another product's code, text, icons, colors or assets; do not look at, scrape or reverse engineer other products; work only from this plan. Commits and pull requests must not mention AI or assistants: no Co-Authored-By trailer, no "generated with" line, no session links; set attribution.commit and attribution.pr to empty strings in .claude/settings.json and check your first commit message.
+
+Before any command that changes the machine (sudo, users, systemd, cloudflared), show the user what it will do and wait for approval. When something needs the user (Google console, Cloudflare login, sudo password), stop and ask with exact steps. Stop when every "Done when" check for M1 passes and report what you ran. Do not begin M2.</pre></div>
+
+<h3 style="margin-top:20px">Next milestone prompt (send once per milestone, M2 to M6)</h3>
+<div class="codebox"><button class="copy" data-target="nextms">Copy</button><pre class="code" id="nextms">Build Milestone M2 now (change the number for each milestone). The plan and CLAUDE.md are already in this repository. M1 is done.
+
+Before writing code, open design/tazko-prototype.html in a browser and look at every prototype screen listed for this milestone in "The prototype is the specification" section of the plan. The finished screens must look and behave like the prototype in light and dark themes: layout, spacing, colors, type, icons, wording, empty states, hover and focus states, popovers, toasts with Undo and every shortcut. Use design/tokens.css as the theme. Recreate the screens with real components; do not copy the prototype scripts. If the plan and the prototype disagree, the plan wins on data, permissions and limits and the prototype wins on look and interaction; list every difference for me.
+
+Build every task of the milestone, server and web, with tests for each "Done when" check, including permissions. Run scripts/ci.sh before each commit. Small commits with plain messages; the clean-room and commit rules in CLAUDE.md apply. Stop when every "Done when" check passes. Report what you built, what you ran and what you could not verify, and attach a screenshot of each new screen next to its prototype tile. Do not begin the next milestone.</pre></div>
+
+<h3 style="margin-top:20px">Full run prompt (after M1 passes)</h3>
+<div class="codebox"><button class="copy" data-target="fullrun">Copy</button><pre class="code" id="fullrun">M1 is done. Build Milestones M2, M3, M4, M5 and M6 in order, one after another, until the product has every feature in the plan and matches the prototype in design/.
+
+For each milestone: open the prototype screens listed for it in the plan, build every task with tests for every "Done when" check (permissions included), run scripts/ci.sh, commit in small steps with plain messages, then write a short milestone report in docs/progress.md (what was built, checks passed, differences from the prototype, anything unverified) and continue to the next milestone without waiting. Follow the clean-room and commit rules in CLAUDE.md throughout.
+
+Stop and ask me only when: a "Done when" check cannot pass, the plan and the prototype disagree in a way that needs my decision, something needs a secret or an account step from me (SMTP details, Google or Cloudflare settings), or a command would change the machine in a way not covered by the plan. At the end, do a pass through every screen in design/ side by side with the running app in light and dark themes, fix the differences, and send me the list of what still differs.</pre></div>
+
+<h2>Deferred features to revisit</h2>
+<div class="grid2">
+  <div class="panel"><h3>Still deferred</h3><ul>
+    
+    
+    <li>Desktop app (Tauri)</li>
+    <li>Production host and cloud deployment</li>
+    <li>Vietnamese interface (strings are already in an i18n file)</li>
+    
+  </ul></div>
+  <div class="panel"><h3>Not built, worth a decision</h3><ul>
+    <li>Export a board or a whole company as a JSON file (fits the data-ownership goal)</li>
+    
+    <li>Watching a whole board or list, not only single cards</li>
+    
+    
+    
+    <li>Project switches for who can comment or archive cards</li>
+    
+    <li>Read-only public board links (leaning against, for privacy)</li>
+  </ul></div>
+</div>
+
+<h2>Assumptions and open items</h2>
+<div class="note"><b>Assumed, not confirmed by you:</b> the web stack (React, Tailwind, shadcn/ui, dnd-kit), company and board role names, that super admins cannot see boards unless they join, invites without email in the first milestones, custom fields in M3, this CLAUDE.md, Ubuntu 24.04 on the server, one program serving as both server and command-line tool, company-wide webhooks (not per project), personal tokens limited to the person's own access, uploaded backgrounds up to 5 MB. Correct any of them and I will update the plan.</div>
+<div class="grid2">
+  <div class="panel"><h3>Decided</h3><ul>
+    <li>Hostname <code>tazko-dev.hugepigstudio.com</code></li>
+    <li>Machine <code>192.168.86.49</code>, shared, port 8791</li>
+    <li>First super admin <code>trungngo@hugepigstudio.com</code></li>
+    <li>New Google Cloud project named Tazko, created by the owner</li>
+  </ul></div>
+  <div class="panel"><h3>Evidence behind this plan</h3><ul>
+    <li>Deployment steps are modelled on a server the owner already runs the same way: a Rust service on loopback behind a Cloudflare Tunnel, own Google sign-in, sandboxed service account, release folders with automatic rollback, nightly backup.</li>
+    <li>Feature scope comes from the owner's own use of kanban tools and their stated needs. It describes behavior in generic terms and contains no copied text, assets or code.</li>
+    <li>Not yet verified on the server: the tunnel's name and current rules, the installed cloudflared version, and free disk space.</li>
+  </ul></div>
+</div>
+</div>
+
+<script>
+document.querySelectorAll('.copy').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    var el=document.getElementById(btn.getAttribute('data-target'));
+    var text=el.innerText;
+    function done(){btn.textContent='Copied';setTimeout(function(){btn.textContent='Copy'},1500)}
+    function fallback(){var r=document.createRange();r.selectNodeContents(el);var s=window.getSelection();s.removeAllRanges();s.addRange(r);btn.textContent='Selected'}
+    try{navigator.clipboard.writeText(text).then(done,fallback)}catch(e){fallback()}
+  });
+});
+</script>
+
+<!--claude-mermaid-runtime-begin:3477-->
+<style>.mermaid-diagram{margin-block:4px}.mermaid-diagram svg{display:block;margin:0 auto;max-width:100%;height:auto}</style>
+<script src="/_runtime/mermaid-11.16.1.min.js"></script>
+<script>(function(){
+var CFG={"palettes":{"light":{"surface":"#f4efe4","text":"#42392e","line":"#8a7f6d","border":"#7a6c52","bg":"#fffdf8"},"dark":{"surface":"#262b34","text":"#f2f3f5","line":"#a8adb8","border":"#9aa4b8","bg":"#1f232b"}}};
+if(typeof mermaid==='undefined')return;
+var pres=Array.prototype.slice.call(document.querySelectorAll('pre.mermaid')).filter(function(p){if(p.hasAttribute('data-claude-mermaid-claimed'))return false;p.setAttribute('data-claude-mermaid-claimed','1');return true;});
+if(!pres.length)return;
+var mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+var root=document.documentElement;
+var items=pres.map(function(pre){
+var mount=document.createElement('div');mount.className='mermaid-diagram';
+return {pre:pre,mount:mount,src:pre.textContent||''};
+});
+var seq=0;
+var renderGen=0;
+var lastKey='';
+function pageBg(fallback){
+var els=[document.body,document.documentElement];
+for(var i=0;i<els.length;i++){
+var c=els[i]&&getComputedStyle(els[i]).backgroundColor;
+if(c&&c!=='transparent'&&c!=='rgba(0, 0, 0, 0)')return c;
+}
+return fallback;
+}
+function render(){
+var theme=root.getAttribute('data-theme');
+var dark=theme==='dark'||(!!(mq&&mq.matches)&&theme!=='light');
+var pal=dark?CFG.palettes.dark:CFG.palettes.light;
+var bg=pageBg(pal.bg);
+var key=(dark?'d':'l')+'|'+bg;
+if(key===lastKey)return;
+lastKey=key;
+var gen=++renderGen;
+var font=getComputedStyle(document.body).fontFamily||'sans-serif';
+var nat={useMaxWidth:false};
+mermaid.initialize({
+startOnLoad:false,securityLevel:'strict',theme:'base',
+flowchart:nat,sequence:nat,er:nat,state:nat,class:nat,pie:nat,
+gantt:nat,journey:nat,timeline:nat,gitGraph:nat,mindmap:nat,xyChart:nat,
+quadrantChart:nat,sankey:nat,c4:nat,requirement:nat,block:nat,
+packet:nat,kanban:nat,architecture:nat,radar:nat,
+themeVariables:{background:bg,mainBkg:pal.surface,primaryColor:pal.surface,
+primaryTextColor:pal.text,lineColor:pal.line,primaryBorderColor:pal.border,
+nodeBorder:pal.border,clusterBorder:pal.border,edgeLabelBackground:bg,
+clusterBkg:'rgba(127,127,127,0.07)',titleColor:pal.text,
+darkMode:dark,rowOdd:bg,rowEven:'rgba(127,127,127,0.07)',
+attributeBackgroundColorOdd:bg,attributeBackgroundColorEven:'rgba(127,127,127,0.07)',
+fontSize:'16px',fontFamily:font},
+themeCSS:'.node rect, .node circle, .node polygon, .node path, .cluster rect { stroke-width: 2px; }'
+});
+items.forEach(function(it){
+var id='claude-mermaid-'+seq++;
+mermaid.render(id,it.src).then(function(r){
+if(gen!==renderGen)return;
+var prev=it.pre.previousElementSibling;
+if(prev&&prev.className==='mermaid-diagram'&&prev!==it.mount)return;
+it.mount.innerHTML=r.svg;
+if(!it.mount.parentNode)it.pre.parentNode.insertBefore(it.mount,it.pre);
+it.pre.style.display='none';
+},function(){
+var scratch=document.getElementById(id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+scratch=document.getElementById('d'+id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+if(gen!==renderGen)return;
+if(it.mount.parentNode)it.mount.parentNode.removeChild(it.mount);
+it.pre.style.display='';
+});
+});
+}
+render();
+if(mq&&mq.addEventListener)mq.addEventListener('change',render);
+if(typeof MutationObserver!=='undefined')new MutationObserver(render).observe(root,{attributes:true,attributeFilter:['data-theme']});
+})();</script>
+<!--claude-mermaid-runtime-end-->
+
+</body></html>
