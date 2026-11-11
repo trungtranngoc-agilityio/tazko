@@ -1,7 +1,7 @@
 {
   "name": "tazko-repo",
   "private": true,
-  "description": "Repo-level tooling only: end-to-end tests and the screenshot harness. The web app lives in web/.",
+  "description": "Repo-level tooling only: end-to-end tests and the screenshot harness. The web app lives in frontend/.",
   "type": "module",
   "scripts": {
     "e2e": "playwright test"

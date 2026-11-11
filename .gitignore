@@ -1,10 +1,15 @@
-# Rust
-/target/
+# Python
+__pycache__/
+.venv/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+/backend/dist/
 
 # Node
 node_modules/
-/web/dist/
-/web/coverage/
+/frontend/dist/
+/frontend/coverage/
 /test-results/
 /playwright-report/
 

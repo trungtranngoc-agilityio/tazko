@@ -1,6 +1,13 @@
 # Tazko
 
-Self-hosted board app for several companies. One Rust binary (Axum, rusqlite, tokio) embeds the React web app and the super admin console; each company's data is its own SQLite file. Google sign-in by invite. Runs on loopback behind a Cloudflare Tunnel.
+Self-hosted board app for several companies. Each company's data is its own SQLite file. Google sign-in by invite.
+
+Two parts, built and deployed separately (docs/decisions.md D13, D14, D15):
+
+| Part | Folder | Stack | Runs on |
+|---|---|---|---|
+| **Backend** (API) | `backend/` | Python 3.12+: FastAPI, uvicorn, sqlite3 (packages by uv) | One service on loopback, behind a Cloudflare Tunnel at `tazko-api-dev.hugepigstudio.com` |
+| **Frontend** (web) | `frontend/` | React, TypeScript, Vite, Tailwind (shadcn/ui ready) | Static site on Cloudflare Pages at `tazko-dev.hugepigstudio.com` |
 
 Status: **skeleton** — no features yet. Work starts at [docs/milestones/P0.md](docs/milestones/P0.md), then M1.
 
@@ -12,33 +19,40 @@ Status: **skeleton** — no features yet. Work starts at [docs/milestones/P0.md]
 | `.claude/` | Agent settings, format hook, `planner` / `reviewer` / `security` subagents, `prototype-compare` skill |
 | `design/` | **Read-only** UI spec: clickable prototype, tokens, screen index, known deviations |
 | `docs/build-plan.md` | Data, permissions, limits, deployment (original HTML in `docs/sources/`) |
-| `docs/decisions.md` | Every judgment call (D1–D11 proposed) |
+| `docs/decisions.md` | Every judgment call; overrides the build plan where they differ |
 | `docs/milestones/` | P0, M1–M6 task lists: the memory between sessions |
-| `src/` | Rust crate; one module per area (map in `src/lib.rs`) |
-| `migrations/` | `control/` and `tenant/` SQL, versioned by `PRAGMA user_version` |
-| `web/` | React + TypeScript + Vite + Tailwind (shadcn/ui ready) |
-| `tests/` | Rust integration tests; `tests/e2e/` Playwright |
-| `deploy/` | systemd units and host scripts — written by the agent, **run by the owner** |
+| `backend/pyproject.toml`, `backend/uv.lock` | Backend package, dependencies and tool settings (ruff, mypy, pytest) |
+| `backend/src/tazko/` | Backend package: `core/`, `db/`, `modules/<feature>/` (router, schemas, service, repository), `main.py`, `cli.py` |
+| `backend/src/tazko/migrations/` | `control/` and `tenant/` SQL, versioned by `PRAGMA user_version` |
+| `backend/tests/` | `unit/` and `integration/` (pytest), shared fixtures in `conftest.py` |
+| `frontend/src/` | `app/` (shell, router), `pages/`, `features/<name>/`, `shared/` (api client, i18n, ui); layer rules in [frontend/src/shared/README.md](frontend/src/shared/README.md) |
+| `tests/e2e/` | Playwright tests across both parts |
+| `deploy/backend/`, `deploy/frontend/` | Release scripts per part — written by the agent, **run by the owner** ([deploy/README.md](deploy/README.md)) |
 | `scripts/ci.sh` | The single green check |
-| `tools/` | Chrome screenshot harness used by `prototype-compare` |
+| `tools/` | Chrome screenshot harness and the frontend and backend license checks |
 
 ## Develop
 
-Needs Rust stable (see `rust-toolchain.toml`), Node 22+, and `cargo install cargo-deny`.
+Needs Python 3.12+, [uv](https://docs.astral.sh/uv/) and Node 22+.
 
 ```bash
-npm --prefix web install
+uv sync --project backend
+npm --prefix frontend install
 ```
+
+Backend on 127.0.0.1:8791 (settings from `TAZKO_*`, see `.env.example`):
 
 ```bash
-cargo run -- serve
+uv run --project backend tazko serve
 ```
+
+Frontend on http://localhost:5173 (proxies `/health`, `/auth`, `/api`, `/admin/api`, `/ws`, `/cli` to the backend, so dev is same-origin):
 
 ```bash
-npm --prefix web run dev
+npm --prefix frontend run dev
 ```
 
-The Vite dev server (http://localhost:5173) proxies `/health`, `/auth`, `/api`, `/admin/api` and `/cli` to the binary on 127.0.0.1:8791. Settings come from `TAZKO_*` variables; see `.env.example`.
+All checks:
 
 ```bash
 bash scripts/ci.sh
@@ -52,4 +66,4 @@ npx playwright test
 
 ## Deploy
 
-Written in M1-08. Summary from the build plan: build the bundle off the server (D8), copy it to `/var/lib/tazko-incoming`, run `tazko-release` as `tazko-deploy`; it switches `/opt/tazko/current`, restarts the service and rolls back by itself if `/health` does not answer within 20 s. Nightly backup at 02:30 via `tazko-backup.timer`.
+See [deploy/README.md](deploy/README.md). In short: the backend bundle (a wheel plus pinned, hashed requirements) is built off the server and installed with `deploy/backend/release.sh`, which health-checks and rolls back by itself; the frontend is built with `VITE_API_URL` and uploaded with `deploy/frontend/deploy.sh`, and rolled back from the Pages deployment list. Either side can be released or rolled back alone.

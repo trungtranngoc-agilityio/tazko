@@ -1,6 +1,7 @@
 {
   "recommendations": [
-    "rust-lang.rust-analyzer",
+    "ms-python.python",
+    "charliermarsh.ruff",
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
     "bradlc.vscode-tailwindcss",

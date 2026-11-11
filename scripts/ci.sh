@@ -1,43 +1,52 @@
 #!/usr/bin/env bash
 # The one check that must be green before every commit and in CI.
-# fmt, clippy -D warnings, cargo test, web lint + typecheck + vitest + build,
-# license checks for Rust crates and shipped web packages.
+# frontend lint + typecheck + vitest + build; backend ruff (lint + format),
+# mypy, pytest; license checks for shipped frontend and backend packages.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 step() { printf '\n== %s\n' "$*"; }
 
-step "web: install"
-if [ ! -d web/node_modules ] || [ web/package-lock.json -nt web/node_modules ]; then
-  npm --prefix web ci --no-audit --no-fund
-fi
-
-step "web: lint"
-npm --prefix web run lint
-
-step "web: test"
-npm --prefix web test
-
-step "web: build (typecheck + bundle into web/dist)"
-npm --prefix web run build
-
-step "web: licenses"
-node tools/check-web-licenses.mjs
-
-step "rust: fmt"
-cargo fmt --all -- --check
-
-step "rust: clippy"
-cargo clippy --all-targets --locked -- -D warnings
-
-step "rust: test"
-cargo test --locked
-
-step "rust: licenses"
-if ! command -v cargo-deny >/dev/null 2>&1; then
-  echo "cargo-deny is missing: cargo install --locked cargo-deny" >&2
+if ! command -v uv >/dev/null 2>&1; then
+  echo "uv is missing: see https://docs.astral.sh/uv/ to install it" >&2
   exit 1
 fi
-cargo deny check licenses bans sources
+ROOT="$(pwd)"
+py() { uv run --project "$ROOT/backend" --locked "$@"; }
+
+step "frontend: install"
+if [ ! -d frontend/node_modules ] || [ frontend/package-lock.json -nt frontend/node_modules ]; then
+  npm --prefix frontend ci --no-audit --no-fund
+fi
+
+step "frontend: lint"
+npm --prefix frontend run lint
+
+step "frontend: test"
+npm --prefix frontend test
+
+step "frontend: build (typecheck + static bundle in frontend/dist)"
+npm --prefix frontend run build
+
+step "frontend: licenses"
+node tools/check-frontend-licenses.mjs
+
+step "backend: install"
+uv sync --project backend --locked
+
+step "backend: format"
+(cd backend && py ruff format --check .)
+
+step "backend: lint"
+(cd backend && py ruff check .)
+
+step "backend: types"
+(cd backend && py mypy)
+
+step "backend: test"
+(cd backend && py pytest)
+
+step "backend: licenses"
+py python tools/check-backend-licenses.py
 
 printf '\nci: all green\n'

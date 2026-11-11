@@ -1,4 +1,7 @@
 <!-- Converted from the owner's build plan page. The original HTML is docs/sources/tazko-build-plan.html. -->
+
+> **Note (2026-11-11):** docs/decisions.md overrides this plan where they differ. In particular D13: the web app is no longer compiled into the binary; `server/` (API) and `web/` (Cloudflare Pages) are built and deployed separately. And D14: the backend is Python (FastAPI, sqlite3, uv), not a Rust binary; read Rust-specific lines (crates, musl, cargo) as their Python counterparts.
+
 # Tazko
 
 A self-hosted kanban work tracker for several companies. One Rust binary, one SQLite file per company, a super admin console to run the companies, and Google sign-in for both Workspace and personal accounts.

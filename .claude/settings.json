@@ -2,9 +2,9 @@
   "attribution": { "commit": "", "pr": "" },
   "permissions": {
     "allow": [
-      "Bash(cargo build:*)", "Bash(cargo test:*)", "Bash(cargo run:*)",
-      "Bash(cargo fmt:*)", "Bash(cargo clippy:*)", "Bash(cargo add:*)",
-      "Bash(npm --prefix web:*)", "Bash(npx playwright:*)", "Bash(npx vitest:*)",
+      "Bash(uv sync:*)", "Bash(uv run:*)", "Bash(uv add:*)", "Bash(uv remove:*)", "Bash(uv lock:*)",
+      "Bash(uv --project backend:*)",
+      "Bash(npm --prefix frontend:*)", "Bash(npx playwright:*)", "Bash(npx vitest:*)",
       "Bash(scripts/ci.sh)", "Bash(node tools/:*)",
       "Bash(git status)", "Bash(git diff:*)", "Bash(git log:*)",
       "Bash(git add:*)", "Bash(git commit:*)", "Bash(git switch:*)",
@@ -12,6 +12,7 @@
     ],
     "deny": [
       "Bash(sudo:*)", "Bash(systemctl:*)", "Bash(cloudflared:*)", "Bash(ssh:*)",
+      "Bash(wrangler:*)", "Bash(npx wrangler:*)", "Bash(npx --yes wrangler:*)", "Bash(deploy/frontend/deploy.sh:*)",
       "Bash(git push --force:*)", "Bash(git push -f:*)", "Bash(git push origin main:*)",
       "Bash(gh pr merge:*)", "Bash(rm -rf:*)",
       "Read(./.env)", "Read(./.env.*)", "Read(./data/secret)"

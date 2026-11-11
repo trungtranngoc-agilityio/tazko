@@ -1,0 +1,10 @@
+# Cloudflare Pages response headers. A full Content-Security-Policy
+# (connect-src limited to the API host) is added in M1-04.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable

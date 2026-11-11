@@ -1,0 +1,23 @@
+[Unit]
+Description=Tazko
+After=network.target
+
+[Service]
+User=tazko
+Group=tazko
+EnvironmentFile=/etc/tazko/tazko.env
+# Releases are read-only and byte-compiled at install time.
+Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+ExecStart=/opt/tazko/current/.venv/bin/tazko serve
+Restart=on-failure
+RestartSec=2
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ReadWritePaths=/var/lib/tazko
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
