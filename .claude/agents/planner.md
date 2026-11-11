@@ -2,6 +2,7 @@
 name: planner
 description: Reads the build plan, the prototype screens and the code, then writes docs/milestones/Mx.md. Use at the start of every milestone. Never edits code.
 tools: Read, Grep, Glob, Write
+model: opus
 ---
 You plan one milestone of Tazko. Read CLAUDE.md, docs/build-plan.md (the milestone section),
 docs/decisions.md, design/README.md and design/KNOWN-DEVIATIONS.md.

@@ -6,23 +6,28 @@
       "Bash(uv --project backend:*)",
       "Bash(npm --prefix frontend:*)", "Bash(npx playwright:*)", "Bash(npx vitest:*)",
       "Bash(scripts/ci.sh)", "Bash(node tools/:*)",
-      "Bash(git status)", "Bash(git diff:*)", "Bash(git log:*)",
+      "Bash(git status)", "Bash(git diff:*)", "Bash(git log:*)", "Bash(git show:*)", "Bash(git branch)",
       "Bash(git add:*)", "Bash(git commit:*)", "Bash(git switch:*)",
-      "Bash(gh pr create:*)", "Bash(gh pr view:*)"
+      "Bash(gh pr create:*)", "Bash(gh pr view:*)", "Bash(gh pr diff:*)", "Bash(gh pr checks:*)",
+      "Bash(gh issue view:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)"
     ],
     "deny": [
       "Bash(sudo:*)", "Bash(systemctl:*)", "Bash(cloudflared:*)", "Bash(ssh:*)",
       "Bash(wrangler:*)", "Bash(npx wrangler:*)", "Bash(npx --yes wrangler:*)", "Bash(deploy/frontend/deploy.sh:*)",
       "Bash(git push --force:*)", "Bash(git push -f:*)", "Bash(git push origin main:*)",
       "Bash(gh pr merge:*)", "Bash(rm -rf:*)",
-      "Read(./.env)", "Read(./.env.*)", "Read(./data/secret)"
+      "Read(./.env)", "Read(./.env.*)", "Read(./**/.env)", "Read(./data/secret)", "Read(./data/secret/**)",
+      "Read(./**/secrets/**)"
     ]
   },
   "hooks": {
     "PostToolUse": [
       {
         "matcher": "Edit|Write",
-        "hooks": [{ "type": "command", "command": "node .claude/hooks/fmt-on-edit.mjs" }]
+        "hooks": [{ "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/.claude/hooks/fmt-on-edit.mjs\"" }]
       }
     ]
   }

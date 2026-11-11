@@ -25,3 +25,7 @@ Thumbs.db
 .idea/
 .vscode/*
 !.vscode/extensions.json
+
+# Claude Code personal overrides: never commit
+.claude/settings.local.json
+CLAUDE.local.md
