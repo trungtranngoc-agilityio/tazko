@@ -21,3 +21,35 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: bash scripts/ci.sh
+
+  # End-to-end: the real API and the web app in a browser (tests/e2e).
+  e2e:
+    needs: ci
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: backend/uv.lock
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
+      - run: uv sync --project backend --locked
+      - run: npm ci --no-audit --no-fund
+      - run: npm --prefix frontend ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npx playwright test
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

@@ -52,5 +52,7 @@ plugins = ["pydantic.mypy"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-q --strict-markers --import-mode=importlib"
+addopts = "-q -ra --strict-markers --strict-config --import-mode=importlib"
+# An xfail test that starts passing fails the run, so no test silently stops checking anything.
+xfail_strict = true
 pythonpath = ["."]

@@ -12,7 +12,7 @@ docs/decisions.md overrides the build plan where they differ (D13 replaces "the 
 - uv run --project backend tazko serve   API on 127.0.0.1:8791 (or `cd backend && uv run tazko serve`)
 - cd backend && uv run pytest           backend tests only; `uv add <pkg>` to add a dependency (lock file is committed)
 - npm --prefix frontend run dev   web on http://localhost:5173, proxies /api /auth /ws ... to :8791
-- npx playwright test    e2e (tests/e2e), starts both
+- npx playwright test    e2e (tests/e2e), starts both; not in scripts/ci.sh, runs as its own CI job. Run it before a commit that touches a flow across web and API.
 
 ## Layout
 - backend/src/tazko: core/ (settings, errors, logging, deps) -> db/ -> modules/<name>/ -> main.py (app factory) and cli.py.
@@ -26,7 +26,8 @@ docs/decisions.md overrides the build plan where they differ (D13 replaces "the 
 
 ## How we work
 - One milestone per branch: milestone/m2-core. One task per commit. Task list lives in docs/milestones/Mx.md.
-- Write the test for a "Done when" line before the code. Never weaken or delete a test to make it pass.
+- Test first, red then green: write the test for a "Done when" line, run it and see it fail for the expected reason (not an import or syntax error), then write the least code that makes it pass, then refactor with the tests green. Never weaken or delete a test to make it pass.
+- Name tests after behaviour (test_expired_invite_is_refused), one behaviour per test, arranged as given / when / then. Use the lowest layer that proves the line: unit, then integration (TestClient), then e2e (tests/e2e) only for flows across web and API.
 - Run scripts/ci.sh before every commit. Commit messages: short, plain description of the change. No AI attribution (D11).
 - Record every judgment call in docs/decisions.md (date, question, choice, why).
 - Before a UI task, open the matching screen in design/ and note layout, states (empty, loading, error, read-only), text, keys.
