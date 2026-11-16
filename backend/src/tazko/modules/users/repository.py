@@ -33,12 +33,12 @@ def _user(row: sqlite3.Row) -> User:
 
 
 def by_id(conn: sqlite3.Connection, user_id: int) -> User | None:
-    row = conn.execute(f"SELECT {COLUMNS} FROM users WHERE id = ?", (user_id,)).fetchone()  # noqa: S608
+    row = conn.execute(f"SELECT {COLUMNS} FROM users WHERE id = ?", (user_id,)).fetchone()  # noqa: S608 (COLUMNS is a constant; values are bound)
     return _user(row) if row else None
 
 
 def by_email(conn: sqlite3.Connection, email: str) -> User | None:
-    row = conn.execute(f"SELECT {COLUMNS} FROM users WHERE email = ?", (email,)).fetchone()  # noqa: S608
+    row = conn.execute(f"SELECT {COLUMNS} FROM users WHERE email = ?", (email,)).fetchone()  # noqa: S608 (COLUMNS is a constant; values are bound)
     return _user(row) if row else None
 
 

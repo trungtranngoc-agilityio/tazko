@@ -12,7 +12,7 @@ from typing import Any
 
 import pytest
 
-from tazko.core.errors import BadRequest, NotFound
+from tazko.core.errors import Conflict, Invalid, NotFound
 from tazko.db import Database, MigrationError
 from tazko.db import tenant as tenant_module
 from tazko.db.tenant import Tenants
@@ -97,15 +97,17 @@ def test_bad_slug_when_opening_is_not_found(control: Database, tenants: Tenants)
 def test_bad_slug_is_refused(
     control: Database, tenants: Tenants, tmp_path: Path, slug: str
 ) -> None:
-    with pytest.raises(BadRequest):
+    with pytest.raises(Invalid) as raised:
         orgs.create_company(control, tenants, slug=slug, name="X", actor_id=None)
+    assert raised.value.details[0].field == "slug"
     assert not (tmp_path / "orgs").exists() or list((tmp_path / "orgs").iterdir()) == []
 
 
 def test_duplicate_slug_is_refused(control: Database, tenants: Tenants) -> None:
     orgs.create_company(control, tenants, slug="acme", name="Acme", actor_id=None)
-    with pytest.raises(BadRequest, match="taken"):
+    with pytest.raises(Conflict) as raised:
         orgs.create_company(control, tenants, slug="acme", name="Acme 2", actor_id=None)
+    assert raised.value.code == "SLUG_TAKEN"
 
 
 def test_company_files_are_cached_and_reopened(

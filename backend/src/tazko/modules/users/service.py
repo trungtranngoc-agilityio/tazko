@@ -6,7 +6,7 @@ import re
 import sqlite3
 
 from tazko.core.clock import now_iso
-from tazko.core.errors import BadRequest
+from tazko.core.errors import Invalid
 from tazko.db import Database
 from tazko.modules.audit import service as audit
 from tazko.modules.users import repository as repo
@@ -20,7 +20,7 @@ EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 def normalize_email(email: str) -> str:
     value = email.strip().lower()
     if len(value) > 254 or not EMAIL.fullmatch(value):
-        raise BadRequest("email: not a valid email address")
+        raise Invalid("email: not a valid email address", field="email")
     return value
 
 
