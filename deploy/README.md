@@ -35,7 +35,7 @@ load `/etc/tazko/tazko.env`, so pass `--data`; the command refuses a folder that
 does not exist and prints the `control.db` it wrote.
 
 ```bash
-sudo -u tazko /opt/tazko/current/.venv/bin/tazko admin --data /var/lib/tazko/data --email trungngo@hugepigstudio.com
+sudo -u tazko /opt/tazko/current/.venv/bin/tazko admin --data /var/lib/tazko/data --email trantrungdng@gmail.com
 ```
 
 ## frontend/ — the static app (Cloudflare Pages)

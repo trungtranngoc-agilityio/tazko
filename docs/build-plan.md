@@ -95,7 +95,7 @@ Imports from other products
 | Machine | An existing Ubuntu server (192.168.86.49) that already runs another service and tunnel. Tazko must coexist with it; see Deployment. | You |
 | Database | SQLite in WAL mode. `control.db` for people, companies, invites, sessions, audit log. One `tazko.db` per company for everything else. | You |
 | Sign-in | Google only, Workspace and personal accounts. Invite-only: an account can sign in only if its verified email already belongs to a person or a pending invite. After the first sign-in people are identified by Google's `sub`, so an email change does not lock them out. | You |
-| Super admin | A flag on a person, set from the command line. First one: `trungngo@hugepigstudio.com`. Manages companies and people from `/admin`. Sees project names, owners and counts but not boards. Every admin action is audit-logged. | You, with my default on board access |
+| Super admin | A flag on a person, set from the command line. First one: `trantrungdng@gmail.com`. Manages companies and people from `/admin`. Sees project names, owners and counts but not boards. Every admin action is audit-logged. | You, with my default on board access |
 | Company roles | Owner and member. Owners manage the company's members, other owners, invites and storage, and manage all projects. Only owners create projects. Members cannot create projects. | You |
 | Projects | Company, then project, then board. Only company owners create projects, choose their owners, and can archive or delete any project. A project has settings (name, description, color, default board background, member switches, card aging) and members. Deleted projects stay in trash for 30 days. People see a project only when they are in it. Company owners manage a project but open its boards only after adding themselves, which is audit-logged. | You |
 | Project access | Project roles: owner (settings, members, invites, restricted boards), member (edit boards and cards), observer (read only). Project members see every board in the project. A board can be restricted to a chosen subset of the project's members. Project switches: members can create boards (default on) and members can invite (default off). | You |
@@ -415,8 +415,8 @@ WantedBy=multi-user.target
 ### 4. First super admin
 
 ```
-sudo -u tazko /opt/tazko/current/tazko admin \
- --data /var/lib/tazko/data --email trungngo@hugepigstudio.com
+sudo -u tazko /opt/tazko/current/.venv/bin/tazko admin \
+ --data /var/lib/tazko/data --email trantrungdng@gmail.com
 ```
 
 The server starts empty: no companies, no people. This command creates that one person with the super admin flag. They sign in with Google at the hostname and open `/admin`.
@@ -480,7 +480,7 @@ Done when
 
 - `https://tazko-dev.hugepigstudio.com` reaches the app through the tunnel with no new port open, and the other service on the machine still works
 
-- `tazko admin --email trungngo@hugepigstudio.com` then Google sign-in reaches `/admin`
+- `tazko admin --email trantrungdng@gmail.com` then Google sign-in reaches `/admin`
 
 - A Workspace account and a personal Gmail account can both be invited and both sign in
 
@@ -841,7 +841,7 @@ You are building Tazko in this empty repository on an Ubuntu server. The full bu
 
 Summary: one static Rust binary (Axum, rusqlite bundled, tokio) that embeds a React + TypeScript + Tailwind + shadcn/ui web app and a super admin console at /admin. SQLite per company: data/control.db plus data/orgs/<slug>/tazko.db. Google sign-in only, invite-only, for both Workspace and personal accounts. Deployed behind a Cloudflare Tunnel.
 
-Values: hostname tazko-dev.hugepigstudio.com; this machine, 192.168.86.49, is shared with another service, so use port 8791, accounts tazko and tazko-deploy, /opt/tazko, /etc/tazko, /var/lib/tazko, and add a rule to the existing cloudflared tunnel without overwriting its config.yml or breaking the existing hostname. First super admin: trungngo@hugepigstudio.com. Google: a new Google Cloud project named Tazko; the user creates it and gives you the client id and secret by placing them in /etc/tazko/tazko.env. Give them exact steps when you reach that point.
+Values: hostname tazko-dev.hugepigstudio.com; this machine, 192.168.86.49, is shared with another service, so use port 8791, accounts tazko and tazko-deploy, /opt/tazko, /etc/tazko, /var/lib/tazko, and add a rule to the existing cloudflared tunnel without overwriting its config.yml or breaking the existing hostname. First super admin: trantrungdng@gmail.com. Google: a new Google Cloud project named Tazko; the user creates it and gives you the client id and secret by placing them in /etc/tazko/tazko.env. Give them exact steps when you reach that point.
 
 The folder design/ holds the clickable prototype, tokens.css and README.md. The finished product must look and behave like it. For M1, match the prototype screens listed for M1 in the plan (sign in, refusal, company home, company settings, and the admin console pages) and use design/tokens.css for the Tailwind theme. Recreate the screens with real components; do not copy the prototype scripts.
 
@@ -911,7 +911,7 @@ Assumed, not confirmed by you:** the web stack (React, Tailwind, shadcn/ui, dnd-
 
 - Machine `192.168.86.49`, shared, port 8791
 
-- First super admin `trungngo@hugepigstudio.com`
+- First super admin `trantrungdng@gmail.com`
 
 - New Google Cloud project named Tazko, created by the owner
 
