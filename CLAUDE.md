@@ -25,14 +25,16 @@ docs/decisions.md overrides the build plan where they differ (D13 replaces "the 
 - deploy/backend and deploy/frontend are written by the agent and run by the owner. Run the deploy-reviewer agent on every change there before asking the owner to run it. design/ is never edited.
 
 ## How we work
-- One milestone per branch: milestone/m2-core. One task per commit. Task list lives in docs/milestones/Mx.md.
+- Git: .claude/rules/git-workflow.md (D18). One branch per task, fix or refactor (`feat/m1-04-…`, `fix/…`), cut from the milestone branch and squash-merged back by the owner through a PR; parallel tasks each get their own worktree. Never commit straight to a milestone branch or `main`. Task list lives in docs/milestones/Mx.md.
 - Test first, red then green: write the test for a "Done when" line, run it and see it fail for the expected reason (not an import or syntax error), then write the least code that makes it pass, then refactor with the tests green. Never weaken or delete a test to make it pass.
 - Name tests after behaviour (test_expired_invite_is_refused), one behaviour per test, arranged as given / when / then. Use the lowest layer that proves the line: unit, then integration (TestClient), then e2e (tests/e2e) only for flows across web and API.
-- Run scripts/ci.sh before every commit. Commit messages: short, plain description of the change. No AI attribution (D11).
+- Run scripts/ci.sh before every commit. Commit messages: Conventional Commits, `feat(auth): …` with a `Task: M1-04` footer. No AI attribution (D11).
+- Before asking for a merge, run the reviewers that .claude/rules/code-review.md lists for the touched areas and answer every finding. API shape and error codes: .claude/rules/api-design.md (D19).
 - Record every judgment call in docs/decisions.md (date, question, choice, why).
 - Before a UI task, open the matching screen in design/ and note layout, states (empty, loading, error, read-only), text, keys.
 - design/KNOWN-DEVIATIONS.md lists prototype behaviour that is wrong. Do not copy it; each entry has a regression test.
-- The API stays backward compatible for one release so web and server can roll back independently.
+- The API stays backward compatible for one release so web and server can roll back independently. So does the schema: a migration must leave the previous release able to run (expand first, contract a release later).
+- `TAZKO_ENV` only changes how strictly settings are checked at start (D16); code never behaves differently by environment.
 
 ## Data
 - data/control.db: users, companies, memberships, invites, sessions, audit log.
