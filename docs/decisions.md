@@ -24,7 +24,7 @@ Format for new entries: `## Dn — question`, then date, choice, why, affects.
 | D17 | Who is the first super admin? | `trantrungdng@gmail.com` (a personal Google account), made with `tazko admin` on the server (deploy/README.md). Replaces `trungngo@hugepigstudio.com` in the build plan. | M1 | decided 2026-11-16 |
 | D18 | Git workflow: branches, commits, merging | One branch per task, fix or refactor (`feat/`, `fix/`, `refactor/`, `chore/`, `docs/`, `hotfix/`), cut from the milestone branch; parallel tasks in their own worktree. PR into the milestone branch, squash-merged by the owner; milestone into `main` with a merge commit, then a `vX.Y.Z` tag. Conventional Commits with a `Task:` footer. PRs about 400 lines. Rules in .claude/rules/git-workflow.md. Replaces "one milestone per branch, one task per commit". | All | decided 2026-11-16 |
 | D19 | API error shape and status codes | `{"error": {"code", "message", "details"}}` with a stable UPPER_SNAKE code the web app translates; 422 for validation, 409 for conflicts, 201/204 where they fit. Rules in .claude/rules/api-design.md. Replaces `{"error": "<message>"}`. | All | decided 2026-11-16 |
-| D20 | Test coverage gate | pytest-cov on the backend with a floor in pyproject (`--cov-fail-under`), set to the current level and only raised. The frontend gets one when it has real screens. | All | decided 2026-11-16 |
+| D20 | Test coverage gate | pytest-cov on the backend, branch coverage, floor `fail_under` in backend/pyproject.toml (92% when set; 93.5% measured), enforced by scripts/ci.sh only so a single test file can run alone while working. Only raised. The frontend gets one when it has real screens. | All | decided 2026-11-16 |
 
 ## Log
 

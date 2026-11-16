@@ -8,7 +8,7 @@ If they disagree: plan wins on data and permissions, prototype wins on UI. If ne
 docs/decisions.md overrides the build plan where they differ (D13 replaces "the binary embeds the web app"; D14 replaces Rust with Python).
 
 ## Commands
-- scripts/ci.sh          frontend lint + vitest + build, backend ruff format/check, mypy --strict, pytest, license checks
+- scripts/ci.sh          frontend lint + vitest + build, backend ruff format/check, mypy --strict, pytest with the coverage floor (D20), license checks
 - uv run --project backend tazko serve   API on 127.0.0.1:8791 (or `cd backend && uv run tazko serve`)
 - cd backend && uv run pytest           backend tests only; `uv add <pkg>` to add a dependency (lock file is committed)
 - npm --prefix frontend run dev   web on http://localhost:5173, proxies /api /auth /ws ... to :8791
