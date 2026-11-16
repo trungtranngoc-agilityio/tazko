@@ -103,6 +103,22 @@ def test_bad_slug_is_refused(
     assert not (tmp_path / "orgs").exists() or list((tmp_path / "orgs").iterdir()) == []
 
 
+@pytest.mark.parametrize("name", ["", "   ", "x" * 101])
+def test_empty_or_long_name_is_refused(control: Database, tenants: Tenants, name: str) -> None:
+    with pytest.raises(Invalid) as raised:
+        orgs.create_company(control, tenants, slug="acme", name=name, actor_id=None)
+    assert raised.value.details[0].field == "name"
+    assert column(control, "SELECT slug FROM orgs") == []
+
+
+@pytest.mark.parametrize("email", ["not-an-email", "a@b", "a b@example.com", ""])
+def test_bad_email_is_refused(control: Database, email: str) -> None:
+    with pytest.raises(Invalid) as raised:
+        users.get_or_create(control, email, name="X")
+    assert raised.value.status == 422
+    assert raised.value.details[0].field == "email"
+
+
 def test_duplicate_slug_is_refused(control: Database, tenants: Tenants) -> None:
     orgs.create_company(control, tenants, slug="acme", name="Acme", actor_id=None)
     with pytest.raises(Conflict) as raised:

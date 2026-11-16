@@ -12,7 +12,7 @@ paths:
 The internal API serves only the web app and stays backward compatible for one release (CLAUDE.md). The public REST API is `/api/v1` (M6).
 
 ## Paths and methods
-- Plural nouns, kebab-case: `/api/orgs/{slug}/projects/{id}/boards`. A company is always named by its slug in the path.
+- Plural nouns, kebab-case, under `/api` (D19): `/api/orgs/{slug}/projects/{id}/boards`. Sign-in stays at `/auth`, the console API at `/admin/api`. A company is always named by its slug in the path.
 - GET never changes data. POST creates, PATCH changes part, PUT replaces, DELETE removes. Search uses GET with query parameters.
 
 ## Status codes
@@ -26,8 +26,10 @@ Every error body is:
 {"error": {"code": "SLUG_TAKEN", "message": "slug: already taken", "details": [{"field": "slug", "message": "already taken"}]}}
 ```
 
-- `code` is UPPER_SNAKE and stable: the web app translates it through frontend/src/shared/i18n (`error.<CODE>`), so never change a shipped code. `message` is English for logs and fallbacks only.
-- `details` is present for 422 (one entry per field) and may be empty otherwise.
+- `code` is UPPER_SNAKE and stable: the web app shows `errorText(error.code)` from frontend/src/shared/i18n, which reads the key `error.<CODE>` and falls back to `error.UNKNOWN`. Add the key when the UI must explain a new code. Never change a shipped code. `message` is English for logs and fallbacks only.
+- `details` lists one entry per problem for 422 (`field` names the field; a field can appear twice) and is empty otherwise.
+- A body that is not JSON, or a missing body, is 400 `BAD_REQUEST`, not 422.
+- A 204 has no body; `api()` in frontend/src/shared/api returns `undefined` for it.
 - Raise a tazko.core.errors class (NotFound, Unauthorized, Forbidden, BadRequest, Conflict, Invalid); pass a specific `code` when the UI must react to it.
 - Never return stack traces, paths, SQL or secrets.
 

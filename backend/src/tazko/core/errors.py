@@ -37,6 +37,9 @@ HTTP_CODES = {
     429: "RATE_LIMITED",
 }
 
+# Where a request value came from; dropped so `field` is just the field's name.
+LOCATIONS = frozenset({"body", "query", "path", "header", "cookie"})
+
 
 @dataclass(frozen=True)
 class Detail:
@@ -137,12 +140,22 @@ def install(app: FastAPI) -> None:
 
     @app.exception_handler(RequestValidationError)
     async def validation_error(_: Request, exc: RequestValidationError) -> JSONResponse:
+        errors = exc.errors()
+        # A body that is not JSON, or no body at all, is a malformed request (400),
+        # not a field that broke a rule (422).
+        if any(err.get("type") == "json_invalid" for err in errors):
+            return error_response(400, "BAD_REQUEST", "request body is not valid JSON")
+        if any(
+            err.get("type") == "missing" and tuple(err.get("loc", ())) == ("body",)
+            for err in errors
+        ):
+            return error_response(400, "BAD_REQUEST", "request body is required")
         details = [
             Detail(
-                ".".join(str(p) for p in err.get("loc", ()) if p not in ("body", "query", "path")),
+                ".".join(str(p) for p in err.get("loc", ()) if p not in LOCATIONS),
                 str(err.get("msg", "invalid")),
             )
-            for err in exc.errors()
+            for err in errors
         ]
         return error_response(422, "VALIDATION_ERROR", "invalid request", details)
 

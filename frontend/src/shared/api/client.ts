@@ -34,7 +34,19 @@ export class ApiError extends Error {
 }
 
 interface ErrorBody {
-  error?: { code?: string; message?: string; details?: ErrorDetail[] };
+  // A string is the shape before D19; still read for one release.
+  error?: string | { code?: string; message?: string; details?: ErrorDetail[] };
+}
+
+function toApiError(res: Response, body: ErrorBody): ApiError {
+  const { error } = body;
+  if (typeof error === "string") return new ApiError(res.status, `HTTP_${res.status}`, error);
+  return new ApiError(
+    res.status,
+    error?.code ?? `HTTP_${res.status}`,
+    error?.message ?? res.statusText,
+    error?.details ?? [],
+  );
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -44,13 +56,8 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { "content-type": "application/json", ...init?.headers },
   });
   if (!res.ok) {
-    const { error } = (await res.json().catch(() => ({}))) as ErrorBody;
-    throw new ApiError(
-      res.status,
-      error?.code ?? `HTTP_${res.status}`,
-      error?.message ?? res.statusText,
-      error?.details ?? [],
-    );
+    throw toApiError(res, (await res.json().catch(() => ({}))) as ErrorBody);
   }
+  if (res.status === 204) return undefined as T; // no body to parse
   return (await res.json()) as T;
 }

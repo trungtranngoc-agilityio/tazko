@@ -1,8 +1,8 @@
 """Settings from the environment (`TAZKO_*`), validated once at startup.
 
-Production values live in /etc/tazko/tazko.env (set by the owner); in
-development a `.env` file in the working directory is read too. See
-.env.example for the list.
+Production values live in /etc/tazko/tazko.env (set by the owner). A `.env`
+file in the working directory is read too, in any environment (real
+environment variables win). See .env.example for the list.
 
 `TAZKO_ENV` defaults to production, which requires https URLs and the Google
 client (D16). Development (local runs, tests, e2e) relaxes those checks.

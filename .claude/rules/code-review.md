@@ -1,7 +1,8 @@
 # Code review
 
 ## Which reviewer, when
-Run these before asking the owner to merge. Pass only the base branch or milestone id, never a summary.
+Run these before asking the owner to merge. Pass only the milestone id and the base branch, never a summary.
+The agents live in this repo's .claude/agents/; a session opened outside the repo folder does not load them, so give a general agent the agent file's text instead.
 
 | The diff touches | Run |
 |---|---|

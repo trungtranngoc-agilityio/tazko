@@ -79,6 +79,21 @@ def test_invalid_body_is_422_with_one_detail_per_field(app_with_routes: TestClie
     assert {d["field"] for d in error["details"]} == {"name", "size"}
 
 
+def test_malformed_json_is_400(app_with_routes: TestClient) -> None:
+    response = app_with_routes.post(
+        "/test/things", content=b'{"name": ', headers={"content-type": "application/json"}
+    )
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "BAD_REQUEST"
+    assert response.json()["error"]["details"] == []
+
+
+def test_missing_body_is_400(app_with_routes: TestClient) -> None:
+    response = app_with_routes.post("/test/things")
+    assert response.status_code == 400
+    assert response.json()["error"]["code"] == "BAD_REQUEST"
+
+
 def test_conflict_is_409_with_its_own_code(app_with_routes: TestClient) -> None:
     response = app_with_routes.post("/test/conflict")
     assert response.status_code == 409

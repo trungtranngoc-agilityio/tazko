@@ -16,7 +16,7 @@
 
 ## Commits
 - Conventional Commits: `<type>(<scope>): <summary>`, imperative, under 72 characters.
-  Types: feat, fix, refactor, perf, test, docs, chore, ci. Scope: the module or area (auth, db, orgs, admin, web, deploy, claude).
+  Types: feat, fix, refactor, perf, test, docs, chore, ci. Scope: the module or area, for example auth, db, orgs, admin, api, backend, web, deploy, ci, claude.
 - Body: what and why, wrapped at 72. Footer `Task: M1-04` when the work belongs to a task.
 - No AI attribution lines (D11).
 - `scripts/ci.sh` is green before every commit.

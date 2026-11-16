@@ -44,4 +44,25 @@ describe("api", () => {
 
     await expect(api("/x")).rejects.toMatchObject({ status: 502, code: "HTTP_502", details: [] });
   });
+
+  it("keeps the message of the older error shape", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValue(new Response(JSON.stringify({ error: "not allowed" }), { status: 403 })),
+    );
+
+    await expect(api("/x")).rejects.toMatchObject({
+      status: 403,
+      code: "HTTP_403",
+      message: "not allowed",
+    });
+  });
+
+  it("returns undefined for 204 No Content", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
+
+    await expect(api<void>("/x", { method: "DELETE" })).resolves.toBeUndefined();
+  });
 });

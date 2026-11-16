@@ -33,7 +33,7 @@ docs/decisions.md overrides the build plan where they differ (D13 replaces "the 
 - Record every judgment call in docs/decisions.md (date, question, choice, why).
 - Before a UI task, open the matching screen in design/ and note layout, states (empty, loading, error, read-only), text, keys.
 - design/KNOWN-DEVIATIONS.md lists prototype behaviour that is wrong. Do not copy it; each entry has a regression test.
-- The API stays backward compatible for one release so web and server can roll back independently. So does the schema: a migration must leave the previous release able to run (expand first, contract a release later).
+- The API stays backward compatible for one release so web and server can roll back independently. So does the schema, from M1-08 (D21): a migration must leave the previous release able to run (expand first, contract a release later). Until M1-08, `Database` refuses a file newer than the code, so rolling back after a migration means restoring the pre-release backup.
 - `TAZKO_ENV` only changes how strictly settings are checked at start (D16); code never behaves differently by environment.
 
 ## Data
