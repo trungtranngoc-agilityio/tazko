@@ -24,6 +24,19 @@ def test_reads_a_dotenv_file_in_the_working_directory(tmp_path: Path) -> None:
     assert load_settings().port == 9100
 
 
+def test_production_ignores_a_dotenv_file(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    # given the service environment says production and someone left a .env in the folder
+    production(monkeypatch)
+    (tmp_path / ".env").write_text(
+        "TAZKO_PORT=9100\nTAZKO_DATA_DIR=/tmp/elsewhere\nTAZKO_SMTP_HOST=smtp.evil.example\n"
+    )
+    # then none of it is read
+    settings = load_settings()
+    assert settings.port == 8791
+    assert settings.data_dir == Path("./data")
+    assert not settings.email_enabled
+
+
 def test_bad_port_names_the_variable(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("TAZKO_PORT", "abc")
     with pytest.raises(ConfigError, match="TAZKO_PORT"):

@@ -16,8 +16,9 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    // design/tokens.css lives outside frontend/
-    fs: { allow: [".."] },
+    // design/tokens.css lives outside frontend/. Allow only that folder, not the
+    // repo root, so the dev server can never serve data/ (secret, databases).
+    fs: { allow: [".", "../design"] },
     proxy: {
       "/health": server,
       "/auth": server,

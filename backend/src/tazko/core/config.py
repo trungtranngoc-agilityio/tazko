@@ -1,8 +1,9 @@
 """Settings from the environment (`TAZKO_*`), validated once at startup.
 
-Production values live in /etc/tazko/tazko.env (set by the owner). A `.env`
-file in the working directory is read too, in any environment (real
-environment variables win). See .env.example for the list.
+Production values live in /etc/tazko/tazko.env (set by the owner), which must
+say TAZKO_ENV=production; then no `.env` file is read. Otherwise a `.env` in
+the working directory is read too (real environment variables win). See
+.env.example for the list.
 
 `TAZKO_ENV` defaults to production, which requires https URLs and the Google
 client (D16). Development (local runs, tests, e2e) relaxes those checks.
@@ -11,6 +12,7 @@ Every error names the environment variable to fix.
 
 from __future__ import annotations
 
+import os
 from functools import cached_property
 from ipaddress import IPv4Address, IPv6Address
 from pathlib import Path
@@ -135,8 +137,11 @@ def load_settings(*, serving: bool = True, **overrides: object) -> Settings:
 
     `serving=False` is for commands that never answer requests; they do not
     need the Google client or public URLs."""
+    # A production service reads only its real environment (/etc/tazko/tazko.env
+    # through systemd). A stray .env in the working folder must not change it.
+    env_file = None if os.environ.get("TAZKO_ENV", "").lower() == "production" else ".env"
     try:
-        settings = Settings(**overrides)  # type: ignore[arg-type]
+        settings = Settings(_env_file=env_file, **overrides)  # type: ignore[arg-type]
     except ValidationError as err:
         problems = [
             f"TAZKO_{str(e['loc'][0]).upper()}: {e['msg']}"

@@ -27,7 +27,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     """Open control.db (migrating it) before the first request; company files
     open on first use. Everything is closed after the last request."""
     settings: Settings = app.state.settings
-    settings.data_dir.mkdir(parents=True, exist_ok=True)
+    # Private to the service user: company data, sessions and the secret live here.
+    settings.data_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
     app.state.secret = load_secret(settings)
     app.state.control = Database(settings.data_dir / "control.db", "control", readers=4)
     app.state.tenants = Tenants(settings.data_dir)
@@ -40,9 +41,15 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or load_settings()
-    # Interactive docs stay off; the public OpenAPI document arrives with /api/v1 (M6-01).
+    # The internal API is not published: no docs pages and no /openapi.json.
+    # The public document arrives with /api/v1 (M6-01).
     app = FastAPI(
-        title="Tazko", version=__version__, docs_url=None, redoc_url=None, lifespan=lifespan
+        title="Tazko",
+        version=__version__,
+        docs_url=None,
+        redoc_url=None,
+        openapi_url=None,
+        lifespan=lifespan,
     )
     app.state.settings = settings
     # TODO(M3-01): realtime hub.

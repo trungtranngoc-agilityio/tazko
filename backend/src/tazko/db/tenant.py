@@ -65,7 +65,9 @@ class Tenants:
         folder = self.folder(slug)
         if folder.exists():
             raise FileExistsError(folder)
-        (folder / "files").mkdir(parents=True)
+        self.root.mkdir(mode=0o700, parents=True, exist_ok=True)
+        folder.mkdir(mode=0o700)
+        (folder / "files").mkdir(mode=0o700)
         try:
             return self.get(slug, create=True)
         except BaseException:
