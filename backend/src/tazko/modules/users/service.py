@@ -18,7 +18,16 @@ EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 def normalize_email(email: str) -> str:
-    value = email.strip().lower()
+    """The one way to compare emails (sign-in, invites, `tazko admin`).
+
+    ASCII only: Unicode case folding maps some letters onto ASCII ones (the
+    Kelvin sign lower-cases to "k") and invisible characters make look-alike
+    addresses, either of which could land a sign-in on someone else's row.
+    """
+    value = email.strip()
+    if not value.isascii() or not value.isprintable():
+        raise Invalid("email: use plain ASCII letters, digits and symbols", field="email")
+    value = value.lower()
     if len(value) > 254 or not EMAIL.fullmatch(value):
         raise Invalid("email: not a valid email address", field="email")
     return value

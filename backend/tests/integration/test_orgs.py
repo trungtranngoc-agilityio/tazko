@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import sqlite3
+import stat
 import threading
 import time
 from collections.abc import Iterator
@@ -111,7 +113,19 @@ def test_empty_or_long_name_is_refused(control: Database, tenants: Tenants, name
     assert column(control, "SELECT slug FROM orgs") == []
 
 
-@pytest.mark.parametrize("email", ["not-an-email", "a@b", "a b@example.com", ""])
+@pytest.mark.parametrize(
+    "email",
+    [
+        "not-an-email",
+        "a@b",
+        "a b@example.com",
+        "",
+        "\u212aate@example.com",  # Kelvin sign: lower() turns it into "kate@..."
+        "admin@example.com\u200b",  # zero-width space: a look-alike of admin@
+        "\u00e4dmin@example.com",
+        "admin@exa\nmple.com",
+    ],
+)
 def test_bad_email_is_refused(control: Database, email: str) -> None:
     with pytest.raises(Invalid) as raised:
         users.get_or_create(control, email, name="X")
@@ -124,6 +138,14 @@ def test_duplicate_slug_is_refused(control: Database, tenants: Tenants) -> None:
     with pytest.raises(Conflict) as raised:
         orgs.create_company(control, tenants, slug="acme", name="Acme 2", actor_id=None)
     assert raised.value.code == "SLUG_TAKEN"
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX file modes")
+def test_company_folder_and_database_are_private(control: Database, tenants: Tenants) -> None:
+    orgs.create_company(control, tenants, slug="acme", name="Acme", actor_id=None)
+    tenant = tenants.get("acme")
+    for path in (tenant.db.path.parent, tenant.files_dir, tenant.db.path):
+        assert stat.S_IMODE(path.stat().st_mode) & 0o077 == 0, path
 
 
 def test_company_files_are_cached_and_reopened(

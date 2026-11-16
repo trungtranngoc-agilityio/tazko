@@ -1,5 +1,7 @@
 """The HTTP contract every module relies on: health, error shape, CORS."""
 
+import os
+import stat
 from collections.abc import Iterator
 
 import pytest
@@ -22,6 +24,18 @@ def preflight(client: TestClient, origin: str) -> Response:
     return client.options(
         "/health", headers={"origin": origin, "access-control-request-method": "POST"}
     )
+
+
+def test_openapi_schema_is_not_served(client: TestClient) -> None:
+    # The internal API is not published; /api/v1 gets its own document in M6-01.
+    assert client.get("/openapi.json").status_code == 404
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX file modes")
+def test_data_folder_and_databases_are_private(client: TestClient, settings: Settings) -> None:
+    client.get("/health")
+    assert stat.S_IMODE(settings.data_dir.stat().st_mode) & 0o077 == 0
+    assert stat.S_IMODE((settings.data_dir / "control.db").stat().st_mode) & 0o077 == 0
 
 
 def test_health_returns_200(client: TestClient) -> None:

@@ -17,6 +17,7 @@ Both block the calling thread, so FastAPI routes that use them are plain
 from __future__ import annotations
 
 import logging
+import os
 import queue
 import re
 import sqlite3
@@ -112,7 +113,10 @@ class Database:
         self.schema = schema
         source = migrations or files("tazko") / "migrations" / schema
         scripts = load_scripts(source)
-        path.parent.mkdir(parents=True, exist_ok=True)
+        path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        # Made 600 before SQLite opens it; SQLite gives -wal and -shm the same mode.
+        if not path.exists():
+            os.close(os.open(path, os.O_WRONLY | os.O_CREAT, 0o600))
 
         self._jobs: queue.SimpleQueue[Job | None] = queue.SimpleQueue()
         # Guards `_closed` and the enqueue together, so no job can land behind
