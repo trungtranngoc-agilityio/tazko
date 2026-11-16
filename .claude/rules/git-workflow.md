@@ -28,14 +28,14 @@ hyphens. No milestone or task ids in the name (`m1`, `m1-04`): those go in the c
 - Conventional Commits: `<type>(<scope>): <summary>`, imperative, under 72 characters.
   Types: feat, fix, refactor, perf, test, docs, ci, build (dependencies, packaging), release (version bump
   and changelog on a release branch). Scope: the module or area, for example auth, db, orgs, admin, api, backend, web, deploy, ci, claude.
-- Body: what and why, wrapped at 72. Footer `Task: M1-04` when the work belongs to a task.
+- One short line only, no body: the PR description carries the details. Footer `Task: M1-04` when the work belongs to a task.
 - No AI attribution lines (D11).
 - `scripts/ci.sh` is green before every commit.
 
 ## Pull requests
 - Title: the Conventional Commit line, e.g. `feat(auth): sign in with Google`.
 - Task PRs go into the open release branch and are squash-merged by the owner, branch deleted after
-  merge. The squash commit message is the PR title plus the description's Purpose.
+  merge. The squash commit message is the PR title only; clear the generated body.
 - Fill every section of .github/pull_request_template.md with real content. A reader must see in a
   minute what the PR is for, what changed, what to test and what the tests showed. No placeholders,
   no empty tables: write "none" and why.
