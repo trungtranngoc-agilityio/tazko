@@ -14,6 +14,7 @@ commit it is published to the realtime hub. Fractional ranks with rebalance.
 from __future__ import annotations
 
 import re
+import shutil
 import threading
 from dataclasses import dataclass
 from pathlib import Path
@@ -36,13 +37,19 @@ class Tenant:
 
 
 class Tenants:
-    """Opens each company file once (migrating it) and keeps it open."""
+    """Opens each company file once (migrating it) and keeps it open.
+
+    An open company is returned without taking any lock. Opening one takes a
+    lock for that slug only, so a long migration of one company never holds
+    up requests for another (CLAUDE.md: a busy company never blocks another).
+    """
 
     def __init__(self, data_dir: Path, *, readers: int = 2) -> None:
         self.root = data_dir / "orgs"
         self._readers = readers
         self._open: dict[str, Tenant] = {}
-        self._lock = threading.Lock()
+        self._lock = threading.Lock()  # guards _open and _opening, held only briefly
+        self._opening: dict[str, threading.Lock] = {}
 
     def folder(self, slug: str) -> Path:
         if not valid_slug(slug):
@@ -53,23 +60,35 @@ class Tenants:
         return (self.folder(slug) / "tazko.db").exists()
 
     def create(self, slug: str) -> Tenant:
-        """Make the folder and an empty, migrated database."""
+        """Make the folder and an empty, migrated database. On failure nothing
+        is left behind, so the slug stays free."""
         folder = self.folder(slug)
         if folder.exists():
             raise FileExistsError(folder)
         (folder / "files").mkdir(parents=True)
-        return self.get(slug, create=True)
+        try:
+            return self.get(slug, create=True)
+        except BaseException:
+            self.evict(slug)
+            shutil.rmtree(folder, ignore_errors=True)
+            raise
 
     def get(self, slug: str, *, create: bool = False) -> Tenant:
         folder = self.folder(slug)
+        tenant = self._open.get(slug)  # a dict read is atomic; no lock for open companies
+        if tenant is not None:
+            return tenant
         with self._lock:
-            tenant = self._open.get(slug)
+            opening = self._opening.setdefault(slug, threading.Lock())
+        with opening:
+            tenant = self._open.get(slug)  # another thread may have opened it meanwhile
             if tenant is None:
                 if not create and not (folder / "tazko.db").exists():
                     raise FileNotFoundError(folder / "tazko.db")
                 db = Database(folder / "tazko.db", "tenant", readers=self._readers)
                 tenant = Tenant(slug=slug, db=db, files_dir=folder / "files")
-                self._open[slug] = tenant
+                with self._lock:
+                    self._open[slug] = tenant
             return tenant
 
     def evict(self, slug: str) -> None:

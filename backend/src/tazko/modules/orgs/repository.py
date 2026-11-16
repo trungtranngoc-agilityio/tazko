@@ -46,6 +46,8 @@ def upsert_member(
 
 
 def memberships(conn: sqlite3.Connection, user_id: int) -> list[Membership]:
+    # Includes suspended companies (status is on Org) so the switcher can show them
+    # as suspended; open_company still refuses them. TODO(M1-07): M1.md Q2.
     rows = conn.execute(
         "SELECT o.id, o.slug, o.name, o.status, m.role FROM org_members m"
         " JOIN orgs o ON o.id = m.org_id"

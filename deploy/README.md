@@ -28,6 +28,16 @@ certificate covers only one subdomain level.
 | `release.sh` | Installs a bundle into its own virtualenv, restarts, health-checks `/health`, rolls back by itself |
 | `tazko.service`, `tazko-backup.*` | systemd units |
 
+### First super admin (owner, once, after the first release)
+
+Run it as the `tazko` user against the server's data folder. Your shell does not
+load `/etc/tazko/tazko.env`, so pass `--data`; the command refuses a folder that
+does not exist and prints the `control.db` it wrote.
+
+```bash
+sudo -u tazko /opt/tazko/current/.venv/bin/tazko admin --data /var/lib/tazko/data --email trungngo@hugepigstudio.com
+```
+
 ## frontend/ — the static app (Cloudflare Pages)
 
 | File | What |

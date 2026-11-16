@@ -138,6 +138,45 @@ def test_reads_cannot_write(tmp_path: Path) -> None:
         db.close()
 
 
+def test_write_racing_close_finishes_or_is_refused(tmp_path: Path) -> None:
+    # given close() starts between write()'s closed check and its enqueue
+    db = Database(tmp_path / "x.db", "tenant")
+    real = db._jobs
+    closer: list[threading.Thread] = []
+
+    class CloseFirst:
+        """The job queue, except close() gets going just before a job is queued."""
+
+        def put(self, item: object) -> None:
+            if item is not None and not closer:
+                closer.append(threading.Thread(target=db.close))
+                closer[0].start()
+                closer[0].join(0.2)  # give close() the chance to run first
+            real.put(item)  # type: ignore[arg-type]
+
+        def get(self) -> object:
+            return real.get()
+
+    db._jobs = CloseFirst()  # type: ignore[assignment]
+
+    # when a write runs, then it completes or says closed, and never hangs
+    outcome: list[object] = []
+
+    def attempt() -> None:
+        try:
+            outcome.append(db.write(lambda c: "done"))
+        except RuntimeError as err:
+            outcome.append(err)
+
+    writer = threading.Thread(target=attempt, daemon=True)  # a hang must not hang pytest
+    writer.start()
+    writer.join(5)
+    assert outcome, "write() hung after close()"
+    assert outcome[0] == "done" or "closed" in str(outcome[0])
+    closer[0].join(5)
+    assert not closer[0].is_alive()
+
+
 def test_closed_database_refuses_work(tmp_path: Path) -> None:
     db = Database(tmp_path / "x.db", "tenant")
     db.close()

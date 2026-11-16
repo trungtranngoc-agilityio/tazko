@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
+import time
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from typing import Any
 
 import pytest
 
 from tazko.core.errors import BadRequest, NotFound
-from tazko.db import Database
+from tazko.db import Database, MigrationError
+from tazko.db import tenant as tenant_module
 from tazko.db.tenant import Tenants
 from tazko.modules.orgs import service as orgs
 from tazko.modules.users import service as users
@@ -114,6 +119,66 @@ def test_company_files_are_cached_and_reopened(
         assert reopened.get("acme").db.version >= 1
     finally:
         reopened.close()
+
+
+class SlowDatabase(Database):
+    """Opening the company `slow` waits until the test lets it go."""
+
+    release = threading.Event()
+
+    def __init__(self, path: Path, schema: str, **kwargs: Any) -> None:
+        if path.parent.name == "slow":
+            assert SlowDatabase.release.wait(10)
+        super().__init__(path, schema, **kwargs)
+
+
+def test_opening_one_company_does_not_block_another(
+    control: Database, tenants: Tenants, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # given acme is open and slow is being opened (a long migration)
+    for slug in ("acme", "beta", "slow"):
+        orgs.create_company(control, tenants, slug=slug, name=slug, actor_id=None)
+    tenants.close()
+    tenants.get("acme")
+    monkeypatch.setattr(tenant_module, "Database", SlowDatabase)
+    SlowDatabase.release.clear()
+    with ThreadPoolExecutor(2) as pool:
+        opening = pool.submit(tenants.get, "slow")
+        time.sleep(0.1)
+        try:
+            # then the open company and another new one are served meanwhile
+            assert pool.submit(tenants.get, "acme").result(timeout=1).slug == "acme"
+            assert tenants.get("beta").slug == "beta"
+            assert not opening.done()
+        finally:
+            SlowDatabase.release.set()
+        assert opening.result(timeout=5).slug == "slow"
+
+
+def test_same_company_opened_at_once_is_opened_once(control: Database, tenants: Tenants) -> None:
+    orgs.create_company(control, tenants, slug="acme", name="Acme", actor_id=None)
+    tenants.close()
+    with ThreadPoolExecutor(8) as pool:
+        opened = list(pool.map(lambda _: tenants.get("acme"), range(16)))
+    assert all(t is opened[0] for t in opened)
+
+
+def test_failed_company_creation_leaves_no_folder(
+    control: Database, tenants: Tenants, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # given the new company's database cannot be migrated
+    def broken(*args: object, **kwargs: object) -> Database:
+        raise MigrationError("migration 0001_init failed: disk full")
+
+    monkeypatch.setattr(tenant_module, "Database", broken)
+    with pytest.raises(MigrationError):
+        orgs.create_company(control, tenants, slug="acme", name="Acme", actor_id=None)
+
+    # then no row and no folder are left, so the slug can be used again
+    assert not (tmp_path / "orgs" / "acme").exists()
+    assert column(control, "SELECT slug FROM orgs") == []
+    monkeypatch.undo()
+    assert orgs.create_company(control, tenants, slug="acme", name="Acme", actor_id=None)
 
 
 def test_creating_a_company_writes_an_audit_row(control: Database, tenants: Tenants) -> None:

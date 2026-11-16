@@ -75,16 +75,26 @@ def serve(settings: Settings) -> None:
 
 
 def grant_admin(data_dir: Path, email: str) -> None:
+    """Promote one person. The data folder must exist: a shell without
+    TAZKO_DATA_DIR would otherwise make a fresh ./data that the server never
+    reads, and report success."""
     from tazko.db import Database
     from tazko.modules.users import service as users
 
-    control = Database(data_dir / "control.db", "control", readers=1)
+    if not data_dir.is_dir():
+        raise ConfigError(
+            f"data folder {data_dir.resolve()} does not exist; pass --data or set "
+            "TAZKO_DATA_DIR to the server's folder (production: --data /var/lib/tazko/data)"
+        )
+    path = (data_dir / "control.db").resolve()
+    control = Database(path, "control", readers=1)
     try:
         user, created = users.grant_super_admin(control, email, actor_id=None)
     finally:
         control.close()
     state = "created as" if created else "is now"
-    print(f"{user.email} {state} a super admin; they can sign in with Google and open /admin")
+    print(f"{user.email} {state} a super admin in {path}")
+    print("They can sign in with Google and open /admin.")
 
 
 def run(args: argparse.Namespace, settings: Settings) -> None:

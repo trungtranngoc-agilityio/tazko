@@ -115,6 +115,9 @@ class Database:
         path.parent.mkdir(parents=True, exist_ok=True)
 
         self._jobs: queue.SimpleQueue[Job | None] = queue.SimpleQueue()
+        # Guards `_closed` and the enqueue together, so no job can land behind
+        # the stop marker that close() puts on the queue.
+        self._state = threading.Lock()
         self._closed = False
         started: Future[int] = Future()
         self._writer = threading.Thread(
@@ -163,12 +166,13 @@ class Database:
 
     def write[T](self, fn: Callable[[sqlite3.Connection], T]) -> T:
         """Run `fn` in one transaction on the writer thread and return its result."""
-        if self._closed:
-            raise RuntimeError(f"{self.path} is closed")
         if threading.current_thread() is self._writer:
             raise RuntimeError("write() called from inside a write; use the connection given")
         future: Future[T] = Future()
-        self._jobs.put((fn, future))
+        with self._state:
+            if self._closed:
+                raise RuntimeError(f"{self.path} is closed")
+            self._jobs.put((fn, future))
         return future.result()
 
     def read[T](self, fn: Callable[[sqlite3.Connection], T]) -> T:
@@ -188,10 +192,11 @@ class Database:
 
     def close(self) -> None:
         """Finish queued writes, then close every connection. Safe to call twice."""
-        if self._closed:
-            return
-        self._closed = True
-        self._jobs.put(None)
+        with self._state:
+            if self._closed:
+                return
+            self._closed = True
+            self._jobs.put(None)
         self._writer.join()
         for _ in range(self._reader_count):
             self._readers.get().close()

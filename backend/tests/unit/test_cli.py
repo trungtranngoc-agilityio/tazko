@@ -20,6 +20,24 @@ def test_admin_creates_a_super_admin(tmp_path: Path) -> None:
     assert query(tmp_path, "SELECT action FROM audit_log") == [("super_admin.granted",)]
 
 
+def test_admin_names_the_database_it_wrote(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    main(["admin", "--data", str(tmp_path), "--email", "boss@example.com"])
+    assert str((tmp_path / "control.db").resolve()) in capsys.readouterr().out
+
+
+def test_admin_refuses_a_missing_data_folder(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    # given no TAZKO_DATA_DIR in this shell, so the default ./data does not exist
+    assert main(["admin", "--email", "boss@example.com"]) == 1
+    err = capsys.readouterr().err
+    assert "TAZKO_DATA_DIR" in err
+    assert "--data" in err
+    assert not (tmp_path / "data").exists()
+
+
 def test_admin_promotes_an_existing_person(tmp_path: Path) -> None:
     main(["admin", "--data", str(tmp_path), "--email", "boss@example.com"])
     assert main(["admin", "--data", str(tmp_path), "--email", "boss@example.com"]) == 0

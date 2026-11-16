@@ -13,8 +13,8 @@ node_modules/
 /test-results/
 /playwright-report/
 
-# Runtime data and secrets: never commit
-/data/
+# Runtime data and secrets: never commit (repo root or backend/, wherever serve ran)
+data/
 .env
 .env.*
 !.env.example
