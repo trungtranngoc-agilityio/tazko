@@ -19,6 +19,8 @@ def isolated_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     for key in list(os.environ):
         if key.startswith("TAZKO_"):
             monkeypatch.delenv(key)
+    # Tests run as development; production checks are tested explicitly.
+    monkeypatch.setenv("TAZKO_ENV", "development")
     monkeypatch.chdir(tmp_path)  # no .env here
 
 

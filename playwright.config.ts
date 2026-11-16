@@ -19,6 +19,7 @@ export default defineConfig({
   webServer: [
     {
       command: "uv run --project backend tazko serve",
+      env: { TAZKO_ENV: "development" },
       url: "http://127.0.0.1:8791/health",
       reuseExistingServer: !process.env.CI,
       timeout: 60_000,
