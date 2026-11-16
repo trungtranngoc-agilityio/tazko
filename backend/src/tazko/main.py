@@ -7,21 +7,44 @@ hostname belong to the tunnel.
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from tazko import __version__
 from tazko.core import errors
 from tazko.core.config import Settings, load_settings
+from tazko.core.secret import load_secret
+from tazko.db import Database
+from tazko.db.tenant import Tenants
 from tazko.modules import health
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    """Open control.db (migrating it) before the first request; company files
+    open on first use. Everything is closed after the last request."""
+    settings: Settings = app.state.settings
+    settings.data_dir.mkdir(parents=True, exist_ok=True)
+    app.state.secret = load_secret(settings)
+    app.state.control = Database(settings.data_dir / "control.db", "control", readers=4)
+    app.state.tenants = Tenants(settings.data_dir)
+    try:
+        yield
+    finally:
+        app.state.tenants.close()
+        app.state.control.close()
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or load_settings()
     # Interactive docs stay off; the public OpenAPI document arrives with /api/v1 (M6-01).
-    app = FastAPI(title="Tazko", version=__version__, docs_url=None, redoc_url=None)
+    app = FastAPI(
+        title="Tazko", version=__version__, docs_url=None, redoc_url=None, lifespan=lifespan
+    )
     app.state.settings = settings
-    # TODO(M1-03): open control.db and the per-company tenant cache in a lifespan handler.
     # TODO(M3-01): realtime hub.
 
     # CORS for exactly one origin, with cookies. Other origins get no CORS

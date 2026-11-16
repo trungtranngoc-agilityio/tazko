@@ -16,7 +16,9 @@ Rules:
 | Module          | Responsibility                                       | First milestone |
 |-----------------|------------------------------------------------------|-----------------|
 | `health`        | `/health` for the tunnel and release health checks  | M1              |
-| `orgs`          | Companies, memberships, tenant handle cache          | M1              |
+| `users`         | People in control.db, super admin flag               | M1              |
+| `audit`         | Audit log rows, written in the caller's transaction  | M1              |
+| `orgs`          | Companies, memberships, `open_company` (tenant gate) | M1              |
 | `auth`          | Google OIDC + PKCE, sessions, Origin check, invites  | M1              |
 | `admin`         | Super admin console API (`/admin/api`)               | M1              |
 | `boards`        | Projects, boards, lists, permissions                 | M2              |

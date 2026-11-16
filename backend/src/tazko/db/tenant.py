@@ -1,8 +1,86 @@
-"""Handle to exactly one company database. No org_id anywhere.
+"""Handles to exactly one company's file and folder. No org_id anywhere.
 
-Milestone: M1-03, M2-01. Empty until then; see docs/milestones/.
+data/orgs/<slug>/tazko.db and data/orgs/<slug>/files/. A slug is checked
+before any path is built from it, so a request can never name a folder
+outside data/orgs.
 
-- TODO: One writer thread owns the write connection; a small read pool serves queries.
-- TODO: Every change writes an events row in the same transaction; after commit it is published to the realtime hub.
-- TODO: Fractional rank strings with rebalance past 32 characters (M2-01).
+Membership is not checked here; tazko.modules.orgs.service.open_company
+does that and is the only way handlers reach a Tenant.
+
+TODO(M2-01): every change writes an events row in the same transaction; after
+commit it is published to the realtime hub. Fractional ranks with rebalance.
 """
+
+from __future__ import annotations
+
+import re
+import threading
+from dataclasses import dataclass
+from pathlib import Path
+
+from tazko.db.database import Database
+
+SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$")
+
+
+def valid_slug(slug: str) -> bool:
+    """Lowercase letters, digits and inner hyphens, 1 to 40 characters."""
+    return bool(SLUG.fullmatch(slug))
+
+
+@dataclass(frozen=True)
+class Tenant:
+    slug: str
+    db: Database
+    files_dir: Path
+
+
+class Tenants:
+    """Opens each company file once (migrating it) and keeps it open."""
+
+    def __init__(self, data_dir: Path, *, readers: int = 2) -> None:
+        self.root = data_dir / "orgs"
+        self._readers = readers
+        self._open: dict[str, Tenant] = {}
+        self._lock = threading.Lock()
+
+    def folder(self, slug: str) -> Path:
+        if not valid_slug(slug):
+            raise ValueError(f"invalid company slug: {slug!r}")
+        return self.root / slug
+
+    def exists(self, slug: str) -> bool:
+        return (self.folder(slug) / "tazko.db").exists()
+
+    def create(self, slug: str) -> Tenant:
+        """Make the folder and an empty, migrated database."""
+        folder = self.folder(slug)
+        if folder.exists():
+            raise FileExistsError(folder)
+        (folder / "files").mkdir(parents=True)
+        return self.get(slug, create=True)
+
+    def get(self, slug: str, *, create: bool = False) -> Tenant:
+        folder = self.folder(slug)
+        with self._lock:
+            tenant = self._open.get(slug)
+            if tenant is None:
+                if not create and not (folder / "tazko.db").exists():
+                    raise FileNotFoundError(folder / "tazko.db")
+                db = Database(folder / "tazko.db", "tenant", readers=self._readers)
+                tenant = Tenant(slug=slug, db=db, files_dir=folder / "files")
+                self._open[slug] = tenant
+            return tenant
+
+    def evict(self, slug: str) -> None:
+        """Close one company's file (before suspend, delete or restore)."""
+        with self._lock:
+            tenant = self._open.pop(slug, None)
+        if tenant:
+            tenant.db.close()
+
+    def close(self) -> None:
+        with self._lock:
+            open_now, self._open = list(self._open.values()), {}
+        for tenant in open_now:
+            tenant.db.close()

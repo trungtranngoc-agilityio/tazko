@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -30,5 +31,7 @@ def settings(tmp_path: Path) -> Settings:
 
 
 @pytest.fixture
-def client(settings: Settings) -> TestClient:
-    return TestClient(create_app(settings))
+def client(settings: Settings) -> Iterator[TestClient]:
+    # The context manager runs the lifespan: databases open and close.
+    with TestClient(create_app(settings)) as test_client:
+        yield test_client

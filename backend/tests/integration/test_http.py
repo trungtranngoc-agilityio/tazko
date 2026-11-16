@@ -3,7 +3,13 @@
 from fastapi.testclient import TestClient
 from httpx2 import Response
 
+from tazko.core.config import Settings
 from tests.conftest import WEB_ORIGIN
+
+
+def test_app_start_creates_the_control_database(client: TestClient, settings: Settings) -> None:
+    assert client.get("/health").status_code == 200
+    assert (settings.data_dir / "control.db").exists()
 
 
 def preflight(client: TestClient, origin: str) -> Response:

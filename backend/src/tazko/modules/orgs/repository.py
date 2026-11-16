@@ -1,0 +1,95 @@
+from __future__ import annotations
+
+import sqlite3
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Org:
+    id: int
+    slug: str
+    name: str
+    status: str
+
+
+@dataclass(frozen=True)
+class Membership:
+    org: Org
+    role: str
+
+
+def _org(row: sqlite3.Row) -> Org:
+    return Org(id=row["id"], slug=row["slug"], name=row["name"], status=row["status"])
+
+
+def by_slug(conn: sqlite3.Connection, slug: str) -> Org | None:
+    row = conn.execute("SELECT id, slug, name, status FROM orgs WHERE slug = ?", (slug,)).fetchone()
+    return _org(row) if row else None
+
+
+def insert(conn: sqlite3.Connection, *, slug: str, name: str, now: str) -> Org:
+    conn.execute("INSERT INTO orgs (slug, name, created_at) VALUES (?, ?, ?)", (slug, name, now))
+    org = by_slug(conn, slug)
+    if org is None:
+        raise RuntimeError("row vanished inside its own transaction")
+    return org
+
+
+def upsert_member(
+    conn: sqlite3.Connection, *, org_id: int, user_id: int, role: str, now: str
+) -> None:
+    conn.execute(
+        "INSERT INTO org_members (org_id, user_id, role, created_at) VALUES (?, ?, ?, ?)"
+        " ON CONFLICT (org_id, user_id) DO UPDATE SET role = excluded.role",
+        (org_id, user_id, role, now),
+    )
+
+
+def memberships(conn: sqlite3.Connection, user_id: int) -> list[Membership]:
+    rows = conn.execute(
+        "SELECT o.id, o.slug, o.name, o.status, m.role FROM org_members m"
+        " JOIN orgs o ON o.id = m.org_id"
+        " WHERE m.user_id = ? AND o.status != 'deleted'"
+        " ORDER BY o.name COLLATE NOCASE, o.slug",
+        (user_id,),
+    ).fetchall()
+    return [Membership(org=_org(row), role=row["role"]) for row in rows]
+
+
+def active_membership(conn: sqlite3.Connection, user_id: int, slug: str) -> Membership | None:
+    row = conn.execute(
+        "SELECT o.id, o.slug, o.name, o.status, m.role FROM org_members m"
+        " JOIN orgs o ON o.id = m.org_id"
+        " WHERE m.user_id = ? AND o.slug = ? AND o.status = 'active'",
+        (user_id, slug),
+    ).fetchone()
+    return Membership(org=_org(row), role=row["role"]) if row else None
+
+
+# --- in the company's own file -------------------------------------------------
+
+
+def upsert_person(
+    conn: sqlite3.Connection,
+    *,
+    user_id: int,
+    name: str,
+    email: str,
+    avatar_url: str | None,
+    now: str,
+) -> None:
+    conn.execute(
+        "INSERT INTO people (id, name, email, avatar_url, updated_at) VALUES (?, ?, ?, ?, ?)"
+        " ON CONFLICT (id) DO UPDATE SET name = excluded.name, email = excluded.email,"
+        " avatar_url = excluded.avatar_url, updated_at = excluded.updated_at",
+        (user_id, name, email, avatar_url, now),
+    )
+
+
+def add_event(
+    conn: sqlite3.Connection, *, type: str, actor_id: int | None, payload: str, now: str
+) -> None:
+    conn.execute(
+        "INSERT INTO events (type, actor_id, payload, created_at) VALUES (?, ?, ?, ?)",
+        (type, actor_id, payload, now),
+    )

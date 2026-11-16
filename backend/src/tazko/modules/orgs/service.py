@@ -1,0 +1,141 @@
+"""Companies and memberships, and the only way to reach a company's file.
+
+`open_company` checks membership in control.db before it hands out a Tenant,
+so a handler can never touch a company the caller is not in. Unknown,
+suspended and not-a-member all answer NotFound: the caller learns nothing
+about companies they are not in.
+
+TODO(M1-06): change role, remove member (never the last owner, KNOWN-DEVIATIONS #5).
+TODO(M1-07): suspend, resume, delete to trash/.
+"""
+
+from __future__ import annotations
+
+import json
+import logging
+import sqlite3
+from dataclasses import dataclass
+from typing import Literal
+
+from tazko.core.clock import now_iso
+from tazko.core.errors import AppError, BadRequest, NotFound
+from tazko.db import Database
+from tazko.db.tenant import Tenant, Tenants, valid_slug
+from tazko.modules.audit import service as audit
+from tazko.modules.orgs import repository as repo
+from tazko.modules.orgs.repository import Membership, Org
+from tazko.modules.users.service import User
+
+__all__ = [
+    "Company",
+    "Membership",
+    "Org",
+    "add_member",
+    "companies_of",
+    "create_company",
+    "open_company",
+]
+
+log = logging.getLogger(__name__)
+
+Role = Literal["owner", "member"]
+
+
+@dataclass(frozen=True)
+class Company:
+    """A company opened for one person: their role and the company's own file."""
+
+    org: Org
+    role: str
+    tenant: Tenant
+
+
+def create_company(
+    control: Database, tenants: Tenants, *, slug: str, name: str, actor_id: int | None
+) -> Org:
+    """Add the row, make data/orgs/<slug>/ with a migrated database, and audit it.
+
+    The folder is made inside the control.db transaction, so a failure there
+    leaves no row behind.
+    """
+    if not valid_slug(slug):
+        raise BadRequest("slug: use 1 to 40 lowercase letters, digits or inner hyphens")
+    name = name.strip()
+    if not 1 <= len(name) <= 100:
+        raise BadRequest("name: 1 to 100 characters")
+
+    def run(conn: sqlite3.Connection) -> Org:
+        if repo.by_slug(conn, slug) or tenants.folder(slug).exists():
+            raise BadRequest("slug: already taken")
+        org = repo.insert(conn, slug=slug, name=name, now=now_iso())
+        audit.record(conn, "company.created", actor_id=actor_id, org_id=org.id, target=slug)
+        tenants.create(slug)
+        return org
+
+    return control.write(run)
+
+
+def add_member(
+    control: Database,
+    tenants: Tenants,
+    *,
+    org: Org,
+    user: User,
+    role: Role,
+    actor_id: int | None,
+) -> None:
+    """Add (or change the role of) a member, and copy the person into the company file."""
+
+    def membership(conn: sqlite3.Connection) -> None:
+        repo.upsert_member(conn, org_id=org.id, user_id=user.id, role=role, now=now_iso())
+        audit.record(
+            conn,
+            "member.added",
+            actor_id=actor_id,
+            org_id=org.id,
+            target=user.email,
+            detail={"role": role},
+        )
+
+    control.write(membership)
+
+    # A second file, so a second transaction. The copy is an upsert: running it
+    # again after a crash between the two writes repairs it.
+    def person(conn: sqlite3.Connection) -> None:
+        now = now_iso()
+        repo.upsert_person(
+            conn,
+            user_id=user.id,
+            name=user.name,
+            email=user.email,
+            avatar_url=user.avatar_url,
+            now=now,
+        )
+        repo.add_event(
+            conn,
+            type="member.added",
+            actor_id=actor_id,
+            payload=json.dumps({"user_id": user.id, "role": role}),
+            now=now,
+        )
+
+    tenants.get(org.slug).db.write(person)
+
+
+def companies_of(control: Database, user_id: int) -> list[Membership]:
+    """The companies a person belongs to (for the switcher), by name."""
+    return control.read(lambda c: repo.memberships(c, user_id))
+
+
+def open_company(control: Database, tenants: Tenants, *, user_id: int, slug: str) -> Company:
+    if not valid_slug(slug):
+        raise NotFound()
+    membership = control.read(lambda c: repo.active_membership(c, user_id, slug))
+    if membership is None:
+        raise NotFound()
+    try:
+        tenant = tenants.get(slug)
+    except FileNotFoundError:
+        log.error("company %s has a row but no database file", slug)
+        raise AppError() from None
+    return Company(org=membership.org, role=membership.role, tenant=tenant)

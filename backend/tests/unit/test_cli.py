@@ -1,6 +1,41 @@
+import sqlite3
+from pathlib import Path
+
 import pytest
 
 from tazko.cli import main
+
+
+def query(data: Path, sql: str) -> list[tuple[object, ...]]:
+    conn = sqlite3.connect(data / "control.db")
+    try:
+        return [tuple(row) for row in conn.execute(sql)]
+    finally:
+        conn.close()
+
+
+def test_admin_creates_a_super_admin(tmp_path: Path) -> None:
+    assert main(["admin", "--data", str(tmp_path), "--email", "Boss@Example.com"]) == 0
+    assert query(tmp_path, "SELECT email, is_super_admin FROM users") == [("boss@example.com", 1)]
+    assert query(tmp_path, "SELECT action FROM audit_log") == [("super_admin.granted",)]
+
+
+def test_admin_promotes_an_existing_person(tmp_path: Path) -> None:
+    main(["admin", "--data", str(tmp_path), "--email", "boss@example.com"])
+    assert main(["admin", "--data", str(tmp_path), "--email", "boss@example.com"]) == 0
+    assert query(tmp_path, "SELECT email, is_super_admin FROM users") == [("boss@example.com", 1)]
+
+
+def test_admin_refuses_an_invalid_email(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    assert main(["admin", "--data", str(tmp_path), "--email", "not-an-email"]) == 1
+    assert "email" in capsys.readouterr().err
+
+
+def test_admin_needs_no_google_client_in_production(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    monkeypatch.setenv("TAZKO_ENV", "production")
+    assert main(["admin", "--data", str(tmp_path), "--email", "boss@example.com"]) == 0
 
 
 def test_unfinished_commands_fail_with_the_task_id(capsys: pytest.CaptureFixture[str]) -> None:

@@ -15,7 +15,9 @@ from pathlib import Path
 
 from tazko import __version__
 from tazko.core.config import ConfigError, Settings, load_settings
+from tazko.core.errors import AppError
 from tazko.core.logging import setup_logging
+from tazko.db import MigrationError
 
 log = logging.getLogger(__name__)
 
@@ -72,12 +74,25 @@ def serve(settings: Settings) -> None:
     )
 
 
+def grant_admin(data_dir: Path, email: str) -> None:
+    from tazko.db import Database
+    from tazko.modules.users import service as users
+
+    control = Database(data_dir / "control.db", "control", readers=1)
+    try:
+        user, created = users.grant_super_admin(control, email, actor_id=None)
+    finally:
+        control.close()
+    state = "created as" if created else "is now"
+    print(f"{user.email} {state} a super admin; they can sign in with Google and open /admin")
+
+
 def run(args: argparse.Namespace, settings: Settings) -> None:
     match args.command:
         case "serve":
             serve(settings)
         case "admin":
-            raise NotYet("admin", "M1-02")
+            grant_admin(args.data or settings.data_dir, args.email)
         case "backup":
             raise NotYet("backup", "M1-08")
         case "check":
@@ -87,10 +102,14 @@ def run(args: argparse.Namespace, settings: Settings) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)  # wrong usage exits with 2
     try:
-        settings = load_settings()
+        # Only `serve` needs the Google client and public URLs (D16).
+        settings = load_settings(serving=args.command == "serve")
         setup_logging(settings.log)
         run(args, settings)
-    except (ConfigError, NotYet) as err:
+    except AppError as err:
+        print(f"error: {err.message}", file=sys.stderr)
+        return 1
+    except (ConfigError, MigrationError, NotYet) as err:
         print(f"error: {err}", file=sys.stderr)
         return 1
     return 0

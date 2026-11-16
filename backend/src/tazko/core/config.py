@@ -81,17 +81,23 @@ class Settings(BaseSettings):
     def _complete(self) -> Self:
         if self.smtp_host and not self.mail_from:
             raise ValueError("TAZKO_MAIL_FROM: required when TAZKO_SMTP_HOST is set")
-        if not self.is_production:
-            return self
-        if not self.google_client_id:
-            raise ValueError("TAZKO_GOOGLE_CLIENT_ID: required in production (TAZKO_ENV)")
-        if not self.google_client_secret.get_secret_value():
-            raise ValueError("TAZKO_GOOGLE_CLIENT_SECRET: required in production (TAZKO_ENV)")
-        if not self.public_url.startswith("https://"):
-            raise ValueError("TAZKO_PUBLIC_URL: must be an https URL in production")
-        if not self.web_origin.startswith("https://"):
-            raise ValueError("TAZKO_WEB_ORIGIN: must be an https origin in production")
         return self
+
+    def serving_problems(self) -> list[str]:
+        """What stops this server from serving in production. Commands that do
+        not serve (admin, backup, check) skip these checks."""
+        if not self.is_production:
+            return []
+        problems = []
+        if not self.google_client_id:
+            problems.append("TAZKO_GOOGLE_CLIENT_ID: required in production (TAZKO_ENV)")
+        if not self.google_client_secret.get_secret_value():
+            problems.append("TAZKO_GOOGLE_CLIENT_SECRET: required in production (TAZKO_ENV)")
+        if not self.public_url.startswith("https://"):
+            problems.append("TAZKO_PUBLIC_URL: must be an https URL in production")
+        if not self.web_origin.startswith("https://"):
+            problems.append("TAZKO_WEB_ORIGIN: must be an https origin in production")
+        return problems
 
     @property
     def is_production(self) -> bool:
@@ -123,16 +129,22 @@ class Settings(BaseSettings):
         return self.public_url.rstrip("/") or f"http://{self.addr}"
 
 
-def load_settings(**overrides: object) -> Settings:
+def load_settings(*, serving: bool = True, **overrides: object) -> Settings:
     """Build Settings, turning validation errors into one ConfigError that
-    names the environment variables (TAZKO_PORT, not `port`)."""
+    names the environment variables (TAZKO_PORT, not `port`).
+
+    `serving=False` is for commands that never answer requests; they do not
+    need the Google client or public URLs."""
     try:
-        return Settings(**overrides)  # type: ignore[arg-type]
+        settings = Settings(**overrides)  # type: ignore[arg-type]
     except ValidationError as err:
-        problems = "; ".join(
+        problems = [
             f"TAZKO_{str(e['loc'][0]).upper()}: {e['msg']}"
             if e["loc"]
             else str(e["msg"]).removeprefix("Value error, ")
             for e in err.errors()
-        )
-        raise ConfigError(problems) from None
+        ]
+        raise ConfigError("; ".join(problems)) from None
+    if serving and (problems := settings.serving_problems()):
+        raise ConfigError("; ".join(problems))
+    return settings
