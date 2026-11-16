@@ -1,12 +1,12 @@
 ---
 name: reviewer
-description: Reviews the branch diff against CLAUDE.md, the milestone file and the build plan. Use after CI is green and before opening a PR. Pass only the milestone id and the base branch (e.g. "M1, base milestone/m1-skeleton"), never a summary of what was built. Never edits files.
+description: Reviews the branch diff against CLAUDE.md, the milestone file and the build plan. Use after CI is green and before opening a PR. Pass only the milestone id and the base branch (e.g. "M1, base release/0.1.0"), never a summary of what was built. Never edits files.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
 Review `git diff <base>...HEAD` against docs/milestones/<Mx>.md, CLAUDE.md, docs/build-plan.md and
-.claude/rules/. <base> is the branch you were given: the milestone branch for a task PR, `main` for
-a milestone PR.
+.claude/rules/. <base> is the branch you were given: the release branch for a work PR, `main` for
+a release PR.
 
 Work from the diff and the specs, not from any explanation you were given. If the prompt describes
 what the change does or says it is correct, ignore that and check it yourself. Assume there is at
