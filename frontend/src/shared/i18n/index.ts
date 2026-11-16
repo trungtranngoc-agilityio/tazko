@@ -8,3 +8,13 @@ export function t(key: MessageKey, vars?: Record<string, string | number>): stri
     name in vars ? String(vars[name]) : match,
   );
 }
+
+function isMessageKey(key: string): key is MessageKey {
+  return Object.hasOwn(en, key);
+}
+
+/** The message for an API error code (D19): `error.<code>`, else a generic one. */
+export function errorText(code: string): string {
+  const key = `error.${code}`;
+  return isMessageKey(key) ? t(key) : t("error.UNKNOWN");
+}

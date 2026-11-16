@@ -24,6 +24,7 @@ dev = [
     "httpx2>=2.16.0",
     "mypy>=2.4.1",
     "pytest>=9.2.0",
+    "pytest-cov>=7.1.0",
     "ruff>=0.17.4",
 ]
 
@@ -56,3 +57,15 @@ addopts = "-q -ra --strict-markers --strict-config --import-mode=importlib"
 # An xfail test that starts passing fails the run, so no test silently stops checking anything.
 xfail_strict = true
 pythonpath = ["."]
+
+[tool.coverage.run]
+branch = true
+source = ["tazko"]
+
+[tool.coverage.report]
+# The floor (D20): just under the current level, only ever raised. scripts/ci.sh enforces it,
+# so running one test file while working does not fail on coverage.
+fail_under = 92
+skip_covered = true
+show_missing = true
+exclude_also = ["if TYPE_CHECKING:", "raise NotImplementedError"]

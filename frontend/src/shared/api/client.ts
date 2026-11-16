@@ -12,13 +12,41 @@ export function apiUrl(path: string): string {
   return API_URL + path;
 }
 
+export interface ErrorDetail {
+  field: string;
+  message: string;
+}
+
+/**
+ * A failed API call. `code` is stable (D19): translate it with the i18n key
+ * `error.<code>` and fall back to `message`, which is English and for logs.
+ */
 export class ApiError extends Error {
   constructor(
     public status: number,
+    public code: string,
     message: string,
+    public details: ErrorDetail[] = [],
   ) {
     super(message);
+    this.name = "ApiError";
   }
+}
+
+interface ErrorBody {
+  // A string is the shape before D19; still read for one release.
+  error?: string | { code?: string; message?: string; details?: ErrorDetail[] };
+}
+
+function toApiError(res: Response, body: ErrorBody): ApiError {
+  const { error } = body;
+  if (typeof error === "string") return new ApiError(res.status, `HTTP_${res.status}`, error);
+  return new ApiError(
+    res.status,
+    error?.code ?? `HTTP_${res.status}`,
+    error?.message ?? res.statusText,
+    error?.details ?? [],
+  );
 }
 
 export async function api<T>(path: string, init?: RequestInit): Promise<T> {
@@ -28,8 +56,8 @@ export async function api<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { "content-type": "application/json", ...init?.headers },
   });
   if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new ApiError(res.status, body.error ?? res.statusText);
+    throw toApiError(res, (await res.json().catch(() => ({}))) as ErrorBody);
   }
+  if (res.status === 204) return undefined as T; // no body to parse
   return (await res.json()) as T;
 }

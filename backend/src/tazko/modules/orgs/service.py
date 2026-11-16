@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from tazko.core.clock import now_iso
-from tazko.core.errors import AppError, BadRequest, NotFound
+from tazko.core.errors import AppError, Conflict, Invalid, NotFound
 from tazko.db import Database
 from tazko.db.tenant import Tenant, Tenants, valid_slug
 from tazko.modules.audit import service as audit
@@ -59,14 +59,14 @@ def create_company(
     leaves no row behind.
     """
     if not valid_slug(slug):
-        raise BadRequest("slug: use 1 to 40 lowercase letters, digits or inner hyphens")
+        raise Invalid("slug: use 1 to 40 lowercase letters, digits or inner hyphens", field="slug")
     name = name.strip()
     if not 1 <= len(name) <= 100:
-        raise BadRequest("name: 1 to 100 characters")
+        raise Invalid("name: 1 to 100 characters", field="name")
 
     def run(conn: sqlite3.Connection) -> Org:
         if repo.by_slug(conn, slug) or tenants.folder(slug).exists():
-            raise BadRequest("slug: already taken")
+            raise Conflict("slug: already taken", code="SLUG_TAKEN", field="slug")
         org = repo.insert(conn, slug=slug, name=name, now=now_iso())
         audit.record(conn, "company.created", actor_id=actor_id, org_id=org.id, target=slug)
         tenants.create(slug)

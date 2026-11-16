@@ -43,8 +43,8 @@ step "backend: lint"
 step "backend: types"
 (cd backend && py mypy)
 
-step "backend: test"
-(cd backend && py pytest)
+step "backend: test + coverage floor (D20)"
+(cd backend && py pytest --cov)
 
 step "backend: licenses"
 py python tools/check-backend-licenses.py
