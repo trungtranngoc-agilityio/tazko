@@ -54,3 +54,39 @@ def insert(conn: sqlite3.Connection, *, email: str, name: str, now: str) -> User
 
 def set_super_admin(conn: sqlite3.Connection, user_id: int, value: bool) -> None:
     conn.execute("UPDATE users SET is_super_admin = ? WHERE id = ?", (int(value), user_id))
+
+
+def by_sub(conn: sqlite3.Connection, sub: str) -> User | None:
+    row = conn.execute(f"SELECT {COLUMNS} FROM users WHERE google_sub = ?", (sub,)).fetchone()  # noqa: S608 (COLUMNS is a constant; values are bound)
+    return _user(row) if row else None
+
+
+def link_sub(conn: sqlite3.Connection, user_id: int, sub: str) -> None:
+    """Only a row with no sub yet is linked; a linked row is never changed."""
+    conn.execute(
+        "UPDATE users SET google_sub = ? WHERE id = ? AND google_sub IS NULL", (sub, user_id)
+    )
+
+
+def email_taken(conn: sqlite3.Connection, email: str, *, other_than: int) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM users WHERE email = ? AND id != ?", (email, other_than)
+    ).fetchone()
+    return row is not None
+
+
+def update_profile(
+    conn: sqlite3.Connection,
+    user_id: int,
+    *,
+    email: str,
+    name: str,
+    avatar_url: str | None,
+    hd: str | None,
+    now: str,
+) -> None:
+    conn.execute(
+        "UPDATE users SET email = ?, name = ?, avatar_url = ?, hd = ?, last_seen_at = ?"
+        " WHERE id = ?",
+        (email, name, avatar_url, hd, now, user_id),
+    )

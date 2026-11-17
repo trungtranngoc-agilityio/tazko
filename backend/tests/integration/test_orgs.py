@@ -237,3 +237,13 @@ def test_adding_a_member_writes_an_event_in_the_company(
         "company.created",
         "member.added",
     ]
+
+
+def test_disabled_person_cannot_open_company(control: Database, tenants: Tenants) -> None:
+    acme = orgs.create_company(control, tenants, slug="acme", name="Acme", actor_id=None)
+    ana = users.get_or_create(control, "ana@example.com", name="Ana")
+    orgs.add_member(control, tenants, org=acme, user=ana, role="owner", actor_id=None)
+    control.write(lambda c: c.execute("UPDATE users SET disabled_at = 'x' WHERE id = ?", (ana.id,)))
+
+    with pytest.raises(NotFound):
+        orgs.open_company(control, tenants, user_id=ana.id, slug="acme")

@@ -73,3 +73,15 @@ def test_wrong_usage_exits_with_2() -> None:
     with pytest.raises(SystemExit) as exit_info:
         main(["no-such-command"])
     assert exit_info.value.code == 2
+
+
+def test_serve_turns_off_the_access_log(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """The access log would write `/auth/google/callback?code=...` to the journal."""
+    import uvicorn
+
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kwargs: seen.update(kwargs))
+    monkeypatch.setenv("TAZKO_DATA_DIR", str(tmp_path))
+
+    assert main(["serve"]) == 0
+    assert seen["access_log"] is False

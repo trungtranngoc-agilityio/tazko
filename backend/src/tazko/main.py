@@ -19,7 +19,8 @@ from tazko.core.config import Settings, load_settings
 from tazko.core.secret import load_secret
 from tazko.db import Database
 from tazko.db.tenant import Tenants
-from tazko.modules import health
+from tazko.modules import auth, health
+from tazko.modules.auth.google import GoogleProvider
 
 
 @asynccontextmanager
@@ -52,6 +53,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
     app.state.settings = settings
+    app.state.identity_provider = GoogleProvider(
+        settings.google_client_id, settings.google_client_secret.get_secret_value()
+    )
     # TODO(M3-01): realtime hub.
 
     # CORS for exactly one origin, with cookies. Other origins get no CORS
@@ -67,8 +71,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     errors.install(app)
 
     app.include_router(health.router)
+    app.include_router(auth.router)  # /auth/... and /api/me
     # Module routers are included here as milestones land:
-    # app.include_router(auth.router, prefix="/auth")              M1-04
     # app.include_router(admin.router, prefix="/admin/api")        M1-06
     # app.include_router(realtime.router, prefix="/ws")            M3-01
     # app.include_router(public_api.router, prefix="/api/v1")      M6-01

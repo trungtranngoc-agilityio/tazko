@@ -62,7 +62,8 @@ def active_membership(conn: sqlite3.Connection, user_id: int, slug: str) -> Memb
     row = conn.execute(
         "SELECT o.id, o.slug, o.name, o.status, m.role FROM org_members m"
         " JOIN orgs o ON o.id = m.org_id"
-        " WHERE m.user_id = ? AND o.slug = ? AND o.status = 'active'",
+        " JOIN users u ON u.id = m.user_id"
+        " WHERE m.user_id = ? AND o.slug = ? AND o.status = 'active' AND u.disabled_at IS NULL",
         (user_id, slug),
     ).fetchone()
     return Membership(org=_org(row), role=row["role"]) if row else None

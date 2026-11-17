@@ -8,7 +8,12 @@ from pathlib import Path
 SRC = Path(__file__).resolve().parents[2] / "src" / "tazko"
 
 # Only these files may reach a company's database without the membership check.
-TENANT_ACCESS = {"db/tenant.py", "modules/orgs/service.py", "main.py"}
+TENANT_ACCESS = {
+    "db/tenant.py",
+    "modules/orgs/service.py",
+    "main.py",
+    "core/deps.py",  # CompanyDep, which calls open_company with the signed-in person
+}
 
 
 def test_company_files_are_reached_only_through_open_company() -> None:
