@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Reviews the branch diff against CLAUDE.md, the milestone file and the build plan. Use after CI is green and before opening a PR. Pass only the milestone id and the base branch (e.g. "M1, base release/0.1.0"), never a summary of what was built. Never edits files.
+description: Reviews the branch diff against CLAUDE.md, the milestone file and the build plan. Use after CI is green and before opening a PR. Pass only the milestone id and the base branch (e.g. "M1, base dev"), never a summary of what was built. Never edits files.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
