@@ -10,6 +10,7 @@ What people and API callers can notice, per release. Format: [Keep a Changelog](
 - Sign in with Google (Workspace or personal accounts) for people who already exist; others are refused and the refusal is audit-logged. Sessions last 30 days from last use; `POST /auth/signout` ends one. `GET /api/me` returns the signed-in person.
 - Sign in and Sign-in refused screens; signed-out visitors are sent to sign in, and the header has Sign out.
 - Company invites: an invited email can sign in and joins the company. An invite lasts 14 days and works once; expired and revoked invites are refused and the reason is audit-logged.
+- On an email domain someone has signed in with as a Google Workspace, a personal Google account cannot claim an address of that domain (D26).
 
 ### Changed
 - Every write (POST, PUT, PATCH, DELETE) from an origin other than `TAZKO_WEB_ORIGIN`, or with no Origin, answers 403 `FORBIDDEN`.

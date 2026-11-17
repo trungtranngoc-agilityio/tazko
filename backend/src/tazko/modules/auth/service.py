@@ -161,6 +161,8 @@ def _join_by_invite(
     except Invalid:
         return Refused("not_invited")
     if invites.has_usable(conn, address):
+        if users.needs_workspace(conn, account, address):
+            return Refused("workspace_required")
         return users.create_from_google(conn, account, ip=ip)
     return Refused(invites.why_unusable(conn, address) or "not_invited")
 

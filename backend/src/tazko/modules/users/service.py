@@ -23,7 +23,9 @@ __all__ = [
     "get",
     "get_or_create",
     "grant_super_admin",
+    "is_workspace_domain",
     "match_google_account",
+    "needs_workspace",
     "normalize_email",
 ]
 
@@ -95,8 +97,29 @@ class GoogleAccount:
 @dataclass(frozen=True)
 class Refused:
     reason: Literal[
-        "not_invited", "disabled", "account_mismatch", "invite_expired", "invite_revoked"
+        "not_invited",
+        "disabled",
+        "account_mismatch",
+        "invite_expired",
+        "invite_revoked",
+        "workspace_required",
     ]
+
+
+def is_workspace_domain(conn: sqlite3.Connection, domain: str) -> bool:
+    return repo.has_hd(conn, domain)
+
+
+def needs_workspace(conn: sqlite3.Connection, account: GoogleAccount, address: str) -> bool:
+    """A personal Google account (no `hd`) on an address of a known Workspace
+    domain may not claim that address (D26). A former employee can keep such
+    an account on their old work address, and Google still calls it verified.
+
+    A domain is known once someone signed in with it as their `hd`; we cannot
+    ask Google about a domain we have not seen. Checking for no `hd`, rather
+    than a different one, keeps Workspace alias domains working (their `hd` is
+    the main domain)."""
+    return account.hd is None and is_workspace_domain(conn, address.rpartition("@")[2])
 
 
 def match_google_account(
@@ -122,6 +145,8 @@ def match_google_account(
             return Refused("account_mismatch")
         if user.disabled:
             return Refused("disabled")
+        if needs_workspace(conn, account, address):
+            return Refused("workspace_required")
         repo.link_sub(conn, user.id, account.sub)
         audit.record(conn, "account.linked", actor_id=user.id, target=address, ip=ip)
     if user.disabled:

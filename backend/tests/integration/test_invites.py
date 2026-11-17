@@ -424,3 +424,65 @@ def test_refusal_lookup_uses_the_unused_invites_index(control: Database) -> None
         return [row[3] for row in conn.execute("EXPLAIN QUERY PLAN " + query, ("bo@example.com",))]
 
     assert any("invites_unused_by_email" in step for step in control.read(plan))
+
+
+# --- Workspace domains (D26) ------------------------------------------------------------
+
+CORP = "corp.example"
+
+
+def seen_workspace(client: TestClient, google: FakeGoogle, control: Database, acme: Org) -> None:
+    """Someone from corp.example signed in with its Workspace, so the domain is known."""
+    invites.create_invite(control, org=acme, email=f"ana@{CORP}", role="member", actor_id=None)
+    sign_in(client, google, sub="sub-ana", email=f"ana@{CORP}", hd=CORP)
+    client.cookies.clear()
+
+
+def test_personal_account_cannot_use_an_invite_for_a_workspace_address(
+    client: TestClient, google: FakeGoogle, control: Database, acme: Org
+) -> None:
+    seen_workspace(client, google, control, acme)
+    invites.create_invite(control, org=acme, email=f"bo@{CORP}", role="owner", actor_id=None)
+
+    response = sign_in(client, google, sub="sub-ghost", email=f"bo@{CORP}")
+
+    assert response.headers["location"] == f"{WEB}/signin/refused"
+    assert refusal_reasons(control) == ["workspace_required"]
+    assert member_role(control, acme, f"bo@{CORP}") is None
+
+
+def test_workspace_account_uses_the_invite_for_its_address(
+    client: TestClient, google: FakeGoogle, control: Database, acme: Org
+) -> None:
+    seen_workspace(client, google, control, acme)
+    invites.create_invite(control, org=acme, email=f"bo@{CORP}", role="member", actor_id=None)
+
+    sign_in(client, google, sub="sub-bo", email=f"bo@{CORP}", hd=CORP)
+
+    assert member_role(control, acme, f"bo@{CORP}") == "member"
+
+
+def test_domain_never_seen_with_a_workspace_accepts_a_personal_account(
+    client: TestClient, google: FakeGoogle, control: Database, acme: Org
+) -> None:
+    # A company whose email is not on Google signs in with personal Google accounts.
+    invites.create_invite(control, org=acme, email="bo@mail.example", role="member", actor_id=None)
+
+    sign_in(client, google, sub="sub-bo", email="bo@mail.example")
+
+    assert member_role(control, acme, "bo@mail.example") == "member"
+
+
+def test_workspace_lookup_uses_an_index(control: Database) -> None:
+    # Anyone can trigger this lookup by signing in, so it must not scan the people.
+    def plan(conn: sqlite3.Connection) -> list[str]:
+        statements: list[str] = []
+        conn.set_trace_callback(statements.append)
+        try:
+            users.is_workspace_domain(conn, CORP)
+        finally:
+            conn.set_trace_callback(None)
+        query = statements[-1].replace(f"'{CORP}'", "?")
+        return [row[3] for row in conn.execute("EXPLAIN QUERY PLAN " + query, (CORP,))]
+
+    assert any("users_by_hd" in step for step in control.read(plan))

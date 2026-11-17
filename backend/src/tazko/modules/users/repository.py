@@ -68,6 +68,13 @@ def link_sub(conn: sqlite3.Connection, user_id: int, sub: str) -> None:
     )
 
 
+def has_hd(conn: sqlite3.Connection, domain: str) -> bool:
+    """Someone signed in with this Workspace domain. Uses users_by_hd (migration 0002)."""
+    return (
+        conn.execute("SELECT 1 FROM users WHERE hd = ? LIMIT 1", (domain,)).fetchone() is not None
+    )
+
+
 def email_taken(conn: sqlite3.Connection, email: str, *, other_than: int) -> bool:
     row = conn.execute(
         "SELECT 1 FROM users WHERE email = ? AND id != ?", (email, other_than)

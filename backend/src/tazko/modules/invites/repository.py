@@ -92,7 +92,7 @@ def usable(conn: sqlite3.Connection, email: str, *, now: str) -> list[Invite]:
 def latest_unused(conn: sqlite3.Connection, email: str) -> Invite | None:
     """The newest invite for this email that was never used (expired or
     revoked ones included), to say why a sign-in was refused. Uses the
-    partial index invites_unused_by_email (migration 0002)."""
+    partial index invites_unused_by_email (migration 0002_signin_lookups)."""
     row = conn.execute(
         "SELECT i.id, i.org_id, i.email, i.role, i.created_at, i.expires_at,"
         " i.accepted_at, i.revoked_at"

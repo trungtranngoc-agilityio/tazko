@@ -114,6 +114,32 @@ def test_workspace_account_signs_in_and_keeps_its_domain(
     assert (stored["google_sub"], stored["hd"]) == ("sub-bo", "acme.example")
 
 
+def test_personal_account_cannot_take_a_workspace_persons_row(
+    client: TestClient, google: FakeGoogle, control: Database
+) -> None:
+    # given acme.example is a Workspace (Ana signed in with it) and Bo was made by
+    # `tazko admin`, so Bo's row has no Google account yet
+    users.get_or_create(control, "ana@acme.example")
+    sign_in(client, google, sub="sub-ana", email="ana@acme.example", hd="acme.example")
+    client.cookies.clear()
+    users.get_or_create(control, "bo@acme.example")
+
+    # when a personal Google account on Bo's address signs in
+    response = sign_in(client, google, sub="sub-ghost", email="bo@acme.example")
+
+    # then it is refused and Bo's row stays unlinked
+    assert response.headers["location"] == f"{WEB}/signin/refused"
+    assert [json.loads(r["detail"]) for r in audit(control, "signin.refused")] == [
+        {"reason": "workspace_required"}
+    ]
+    stored = control.read(
+        lambda c: c.execute(
+            "SELECT google_sub FROM users WHERE email = 'bo@acme.example'"
+        ).fetchone()
+    )
+    assert stored["google_sub"] is None
+
+
 def test_session_token_is_stored_only_as_a_hash(
     client: TestClient, google: FakeGoogle, control: Database
 ) -> None:
