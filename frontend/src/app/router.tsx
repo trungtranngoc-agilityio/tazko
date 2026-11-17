@@ -2,6 +2,7 @@ import { createBrowserRouter, type RouteObject } from "react-router";
 import { AdminHomePage } from "@/pages/admin/AdminHomePage";
 import { HomePage } from "@/pages/home/HomePage";
 import { NotFoundPage } from "@/pages/not-found/NotFoundPage";
+import { RefusedPage } from "@/pages/signin/RefusedPage";
 import { SignInPage } from "@/pages/signin/SignInPage";
 import { AdminLayout } from "./layouts/AdminLayout";
 import { AppLayout } from "./layouts/AppLayout";
@@ -11,6 +12,7 @@ import { AppLayout } from "./layouts/AppLayout";
 // the initial bundle under budget.
 export const routes: RouteObject[] = [
   { path: "/signin", element: <SignInPage /> },
+  { path: "/signin/refused", element: <RefusedPage /> },
   {
     path: "/",
     element: <AppLayout />,

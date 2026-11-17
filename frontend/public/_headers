@@ -1,6 +1,9 @@
-# Cloudflare Pages response headers. A full Content-Security-Policy
-# (connect-src limited to the API host) is added in M1-04.
+# Cloudflare Pages response headers.
+# CSP: scripts, styles and fonts from this site only; API calls only to the API
+# host (D13); avatars from Google; no framing. If the API host changes, change
+# connect-src too (deploy/frontend, M1-08).
 /*
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://lh3.googleusercontent.com; connect-src 'self' https://tazko-api-dev.hugepigstudio.com wss://tazko-api-dev.hugepigstudio.com; font-src 'self'; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'none'
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
   X-Frame-Options: DENY

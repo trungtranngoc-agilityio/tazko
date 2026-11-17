@@ -10,12 +10,14 @@
   --color-line: var(--tz-line);
   --color-accent: var(--tz-accent);
   --color-accent-soft: var(--tz-accent-soft);
+  --color-sunken: var(--tz-sunken);
   --color-danger: var(--tz-danger);
   --color-warning: var(--tz-warning);
   --color-success: var(--tz-success);
   --radius-sm: var(--tz-radius-sm);
   --radius-md: var(--tz-radius-md);
   --radius-lg: var(--tz-radius-lg);
+  --shadow-card: var(--tz-shadow);
   --font-sans: var(--tz-font-sans);
   --font-mono: var(--tz-font-mono);
 }
@@ -27,4 +29,30 @@ html,
 body {
   background: var(--tz-bg);
   color: var(--tz-ink);
+}
+
+/* Values the prototype uses that design/tokens.css (read-only, still a
+   placeholder) does not define yet. Same light/dark switch as tokens.css. */
+:root {
+  --tz-sunken: #eeeef6;
+  --tz-glow: #e9e9fc; /* prototype --accent-soft */
+  --tz-shadow: 0 8px 30px rgba(27, 27, 47, 0.12);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --tz-sunken: #151522;
+    --tz-glow: #25264a;
+    --tz-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  }
+}
+:root[data-theme="dark"] {
+  --tz-sunken: #151522;
+  --tz-glow: #25264a;
+  --tz-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* Sign-in screens: soft accent glow above the page background. */
+.auth-backdrop {
+  background:
+    radial-gradient(900px 420px at 50% -10%, var(--tz-glow), transparent 70%), var(--tz-bg);
 }
