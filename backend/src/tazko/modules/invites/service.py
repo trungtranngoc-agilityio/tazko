@@ -1,8 +1,9 @@
 """Company invites (M1-05). An invite lets one email into one company, is valid
 for 14 days, and works once. It is accepted when that email signs in.
 
-Who may make or revoke an invite (super admin or company owner) is checked by
-the M1-06 routes through the actor; today only services and tests call these.
+Making and revoking check the actor here, in the service (a super admin or an
+owner of the company; None is the command line), so the M1-06 routes cannot
+forget it.
 """
 
 from __future__ import annotations
@@ -58,6 +59,7 @@ def create_invite(
     now = clock.now()
 
     def run(conn: sqlite3.Connection) -> Invite:
+        orgs.require_manager(conn, org_id=org.id, actor_id=actor_id)
         if repo.pending(conn, org_id=org.id, email=address, now=clock.iso(now)):
             raise Conflict(
                 "email: already has a pending invite", code="INVITE_PENDING", field="email"
@@ -86,13 +88,22 @@ def create_invite(
 
 
 def revoke_invite(
-    control: Database, *, invite_id: int, actor_id: int | None, ip: str | None = None
+    control: Database,
+    *,
+    org: Org,
+    invite_id: int,
+    actor_id: int | None,
+    ip: str | None = None,
 ) -> None:
-    """Revoke an invite nobody used yet; anything else is NotFound."""
+    """Revoke an invite of this company that nobody used yet; anything else
+    (used, revoked, unknown, another company's) is NotFound."""
 
     def run(conn: sqlite3.Connection) -> None:
+        orgs.require_manager(conn, org_id=org.id, actor_id=actor_id)
         invite = repo.by_id(conn, invite_id)
-        if invite is None or not repo.mark_revoked(conn, invite_id, now=clock.now_iso()):
+        if invite is None or not repo.mark_revoked(
+            conn, invite_id, org_id=org.id, now=clock.now_iso()
+        ):
             raise NotFound()
         audit.record(
             conn,

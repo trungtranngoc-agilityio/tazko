@@ -114,10 +114,11 @@ def mark_accepted(conn: sqlite3.Connection, invite_id: int, *, user_id: int, now
     return cursor.rowcount == 1
 
 
-def mark_revoked(conn: sqlite3.Connection, invite_id: int, *, now: str) -> bool:
+def mark_revoked(conn: sqlite3.Connection, invite_id: int, *, org_id: int, now: str) -> bool:
+    """Revoke an unused invite of this company. False: none such."""
     cursor = conn.execute(
         "UPDATE invites SET revoked_at = ?"
-        " WHERE id = ? AND accepted_at IS NULL AND revoked_at IS NULL",
-        (now, invite_id),
+        " WHERE id = ? AND org_id = ? AND accepted_at IS NULL AND revoked_at IS NULL",
+        (now, invite_id, org_id),
     )
     return cursor.rowcount == 1

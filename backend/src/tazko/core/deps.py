@@ -50,7 +50,9 @@ def require_same_origin(request: Request, settings: SettingsDep) -> None:
 
     main.py installs this on the whole app, so every write route is checked
     without asking. Reads pass: CORS decides what another site may read.
-    TODO(M3-01): the WebSocket handshake calls this too (realtime module).
+    TODO(M3-01): the WebSocket handshake checks Origin too. App dependencies
+    also attach to WebSocket routes, so take an HTTPConnection then. Never
+    `app.mount` an API that writes: mounted apps skip app dependencies.
     TODO(M6-01): /api/v1 bearer-token calls carry no cookie and skip it.
     """
     if request.method in WRITE_METHODS and request.headers.get("origin") != settings.web_origin:

@@ -57,6 +57,20 @@ def insert_member_if_absent(
     return cursor.rowcount == 1
 
 
+def standing(
+    conn: sqlite3.Connection, *, org_id: int, user_id: int
+) -> tuple[bool, str | None] | None:
+    """(is super admin, role in this company or None) for an enabled person; None
+    for a missing or disabled one."""
+    row = conn.execute(
+        "SELECT u.is_super_admin, m.role FROM users u"
+        " LEFT JOIN org_members m ON m.user_id = u.id AND m.org_id = ?"
+        " WHERE u.id = ? AND u.disabled_at IS NULL",
+        (org_id, user_id),
+    ).fetchone()
+    return (bool(row["is_super_admin"]), row["role"]) if row else None
+
+
 def memberships(conn: sqlite3.Connection, user_id: int) -> list[Membership]:
     # Includes suspended companies (status is on Org) so the switcher can show them
     # as suspended; open_company still refuses them. TODO(M1-07): M1.md Q2.

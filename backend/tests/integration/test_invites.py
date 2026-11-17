@@ -4,6 +4,7 @@ sign-in (M1-05). Sign-in runs against the fake Google in oidc.py."""
 from __future__ import annotations
 
 import json
+import sqlite3
 from datetime import timedelta
 from typing import Any
 
@@ -13,12 +14,14 @@ from fastapi.testclient import TestClient
 
 from tazko.core import clock
 from tazko.core.deps import CompanyDep
-from tazko.core.errors import Conflict, Invalid, NotFound
+from tazko.core.errors import Conflict, Forbidden, Invalid, NotFound
 from tazko.db import Database
 from tazko.db.tenant import Tenants
+from tazko.modules.invites import repository as invite_repo
 from tazko.modules.invites import service as invites
 from tazko.modules.orgs import service as orgs
 from tazko.modules.orgs.service import Org
+from tazko.modules.users import service as users
 from tests.integration.oidc import WEB, FakeGoogle, audit, sign_in
 
 BO: dict[str, Any] = {"sub": "sub-bo", "email": "bo@example.com", "name": "Bo"}
@@ -92,12 +95,54 @@ def test_revoking_an_unknown_or_used_invite_is_not_found(control: Database, acme
     invite = invites.create_invite(
         control, org=acme, email="bo@example.com", role="member", actor_id=None
     )
-    invites.revoke_invite(control, invite_id=invite.id, actor_id=None)
+    invites.revoke_invite(control, org=acme, invite_id=invite.id, actor_id=None)
 
     with pytest.raises(NotFound):
-        invites.revoke_invite(control, invite_id=invite.id, actor_id=None)
+        invites.revoke_invite(control, org=acme, invite_id=invite.id, actor_id=None)
     with pytest.raises(NotFound):
-        invites.revoke_invite(control, invite_id=9999, actor_id=None)
+        invites.revoke_invite(control, org=acme, invite_id=9999, actor_id=None)
+
+
+def test_only_an_owner_or_super_admin_may_invite_or_revoke(
+    control: Database, tenants: Tenants, acme: Org
+) -> None:
+    owner = users.get_or_create(control, "owner@example.com")
+    member = users.get_or_create(control, "member@example.com")
+    stranger = users.get_or_create(control, "stranger@example.com")
+    admin, _ = users.grant_super_admin(control, "admin@example.com", actor_id=None)
+    orgs.add_member(control, tenants, org=acme, user=owner, role="owner", actor_id=None)
+    orgs.add_member(control, tenants, org=acme, user=member, role="member", actor_id=None)
+
+    made = invites.create_invite(
+        control, org=acme, email="bo@example.com", role="member", actor_id=owner.id
+    )
+    invites.create_invite(
+        control, org=acme, email="cy@example.com", role="owner", actor_id=admin.id
+    )
+    with pytest.raises(Forbidden):
+        invites.create_invite(
+            control, org=acme, email="di@example.com", role="member", actor_id=member.id
+        )
+    with pytest.raises(NotFound):  # another company's people learn nothing about it
+        invites.create_invite(
+            control, org=acme, email="di@example.com", role="owner", actor_id=stranger.id
+        )
+    with pytest.raises(Forbidden):
+        invites.revoke_invite(control, org=acme, invite_id=made.id, actor_id=member.id)
+    invites.revoke_invite(control, org=acme, invite_id=made.id, actor_id=owner.id)
+
+
+def test_an_invite_is_revoked_only_through_its_own_company(
+    control: Database, tenants: Tenants, acme: Org
+) -> None:
+    beta = orgs.create_company(control, tenants, slug="beta", name="Beta", actor_id=None)
+    invite = invites.create_invite(
+        control, org=acme, email="bo@example.com", role="member", actor_id=None
+    )
+
+    with pytest.raises(NotFound):
+        invites.revoke_invite(control, org=beta, invite_id=invite.id, actor_id=None)
+    assert control.read(lambda c: invite_repo.by_id(c, invite.id)).revoked_at is None  # type: ignore[union-attr]  # the invite exists
 
 
 # --- accepting at sign-in -----------------------------------------------------------
@@ -172,7 +217,7 @@ def test_revoked_invite_is_refused(
     invite = invites.create_invite(
         control, org=acme, email="bo@example.com", role="member", actor_id=None
     )
-    invites.revoke_invite(control, invite_id=invite.id, actor_id=None)
+    invites.revoke_invite(control, org=acme, invite_id=invite.id, actor_id=None)
 
     response = sign_in(client, google, **BO)
 
@@ -284,3 +329,41 @@ def test_unusable_cloudflare_address_falls_back_to_the_peer(
     sign_in(client, google, headers={"cf-connecting-ip": header}, **BO)
 
     assert [r["ip"] for r in audit(control, "signin.refused")] == ["testclient"]
+
+
+# --- the refusal lookup ---------------------------------------------------------------
+
+
+def test_refusal_lookup_finds_the_newest_unused_invite(control: Database, acme: Org) -> None:
+    first = invites.create_invite(
+        control, org=acme, email="bo@example.com", role="member", actor_id=None
+    )
+    invites.revoke_invite(control, org=acme, invite_id=first.id, actor_id=None)
+    second = invites.create_invite(
+        control, org=acme, email="bo@example.com", role="owner", actor_id=None
+    )
+    control.write(
+        lambda c: c.execute(
+            "UPDATE invites SET accepted_at = created_at WHERE id = ?", (second.id,)
+        )
+    )
+
+    found = control.read(lambda c: invite_repo.latest_unused(c, "bo@example.com"))
+
+    assert found is not None
+    assert found.id == first.id  # the accepted one is skipped, the revoked one counts
+
+
+def test_refusal_lookup_uses_the_unused_invites_index(control: Database) -> None:
+    # Anyone can trigger this lookup by signing in, so it must not scan the table.
+    def plan(conn: sqlite3.Connection) -> list[str]:
+        statements: list[str] = []
+        conn.set_trace_callback(statements.append)
+        try:
+            invite_repo.latest_unused(conn, "bo@example.com")
+        finally:
+            conn.set_trace_callback(None)
+        query = statements[-1].replace("'bo@example.com'", "?")
+        return [row[3] for row in conn.execute("EXPLAIN QUERY PLAN " + query, ("bo@example.com",))]
+
+    assert any("invites_unused_by_email" in step for step in control.read(plan))

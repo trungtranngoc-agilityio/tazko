@@ -18,7 +18,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from tazko.core.clock import now_iso
-from tazko.core.errors import AppError, Conflict, Invalid, NotFound
+from tazko.core.errors import AppError, Conflict, Forbidden, Invalid, NotFound
 from tazko.db import Database
 from tazko.db.tenant import Tenant, Tenants, valid_slug
 from tazko.modules.audit import service as audit
@@ -36,6 +36,7 @@ __all__ = [
     "create_company",
     "join",
     "open_company",
+    "require_manager",
 ]
 
 log = logging.getLogger(__name__)
@@ -104,6 +105,23 @@ def add_member(
     # A second file, so a second transaction. The copy is an upsert: running it
     # again after a crash between the two writes repairs it (open_company does).
     _copy_person(tenants.get(org.slug), user, role=role, actor_id=actor_id, event="member.added")
+
+
+def require_manager(conn: sqlite3.Connection, *, org_id: int, actor_id: int | None) -> None:
+    """The actor may manage this company's people: a super admin or an owner.
+    None is the command line or the system. A member gets Forbidden; anyone
+    else NotFound, so they learn nothing about the company."""
+    if actor_id is None:
+        return
+    found = repo.standing(conn, org_id=org_id, user_id=actor_id)
+    if found is None:
+        raise NotFound()
+    is_super_admin, role = found
+    if is_super_admin or role == "owner":
+        return
+    if role is None:
+        raise NotFound()
+    raise Forbidden("only an owner of the company can do this")
 
 
 def join(conn: sqlite3.Connection, *, org_id: int, user: User, role: str, ip: str | None) -> bool:
