@@ -4,7 +4,20 @@ export const en = {
   "admin.title": "Tazko admin",
   "admin.empty": "Admin console (M1-06)",
   "home.empty": "No projects yet.",
-  "signin.google": "Sign in with Google",
+  "signin.title": "Sign in to Tazko",
+  "signin.lead":
+    "Use the Google account your administrator invited. Workspace and personal accounts both work.",
+  "signin.google": "Continue with Google",
+  "signin.inviteOnly":
+    "Access is by invitation only. If you cannot sign in, ask your company owner to invite your email address.",
+  "signin.failed": "Sign-in did not finish. Try again.",
+  "signin.signOut": "Sign out",
+  "refused.title": "This account is not invited",
+  "refused.lead": "is not on the list for Tazko.",
+  "refused.leadUnknown": "This Google account is not on the list for Tazko.",
+  "refused.help":
+    "Ask the owner of your company to invite this exact email address, then sign in again. If you meant to use a different Google account, choose it below.",
+  "refused.another": "Try another Google account",
   notFound: "Page not found",
 
   // API error codes (D19). Show with errorText(error.code); add a key for each
