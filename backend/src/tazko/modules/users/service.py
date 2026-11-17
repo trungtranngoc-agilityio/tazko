@@ -120,8 +120,9 @@ def remember_workspace(conn: sqlite3.Connection, account: GoogleAccount) -> None
     domains = {account.hd.lower()}
     with contextlib.suppress(Invalid):  # an unusable address adds only the hd
         domains.add(normalize_email(account.email).rpartition("@")[2])
+    now = now_iso()
     for domain in domains:
-        repo.remember_workspace_domain(conn, domain, now=now_iso())
+        repo.remember_workspace_domain(conn, domain, now=now)
 
 
 def needs_workspace(conn: sqlite3.Connection, account: GoogleAccount, address: str) -> bool:
@@ -130,9 +131,9 @@ def needs_workspace(conn: sqlite3.Connection, account: GoogleAccount, address: s
     an account on their old work address, and Google still calls it verified.
 
     A domain is known once someone signed in from it with a Workspace account
-    (remember_workspace); we cannot ask Google about a domain we have not seen. Checking for no `hd`, rather
-    than a different one, keeps Workspace alias domains working (their `hd` is
-    the main domain)."""
+    (remember_workspace); we cannot ask Google about a domain we have not seen.
+    Checking for no `hd`, rather than a different one, keeps Workspace alias
+    domains working (their `hd` is the main domain)."""
     return account.hd is None and is_workspace_domain(conn, address.rpartition("@")[2])
 
 

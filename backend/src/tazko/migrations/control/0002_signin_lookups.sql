@@ -10,6 +10,7 @@ CREATE INDEX invites_unused_by_email ON invites (email, id) WHERE accepted_at IS
 -- one as hd). Kept apart from users, so removing people never forgets a domain.
 CREATE TABLE workspace_domains (
     domain        TEXT PRIMARY KEY
-                  CHECK (domain = lower(domain) AND length(domain) BETWEEN 1 AND 253),
+                  CHECK (domain = lower(domain) AND length(domain) BETWEEN 1 AND 253
+                         AND domain NOT LIKE '%@%' AND domain NOT GLOB '*[ .]'),
     first_seen_at TEXT NOT NULL
 ) STRICT, WITHOUT ROWID;
