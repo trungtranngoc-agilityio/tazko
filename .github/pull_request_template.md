@@ -63,7 +63,7 @@ New or changed tests:
 
 ## Checklist
 
-- [ ] Branch named by kind and purpose (`feature/`, `fix/`, `refactor/`, `hotfix/`, `docs/`, `release/`)
+- [ ] Branch named by kind and purpose (`feature/`, `fix/`, `refactor/`, `chore/`, `docs/` into `dev`; `release/`, `hotfix/` into `main`)
 - [ ] About 400 changed lines or fewer (lock files excluded), three concerns or fewer
 - [ ] docs/decisions.md has every new judgment call
 - [ ] CHANGELOG.md `[Unreleased]` updated if a person or the API sees a change
