@@ -71,6 +71,9 @@ def serve(settings: Settings) -> None:
         port=settings.port,
         log_config=None,  # keep the logging set up in main()
         server_header=False,
+        # The access log would record query strings, such as the OAuth code on
+        # /auth/google/callback. Requests that fail are logged by the app.
+        access_log=False,
     )
 
 
