@@ -45,6 +45,18 @@ def upsert_member(
     )
 
 
+def insert_member_if_absent(
+    conn: sqlite3.Connection, *, org_id: int, user_id: int, role: str, now: str
+) -> bool:
+    """Add the membership unless there is one; an existing role never changes."""
+    cursor = conn.execute(
+        "INSERT INTO org_members (org_id, user_id, role, created_at) VALUES (?, ?, ?, ?)"
+        " ON CONFLICT (org_id, user_id) DO NOTHING",
+        (org_id, user_id, role, now),
+    )
+    return cursor.rowcount == 1
+
+
 def memberships(conn: sqlite3.Connection, user_id: int) -> list[Membership]:
     # Includes suspended companies (status is on Org) so the switcher can show them
     # as suspended; open_company still refuses them. TODO(M1-07): M1.md Q2.
@@ -70,6 +82,10 @@ def active_membership(conn: sqlite3.Connection, user_id: int, slug: str) -> Memb
 
 
 # --- in the company's own file -------------------------------------------------
+
+
+def has_person(conn: sqlite3.Connection, user_id: int) -> bool:
+    return conn.execute("SELECT 1 FROM people WHERE id = ?", (user_id,)).fetchone() is not None
 
 
 def upsert_person(

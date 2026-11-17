@@ -19,7 +19,8 @@ Rules:
 | `users`         | People in control.db, super admin flag               | M1              |
 | `audit`         | Audit log rows, written in the caller's transaction  | M1              |
 | `orgs`          | Companies, memberships, `open_company` (tenant gate) | M1              |
-| `auth`          | Google OIDC + PKCE, sessions, Origin check, invites  | M1              |
+| `auth`          | Google OIDC + PKCE, sessions, sign-out               | M1              |
+| `invites`       | Company invites: 14 days, used once, at sign-in      | M1              |
 | `admin`         | Super admin console API (`/admin/api`)               | M1              |
 | `boards`        | Projects, boards, lists, permissions                 | M2              |
 | `cards`         | Cards, checklists, comments, search                  | M2              |

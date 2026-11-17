@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 
 from tazko.core.cookies import clear_cookie, set_cookie
-from tazko.core.deps import ControlDep, CurrentUser, SameOrigin, SecretDep, SettingsDep
+from tazko.core.deps import ClientIp, ControlDep, CurrentUser, SecretDep, SettingsDep
 from tazko.core.errors import NotFound
 from tazko.modules.auth import service
 from tazko.modules.auth.google import IdentityProvider, get_provider
@@ -43,6 +43,7 @@ def callback(
     control: ControlDep,
     secret: SecretDep,
     provider: ProviderDep,
+    ip: ClientIp,
     code: str | None = None,
     state: str | None = None,
     error: str | None = None,
@@ -61,7 +62,7 @@ def callback(
             redirect_uri=settings.api_url + CALLBACK_PATH,
             secret=secret,
             old_token=request.cookies.get(service.SESSION_COOKIE),
-            ip=request.client.host if request.client else None,
+            ip=ip,
             user_agent=request.headers.get("user-agent"),
         )
     except service.SignInFailed as err:
@@ -98,7 +99,7 @@ def refusal(request: Request, secret: SecretDep) -> RefusalOut:
     return RefusalOut(email=email)
 
 
-@router.post("/auth/signout", status_code=204, dependencies=[SameOrigin])
+@router.post("/auth/signout", status_code=204)  # Origin: checked app-wide
 def sign_out(request: Request, control: ControlDep) -> Response:
     service.sign_out(control, request.cookies.get(service.SESSION_COOKIE))
     response = Response(status_code=204)

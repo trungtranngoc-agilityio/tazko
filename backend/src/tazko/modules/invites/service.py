@@ -1,0 +1,152 @@
+"""Company invites (M1-05). An invite lets one email into one company, is valid
+for 14 days, and works once. It is accepted when that email signs in.
+
+Who may make or revoke an invite (super admin or company owner) is checked by
+the M1-06 routes through the actor; today only services and tests call these.
+"""
+
+from __future__ import annotations
+
+import sqlite3
+from datetime import datetime, timedelta
+from typing import Literal
+
+from tazko.core import clock
+from tazko.core.errors import Conflict, Invalid, NotFound
+from tazko.db import Database
+from tazko.modules.audit import service as audit
+from tazko.modules.invites import repository as repo
+from tazko.modules.invites.repository import Invite
+from tazko.modules.orgs import service as orgs
+from tazko.modules.orgs.service import Org
+from tazko.modules.users.service import User, normalize_email
+
+__all__ = [
+    "INVITE_DAYS",
+    "Invite",
+    "accept_usable",
+    "create_invite",
+    "has_usable",
+    "parse_time",
+    "revoke_invite",
+    "why_unusable",
+]
+
+INVITE_DAYS = 14
+ROLES = ("owner", "member")
+Role = Literal["owner", "member"]
+
+
+def parse_time(value: str) -> datetime:
+    return datetime.fromisoformat(value)
+
+
+def create_invite(
+    control: Database,
+    *,
+    org: Org,
+    email: str,
+    role: Role,
+    actor_id: int | None,
+    ip: str | None = None,
+) -> Invite:
+    """One pending invite per email and company: a second one is a conflict
+    (revoke the first to change its role)."""
+    address = normalize_email(email)
+    if role not in ROLES:
+        raise Invalid("role: owner or member", field="role")
+    now = clock.now()
+
+    def run(conn: sqlite3.Connection) -> Invite:
+        if repo.pending(conn, org_id=org.id, email=address, now=clock.iso(now)):
+            raise Conflict(
+                "email: already has a pending invite", code="INVITE_PENDING", field="email"
+            )
+        invite = repo.insert(
+            conn,
+            org_id=org.id,
+            email=address,
+            role=role,
+            created_by=actor_id,
+            now=clock.iso(now),
+            expires_at=clock.iso(now + timedelta(days=INVITE_DAYS)),
+        )
+        audit.record(
+            conn,
+            "invite.created",
+            actor_id=actor_id,
+            org_id=org.id,
+            target=address,
+            detail={"role": role},
+            ip=ip,
+        )
+        return invite
+
+    return control.write(run)
+
+
+def revoke_invite(
+    control: Database, *, invite_id: int, actor_id: int | None, ip: str | None = None
+) -> None:
+    """Revoke an invite nobody used yet; anything else is NotFound."""
+
+    def run(conn: sqlite3.Connection) -> None:
+        invite = repo.by_id(conn, invite_id)
+        if invite is None or not repo.mark_revoked(conn, invite_id, now=clock.now_iso()):
+            raise NotFound()
+        audit.record(
+            conn,
+            "invite.revoked",
+            actor_id=actor_id,
+            org_id=invite.org_id,
+            target=invite.email,
+            ip=ip,
+        )
+
+    control.write(run)
+
+
+# --- at sign-in, inside the sign-in transaction ---------------------------------------
+
+
+def has_usable(conn: sqlite3.Connection, email: str) -> bool:
+    return bool(repo.usable(conn, email, now=clock.now_iso()))
+
+
+def why_unusable(
+    conn: sqlite3.Connection, email: str
+) -> Literal["invite_expired", "invite_revoked"] | None:
+    """Why the newest unused invite for this email cannot be used, for the
+    refusal audit row. None: there is none, or it is for a company that is
+    not active (that is the company's state, not the invite's)."""
+    invite = repo.latest_unused(conn, email)
+    if invite is None:
+        return None
+    if invite.revoked_at:
+        return "invite_revoked"
+    if invite.expires_at <= clock.now_iso():
+        return "invite_expired"
+    return None
+
+
+def accept_usable(conn: sqlite3.Connection, user: User, *, ip: str | None) -> list[Invite]:
+    """Use every usable invite for this person's email: each one makes them a
+    member of its company (an existing membership keeps its role) and is marked
+    used, so it never works again. Returns the invites used."""
+    now = clock.now_iso()
+    used = []
+    for invite in repo.usable(conn, user.email, now=now):
+        if not repo.mark_accepted(conn, invite.id, user_id=user.id, now=now):
+            continue
+        orgs.join(conn, org_id=invite.org_id, user=user, role=invite.role, ip=ip)
+        audit.record(
+            conn,
+            "invite.accepted",
+            actor_id=user.id,
+            org_id=invite.org_id,
+            target=user.email,
+            detail={"role": invite.role},
+            ip=ip,
+        )
+        used.append(invite)
+    return used

@@ -132,3 +132,15 @@ def test_email_is_off_without_smtp_host() -> None:
 def test_secrets_are_hidden_in_repr() -> None:
     settings = load_settings(env="development", google_client_secret="hunter2-hunter2")
     assert "hunter2" not in repr(settings)
+
+
+@pytest.mark.parametrize("host", ["0.0.0.0", "192.168.86.49", "::"])  # noqa: S104  # refused on purpose
+def test_host_must_be_loopback(host: str) -> None:
+    # The server trusts CF-Connecting-IP only because nothing but the tunnel reaches it.
+    with pytest.raises(ConfigError, match="TAZKO_HOST"):
+        load_settings(host=host)
+
+
+@pytest.mark.parametrize("host", ["127.0.0.1", "127.0.0.2", "::1"])
+def test_loopback_hosts_are_accepted(host: str) -> None:
+    assert str(load_settings(host=host).host) == host

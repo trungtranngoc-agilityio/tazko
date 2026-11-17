@@ -19,6 +19,7 @@ __all__ = [
     "GoogleAccount",
     "Refused",
     "User",
+    "create_from_google",
     "get",
     "get_or_create",
     "grant_super_admin",
@@ -93,7 +94,9 @@ class GoogleAccount:
 
 @dataclass(frozen=True)
 class Refused:
-    reason: Literal["not_invited", "disabled", "account_mismatch"]
+    reason: Literal[
+        "not_invited", "disabled", "account_mismatch", "invite_expired", "invite_revoked"
+    ]
 
 
 def match_google_account(
@@ -132,6 +135,28 @@ def match_google_account(
         hd=account.hd,
         now=now_iso(),
     )
+    fresh = repo.by_id(conn, user.id)
+    if fresh is None:
+        raise RuntimeError("row vanished inside its own transaction")
+    return fresh
+
+
+def create_from_google(conn: sqlite3.Connection, account: GoogleAccount, *, ip: str | None) -> User:
+    """A new person for a verified Google account, inside the caller's
+    transaction. Only sign-in with a usable invite calls this."""
+    address = normalize_email(account.email)
+    user = repo.insert(conn, email=address, name=account.name, now=now_iso())
+    repo.link_sub(conn, user.id, account.sub)
+    repo.update_profile(
+        conn,
+        user.id,
+        email=address,
+        name=account.name,
+        avatar_url=account.avatar_url,
+        hd=account.hd,
+        now=now_iso(),
+    )
+    audit.record(conn, "account.created", actor_id=user.id, target=address, ip=ip)
     fresh = repo.by_id(conn, user.id)
     if fresh is None:
         raise RuntimeError("row vanished inside its own transaction")

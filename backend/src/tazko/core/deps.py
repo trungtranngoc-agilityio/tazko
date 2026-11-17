@@ -4,12 +4,11 @@ through these annotations instead of reaching into `request.app.state`.
 Database work blocks, so routes that use ControlDep, CurrentUser or
 CompanyDep are plain `def` routes (FastAPI runs them in its thread pool),
 never `async def`.
-
-TODO(M1-05): apply SameOrigin to every write route and the WebSocket handshake.
 """
 
 from __future__ import annotations
 
+import ipaddress
 from typing import Annotated
 
 from fastapi import Depends, Request, Response
@@ -41,15 +40,37 @@ def get_secret(request: Request) -> bytes:
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 
+WRITE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+
 def require_same_origin(request: Request, settings: SettingsDep) -> None:
-    """403 unless the request's Origin is exactly TAZKO_WEB_ORIGIN. A missing
-    Origin is refused too. SameSite=Lax still lets other sites send top-level
-    POSTs, and lets sibling hosts under the same site send cookies."""
-    if request.headers.get("origin") != settings.web_origin:
+    """403 for a write whose Origin is not exactly TAZKO_WEB_ORIGIN, including
+    a write with no Origin. SameSite=Lax still lets other sites send top-level
+    POSTs, and lets sibling hosts under the same site send cookies.
+
+    main.py installs this on the whole app, so every write route is checked
+    without asking. Reads pass: CORS decides what another site may read.
+    TODO(M3-01): the WebSocket handshake calls this too (realtime module).
+    TODO(M6-01): /api/v1 bearer-token calls carry no cookie and skip it.
+    """
+    if request.method in WRITE_METHODS and request.headers.get("origin") != settings.web_origin:
         raise Forbidden("request from another origin")
 
 
-SameOrigin = Depends(require_same_origin)
+def get_client_ip(request: Request) -> str | None:
+    """The visitor's address. Behind the tunnel every request comes from
+    loopback, so the address Cloudflare reports in CF-Connecting-IP is used.
+    That header can be trusted only because nothing else reaches the server:
+    TAZKO_HOST must be a loopback address (core/config.py). A header that is
+    not exactly one IP address is ignored."""
+    reported = request.headers.get("cf-connecting-ip", "").strip()
+    try:
+        return str(ipaddress.ip_address(reported))
+    except ValueError:
+        return request.client.host if request.client else None
+
+
+ClientIp = Annotated[str | None, Depends(get_client_ip)]
 ControlDep = Annotated[Database, Depends(get_control)]
 SecretDep = Annotated[bytes, Depends(get_secret)]
 

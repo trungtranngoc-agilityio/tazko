@@ -6,8 +6,11 @@
    (with the verifier), verifies the ID token's signature against Google's
    keys plus audience, issuer, expiry and nonce, and requires a verified email.
 3. The account is matched to a person (users.service.match_google_account).
-   No person, or a disabled one: refused and audit-logged. Otherwise a new
-   random session token is issued and any session the browser had is deleted.
+   No person but a usable invite for the email: the person is created. No
+   person and no usable invite, or a disabled person: refused and audit-logged.
+4. Every usable invite for the person's email is accepted (invites.service),
+   then a new random session token is issued and any session the browser had
+   is deleted. All of it is one control.db transaction.
 
 Sessions last 30 days from last use. The token is never stored, only its SHA-256.
 """
@@ -24,11 +27,13 @@ from datetime import timedelta
 import jwt
 
 from tazko.core import clock
+from tazko.core.errors import Invalid
 from tazko.core.signing import b64url, sign, unsign
 from tazko.db import Database
 from tazko.modules.audit import service as audit
 from tazko.modules.auth import repository as repo
 from tazko.modules.auth.google import ISSUERS, IdentityProvider, ProviderError
+from tazko.modules.invites import service as invites
 from tazko.modules.users import service as users
 from tazko.modules.users.service import GoogleAccount, Refused, User
 
@@ -127,6 +132,8 @@ def finish_sign_in(
 
     def run(conn: sqlite3.Connection) -> SignedIn | Refusal:
         match = users.match_google_account(conn, account, ip=ip)
+        if isinstance(match, Refused) and match.reason == "not_invited":
+            match = _join_by_invite(conn, account, ip=ip)
         if isinstance(match, Refused):
             audit.record(
                 conn,
@@ -137,10 +144,25 @@ def finish_sign_in(
                 ip=ip,
             )
             return Refusal(account.email, match.reason)
+        invites.accept_usable(conn, match, ip=ip)
         token = _issue_session(conn, match, old_token=old_token, ip=ip, user_agent=user_agent)
         return SignedIn(match, token)
 
     return control.write(run)
+
+
+def _join_by_invite(
+    conn: sqlite3.Connection, account: GoogleAccount, *, ip: str | None
+) -> User | Refused:
+    """No person has this account: a usable invite for its email creates one.
+    Otherwise say why (an expired or revoked invite, or none)."""
+    try:
+        address = users.normalize_email(account.email)
+    except Invalid:
+        return Refused("not_invited")
+    if invites.has_usable(conn, address):
+        return users.create_from_google(conn, account, ip=ip)
+    return Refused(invites.why_unusable(conn, address) or "not_invited")
 
 
 def _issue_session(
