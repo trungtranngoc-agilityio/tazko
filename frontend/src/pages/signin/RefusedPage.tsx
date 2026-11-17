@@ -8,7 +8,14 @@ export function RefusedPage() {
   const [email, setEmail] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
-    refusedEmail().then(setEmail, () => setEmail(null));
+    let live = true;
+    refusedEmail().then(
+      (value) => live && setEmail(value),
+      () => live && setEmail(null),
+    );
+    return () => {
+      live = false;
+    };
   }, []);
 
   return (

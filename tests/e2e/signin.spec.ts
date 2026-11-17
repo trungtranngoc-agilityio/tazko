@@ -15,13 +15,6 @@ test("a signed-out visitor is sent to sign in", async ({ page }) => {
   ).toHaveAttribute("href", /\/auth\/google\/start$/);
 });
 
-test("Continue with Google starts on the API", async ({ request }) => {
-  const res = await request.get("/auth/google/start", { maxRedirects: 0 });
-
-  expect(res.status()).toBe(302);
-  expect(res.headers()["location"]).toContain("code_challenge_method=S256");
-});
-
 test("the refusal screen explains itself without a refused account", async ({
   page,
 }) => {

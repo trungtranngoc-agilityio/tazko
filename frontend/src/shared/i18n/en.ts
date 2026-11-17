@@ -12,6 +12,8 @@ export const en = {
     "Access is by invitation only. If you cannot sign in, ask your company owner to invite your email address.",
   "signin.failed": "Sign-in did not finish. Try again.",
   "signin.signOut": "Sign out",
+  "session.loading": "Loading…",
+  "session.retry": "Try again",
   "refused.title": "This account is not invited",
   "refused.lead": "is not on the list for Tazko.",
   "refused.leadUnknown": "This Google account is not on the list for Tazko.",
