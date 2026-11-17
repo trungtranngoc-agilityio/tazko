@@ -473,16 +473,82 @@ def test_domain_never_seen_with_a_workspace_accepts_a_personal_account(
     assert member_role(control, acme, "bo@mail.example") == "member"
 
 
-def test_workspace_lookup_uses_an_index(control: Database) -> None:
-    # Anyone can trigger this lookup by signing in, so it must not scan the people.
-    def plan(conn: sqlite3.Connection) -> list[str]:
-        statements: list[str] = []
-        conn.set_trace_callback(statements.append)
-        try:
-            users.is_workspace_domain(conn, CORP)
-        finally:
-            conn.set_trace_callback(None)
-        query = statements[-1].replace(f"'{CORP}'", "?")
-        return [row[3] for row in conn.execute("EXPLAIN QUERY PLAN " + query, (CORP,))]
+def test_alias_domain_of_a_workspace_is_protected_too(
+    client: TestClient, google: FakeGoogle, control: Database, acme: Org
+) -> None:
+    # Ana's address is on the Workspace's second domain; Google reports the main one.
+    invites.create_invite(
+        control, org=acme, email="ana@corp.example.io", role="member", actor_id=None
+    )
+    sign_in(client, google, sub="sub-ana", email="ana@corp.example.io", hd=CORP)
+    client.cookies.clear()
+    invites.create_invite(
+        control, org=acme, email="bo@corp.example.io", role="owner", actor_id=None
+    )
 
-    assert any("users_by_hd" in step for step in control.read(plan))
+    sign_in(client, google, sub="sub-ghost", email="bo@corp.example.io")
+
+    assert refusal_reasons(control) == ["workspace_required"]
+
+
+def test_workspace_domain_is_matched_without_case(
+    client: TestClient, google: FakeGoogle, control: Database, acme: Org
+) -> None:
+    invites.create_invite(control, org=acme, email=f"ana@{CORP}", role="member", actor_id=None)
+    sign_in(client, google, sub="sub-ana", email=f"ana@{CORP}", hd="Corp.Example")
+    client.cookies.clear()
+    invites.create_invite(control, org=acme, email=f"bo@{CORP}", role="owner", actor_id=None)
+
+    sign_in(client, google, sub="sub-ghost", email=f"bo@{CORP}")
+
+    assert refusal_reasons(control) == ["workspace_required"]
+
+
+def test_workspace_stays_known_after_its_people_are_gone(
+    client: TestClient, google: FakeGoogle, control: Database, acme: Org
+) -> None:
+    seen_workspace(client, google, control, acme)
+    control.write(lambda c: c.execute("DELETE FROM users"))
+    invites.create_invite(control, org=acme, email=f"bo@{CORP}", role="owner", actor_id=None)
+
+    sign_in(client, google, sub="sub-ghost", email=f"bo@{CORP}")
+
+    assert refusal_reasons(control) == ["workspace_required"]
+
+
+def test_personal_account_cannot_move_onto_a_workspace_address(
+    client: TestClient, google: FakeGoogle, control: Database, tenants: Tenants, acme: Org
+) -> None:
+    # given Bo signs in with a personal account on another address, and corp is a Workspace
+    invites.create_invite(control, org=acme, email="bo@mail.example", role="member", actor_id=None)
+    sign_in(client, google, sub="sub-bo", email="bo@mail.example")
+    client.cookies.clear()
+    seen_workspace(client, google, control, acme)
+    beta = orgs.create_company(control, tenants, slug="beta", name="Beta", actor_id=None)
+    invites.create_invite(control, org=beta, email=f"bo@{CORP}", role="owner", actor_id=None)
+
+    # when the personal account's email changes to the Workspace address at Google
+    sign_in(client, google, sub="sub-bo", email=f"bo@{CORP}")
+
+    # then the stored address stays, and the Workspace address's invite is not used
+    assert client.get("/api/me").json()["email"] == "bo@mail.example"
+    assert member_role(control, beta, f"bo@{CORP}") is None
+
+
+def test_personal_account_linked_before_the_domain_was_known_uses_no_new_invites(
+    client: TestClient, google: FakeGoogle, control: Database, tenants: Tenants, acme: Org
+) -> None:
+    # given Bo linked a personal account on bo@corp before corp was known as a Workspace
+    invites.create_invite(control, org=acme, email=f"bo@{CORP}", role="member", actor_id=None)
+    sign_in(client, google, sub="sub-bo", email=f"bo@{CORP}")
+    client.cookies.clear()
+    seen_workspace(client, google, control, acme)
+    beta = orgs.create_company(control, tenants, slug="beta", name="Beta", actor_id=None)
+    invites.create_invite(control, org=beta, email=f"bo@{CORP}", role="owner", actor_id=None)
+
+    # when Bo signs in again
+    response = sign_in(client, google, sub="sub-bo", email=f"bo@{CORP}")
+
+    # then Bo still signs in (linked by sub) but the new invite is not used
+    assert response.headers["location"] == f"{WEB}/"
+    assert member_role(control, beta, f"bo@{CORP}") is None

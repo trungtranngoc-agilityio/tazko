@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 import re
 import sqlite3
@@ -27,6 +28,7 @@ __all__ = [
     "match_google_account",
     "needs_workspace",
     "normalize_email",
+    "remember_workspace",
 ]
 
 log = logging.getLogger(__name__)
@@ -107,7 +109,19 @@ class Refused:
 
 
 def is_workspace_domain(conn: sqlite3.Connection, domain: str) -> bool:
-    return repo.has_hd(conn, domain)
+    return repo.is_workspace_domain(conn, domain.lower())
+
+
+def remember_workspace(conn: sqlite3.Connection, account: GoogleAccount) -> None:
+    """After a sign-in with a Workspace account: its hd and its address's own
+    domain (an alias domain reports the main one as hd) are Workspace domains."""
+    if not account.hd:
+        return
+    domains = {account.hd.lower()}
+    with contextlib.suppress(Invalid):  # an unusable address adds only the hd
+        domains.add(normalize_email(account.email).rpartition("@")[2])
+    for domain in domains:
+        repo.remember_workspace_domain(conn, domain, now=now_iso())
 
 
 def needs_workspace(conn: sqlite3.Connection, account: GoogleAccount, address: str) -> bool:
@@ -115,8 +129,8 @@ def needs_workspace(conn: sqlite3.Connection, account: GoogleAccount, address: s
     domain may not claim that address (D26). A former employee can keep such
     an account on their old work address, and Google still calls it verified.
 
-    A domain is known once someone signed in with it as their `hd`; we cannot
-    ask Google about a domain we have not seen. Checking for no `hd`, rather
+    A domain is known once someone signed in from it with a Workspace account
+    (remember_workspace); we cannot ask Google about a domain we have not seen. Checking for no `hd`, rather
     than a different one, keeps Workspace alias domains working (their `hd` is
     the main domain)."""
     return account.hd is None and is_workspace_domain(conn, address.rpartition("@")[2])
@@ -154,7 +168,7 @@ def match_google_account(
     repo.update_profile(
         conn,
         user.id,
-        email=_new_email(conn, user, account.email),
+        email=_new_email(conn, user, account),
         name=account.name or user.name,
         avatar_url=account.avatar_url,
         hd=account.hd,
@@ -188,14 +202,22 @@ def create_from_google(conn: sqlite3.Connection, account: GoogleAccount, *, ip: 
     return fresh
 
 
-def _new_email(conn: sqlite3.Connection, user: User, claimed: str) -> str:
-    """Follow an email change at Google, unless the new address is unusable
-    or another person already has it (then keep the stored one)."""
+def _new_email(conn: sqlite3.Connection, user: User, account: GoogleAccount) -> str:
+    """Follow an email change at Google, unless the new address is unusable,
+    another person already has it, or it is a Workspace address and this is a
+    personal account (D26); then keep the stored one."""
     try:
-        address = normalize_email(claimed)
+        address = normalize_email(account.email)
     except Invalid:
         return user.email
-    if address != user.email and repo.email_taken(conn, address, other_than=user.id):
+    if address == user.email:
+        return address
+    if repo.email_taken(conn, address, other_than=user.id):
         log.warning("person %s: new email belongs to another person; kept the old one", user.id)
+        return user.email
+    if needs_workspace(conn, account, address):
+        log.warning(
+            "person %s: personal account moved to a Workspace address; kept the old one", user.id
+        )
         return user.email
     return address

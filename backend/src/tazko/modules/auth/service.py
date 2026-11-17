@@ -144,7 +144,11 @@ def finish_sign_in(
                 ip=ip,
             )
             return Refusal(account.email, match.reason)
-        invites.accept_usable(conn, match, ip=ip)
+        users.remember_workspace(conn, account)
+        # A personal account on a Workspace address uses no invites (D26), even
+        # one linked by sub before the domain was known.
+        if not users.needs_workspace(conn, account, match.email):
+            invites.accept_usable(conn, match, ip=ip)
         token = _issue_session(conn, match, old_token=old_token, ip=ip, user_agent=user_agent)
         return SignedIn(match, token)
 
@@ -224,7 +228,7 @@ def verify_id_token(
         email=email,
         name=str(claims.get("name") or "")[:200],
         avatar_url=picture if isinstance(picture, str) and picture.startswith("https://") else None,
-        hd=hd[:253] if isinstance(hd, str) else None,
+        hd=hd[:253].lower() if isinstance(hd, str) and hd else None,
     )
 
 
