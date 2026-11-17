@@ -9,7 +9,7 @@ forget it.
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Literal
 
 from tazko.core import clock
@@ -28,7 +28,6 @@ __all__ = [
     "accept_usable",
     "create_invite",
     "has_usable",
-    "parse_time",
     "revoke_invite",
     "why_unusable",
 ]
@@ -36,10 +35,6 @@ __all__ = [
 INVITE_DAYS = 14
 ROLES = ("owner", "member")
 Role = Literal["owner", "member"]
-
-
-def parse_time(value: str) -> datetime:
-    return datetime.fromisoformat(value)
 
 
 def create_invite(
@@ -60,6 +55,12 @@ def create_invite(
 
     def run(conn: sqlite3.Connection) -> Invite:
         orgs.require_manager(conn, org_id=org.id, actor_id=actor_id)
+        if not orgs.is_active(conn, org.id):
+            raise Conflict("company: not active", code="COMPANY_NOT_ACTIVE")
+        if orgs.has_member_email(conn, org_id=org.id, email=address):
+            raise Conflict(
+                "email: already a member of the company", code="ALREADY_MEMBER", field="email"
+            )
         if repo.pending(conn, org_id=org.id, email=address, now=clock.iso(now)):
             raise Conflict(
                 "email: already has a pending invite", code="INVITE_PENDING", field="email"
@@ -95,16 +96,19 @@ def revoke_invite(
     actor_id: int | None,
     ip: str | None = None,
 ) -> None:
-    """Revoke an invite of this company that nobody used yet; anything else
-    (used, revoked, unknown, another company's) is NotFound."""
+    """Revoke an invite of this company that nobody used yet. Unknown or
+    another company's: NotFound. Used or already revoked: Conflict."""
 
     def run(conn: sqlite3.Connection) -> None:
         orgs.require_manager(conn, org_id=org.id, actor_id=actor_id)
         invite = repo.by_id(conn, invite_id)
-        if invite is None or not repo.mark_revoked(
-            conn, invite_id, org_id=org.id, now=clock.now_iso()
-        ):
+        if invite is None or invite.org_id != org.id:
             raise NotFound()
+        if invite.accepted_at:
+            raise Conflict("invite: already used", code="INVITE_USED")
+        if invite.revoked_at:
+            raise Conflict("invite: already revoked", code="INVITE_REVOKED")
+        repo.mark_revoked(conn, invite_id, org_id=org.id, now=clock.now_iso())
         audit.record(
             conn,
             "invite.revoked",

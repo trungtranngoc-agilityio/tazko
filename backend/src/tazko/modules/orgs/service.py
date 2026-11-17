@@ -34,6 +34,8 @@ __all__ = [
     "add_member",
     "companies_of",
     "create_company",
+    "has_member_email",
+    "is_active",
     "join",
     "open_company",
     "require_manager",
@@ -107,6 +109,14 @@ def add_member(
     _copy_person(tenants.get(org.slug), user, role=role, actor_id=actor_id, event="member.added")
 
 
+def is_active(conn: sqlite3.Connection, org_id: int) -> bool:
+    return repo.is_active(conn, org_id)
+
+
+def has_member_email(conn: sqlite3.Connection, *, org_id: int, email: str) -> bool:
+    return repo.has_member_email(conn, org_id=org_id, email=email)
+
+
 def require_manager(conn: sqlite3.Connection, *, org_id: int, actor_id: int | None) -> None:
     """The actor may manage this company's people: a super admin or an owner.
     None is the command line or the system. A member gets Forbidden; anyone
@@ -145,9 +155,19 @@ def join(conn: sqlite3.Connection, *, org_id: int, user: User, role: str, ip: st
 
 
 def _copy_person(
-    tenant: Tenant, user: User, *, role: str, actor_id: int | None, event: str
+    tenant: Tenant,
+    user: User,
+    *,
+    role: str,
+    actor_id: int | None,
+    event: str,
+    only_if_missing: bool = False,
 ) -> None:
     def run(conn: sqlite3.Connection) -> None:
+        # Two first requests can both see the person missing; the writer
+        # thread runs them one after the other, so check again here.
+        if only_if_missing and repo.has_person(conn, user.id):
+            return
         now = now_iso()
         repo.upsert_person(
             conn,
@@ -186,9 +206,17 @@ def open_company(control: Database, tenants: Tenants, *, user_id: int, slug: str
         raise AppError() from None
     if not tenant.db.read(lambda c: repo.has_person(c, user_id)):
         # Joined through an invite (control.db only) or a crash between the two
-        # writes of add_member: copy the person in now.
+        # writes of add_member: copy the person in now. The one case where a GET
+        # writes (D25): it only repairs the copy, never changes what they see.
         user = users.get(control, user_id)
         if user is None:
             raise NotFound()
-        _copy_person(tenant, user, role=membership.role, actor_id=user_id, event="member.joined")
+        _copy_person(
+            tenant,
+            user,
+            role=membership.role,
+            actor_id=user_id,
+            event="member.joined",
+            only_if_missing=True,
+        )
     return Company(org=membership.org, role=membership.role, tenant=tenant)

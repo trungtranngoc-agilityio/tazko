@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
-from datetime import timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 import pytest
@@ -53,6 +53,14 @@ def user_count(control: Database) -> int:
     return int(control.read(lambda c: c.execute("SELECT count(*) FROM users").fetchone()[0]))
 
 
+def acme_events(tenants: Tenants, kind: str) -> int:
+    return int(
+        tenants.get("acme").db.read(
+            lambda c: c.execute("SELECT count(*) FROM events WHERE type = ?", (kind,)).fetchone()[0]
+        )
+    )
+
+
 def refusal_reasons(control: Database) -> list[str]:
     return [json.loads(row["detail"])["reason"] for row in audit(control, "signin.refused")]
 
@@ -66,8 +74,8 @@ def test_invite_expires_14_days_after_it_is_made(control: Database, acme: Org) -
     )
 
     assert invite.email == "bo@example.com"
-    made = invites.parse_time(invite.created_at)
-    assert invites.parse_time(invite.expires_at) - made == timedelta(days=14)
+    made = datetime.fromisoformat(invite.created_at)
+    assert datetime.fromisoformat(invite.expires_at) - made == timedelta(days=14)
     assert [(r["target"], r["org_id"]) for r in audit(control, "invite.created")] == [
         ("bo@example.com", acme.id)
     ]
@@ -91,16 +99,55 @@ def test_bad_invite_is_refused(control: Database, acme: Org, email: str, role: s
         invites.create_invite(control, org=acme, email=email, role=role, actor_id=None)  # type: ignore[arg-type]  # a bad role on purpose
 
 
-def test_revoking_an_unknown_or_used_invite_is_not_found(control: Database, acme: Org) -> None:
+def test_revoking_an_unknown_invite_is_not_found(control: Database, acme: Org) -> None:
+    with pytest.raises(NotFound):
+        invites.revoke_invite(control, org=acme, invite_id=9999, actor_id=None)
+
+
+def test_revoking_twice_is_a_conflict(control: Database, acme: Org) -> None:
     invite = invites.create_invite(
         control, org=acme, email="bo@example.com", role="member", actor_id=None
     )
     invites.revoke_invite(control, org=acme, invite_id=invite.id, actor_id=None)
 
-    with pytest.raises(NotFound):
+    with pytest.raises(Conflict) as err:
         invites.revoke_invite(control, org=acme, invite_id=invite.id, actor_id=None)
-    with pytest.raises(NotFound):
-        invites.revoke_invite(control, org=acme, invite_id=9999, actor_id=None)
+    assert err.value.code == "INVITE_REVOKED"
+
+
+def test_revoking_a_used_invite_is_a_conflict(
+    client: TestClient, google: FakeGoogle, control: Database, acme: Org
+) -> None:
+    invite = invites.create_invite(
+        control, org=acme, email="bo@example.com", role="member", actor_id=None
+    )
+    sign_in(client, google, **BO)
+
+    with pytest.raises(Conflict) as err:
+        invites.revoke_invite(control, org=acme, invite_id=invite.id, actor_id=None)
+    assert err.value.code == "INVITE_USED"
+
+
+def test_inviting_a_member_is_a_conflict(control: Database, tenants: Tenants, acme: Org) -> None:
+    bo = users.get_or_create(control, "bo@example.com")
+    orgs.add_member(control, tenants, org=acme, user=bo, role="member", actor_id=None)
+
+    with pytest.raises(Conflict) as err:
+        invites.create_invite(
+            control, org=acme, email="Bo@example.com", role="owner", actor_id=None
+        )
+    assert err.value.code == "ALREADY_MEMBER"
+
+
+def test_inviting_into_a_suspended_company_is_a_conflict(control: Database, acme: Org) -> None:
+    control.write(lambda c: c.execute("UPDATE orgs SET status = 'suspended'"))
+    suspended = Org(id=acme.id, slug=acme.slug, name=acme.name, status="suspended")
+
+    with pytest.raises(Conflict) as err:
+        invites.create_invite(
+            control, org=suspended, email="bo@example.com", role="member", actor_id=None
+        )
+    assert err.value.code == "COMPANY_NOT_ACTIVE"
 
 
 def test_only_an_owner_or_super_admin_may_invite_or_revoke(
@@ -163,7 +210,12 @@ def test_invited_person_signs_in_and_joins_the_company(
 
 
 def test_invited_person_finds_themselves_in_the_company_file(
-    app: FastAPI, client: TestClient, google: FakeGoogle, control: Database, acme: Org
+    app: FastAPI,
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    acme: Org,
 ) -> None:
     @app.get("/api/orgs/{slug}/people")
     def people(company: CompanyDep) -> list[str]:
@@ -175,6 +227,9 @@ def test_invited_person_finds_themselves_in_the_company_file(
     sign_in(client, google, **BO)
 
     assert client.get("/api/orgs/acme/people").json() == ["bo@example.com"]
+    client.get("/api/orgs/acme/people")
+    joined = acme_events(tenants, "member.joined")
+    assert joined == 1  # copied once, not on every open
 
 
 def test_invite_a_moment_before_14_days_is_accepted(
@@ -269,12 +324,12 @@ def test_existing_person_accepts_a_new_invite_at_the_next_sign_in(
 
 
 def test_accepting_never_changes_an_existing_role(
-    client: TestClient, google: FakeGoogle, control: Database, acme: Org
+    client: TestClient, google: FakeGoogle, control: Database, tenants: Tenants, acme: Org
 ) -> None:
-    # given Bo is already an owner of Acme and an invite as member is pending
-    invites.create_invite(control, org=acme, email="bo@example.com", role="owner", actor_id=None)
-    sign_in(client, google, **BO)
+    # given an invite as member is pending, and Bo was made an owner another way since
     invites.create_invite(control, org=acme, email="bo@example.com", role="member", actor_id=None)
+    bo = users.get_or_create(control, "bo@example.com")
+    orgs.add_member(control, tenants, org=acme, user=bo, role="owner", actor_id=None)
 
     sign_in(client, google, **BO)
 
@@ -282,17 +337,19 @@ def test_accepting_never_changes_an_existing_role(
 
 
 def test_invite_does_not_let_a_disabled_person_in(
-    client: TestClient, google: FakeGoogle, control: Database, acme: Org
+    client: TestClient, google: FakeGoogle, control: Database, tenants: Tenants, acme: Org
 ) -> None:
     invites.create_invite(control, org=acme, email="bo@example.com", role="member", actor_id=None)
     sign_in(client, google, **BO)
     control.write(lambda c: c.execute("UPDATE users SET disabled_at = '2026-01-01T00:00:00.000Z'"))
-    invites.create_invite(control, org=acme, email="bo@example.com", role="owner", actor_id=None)
+    beta = orgs.create_company(control, tenants, slug="beta", name="Beta", actor_id=None)
+    invites.create_invite(control, org=beta, email="bo@example.com", role="owner", actor_id=None)
 
     response = sign_in(client, google, **BO)
 
     assert response.headers["location"] == f"{WEB}/signin/refused"
     assert refusal_reasons(control) == ["disabled"]
+    assert member_role(control, beta, "bo@example.com") is None
 
 
 def test_invite_of_a_suspended_company_is_not_accepted(

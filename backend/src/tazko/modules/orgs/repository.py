@@ -57,6 +57,22 @@ def insert_member_if_absent(
     return cursor.rowcount == 1
 
 
+def is_active(conn: sqlite3.Connection, org_id: int) -> bool:
+    row = conn.execute("SELECT status FROM orgs WHERE id = ?", (org_id,)).fetchone()
+    return bool(row) and row["status"] == "active"
+
+
+def has_member_email(conn: sqlite3.Connection, *, org_id: int, email: str) -> bool:
+    return (
+        conn.execute(
+            "SELECT 1 FROM org_members m JOIN users u ON u.id = m.user_id"
+            " WHERE m.org_id = ? AND u.email = ?",
+            (org_id, email),
+        ).fetchone()
+        is not None
+    )
+
+
 def standing(
     conn: sqlite3.Connection, *, org_id: int, user_id: int
 ) -> tuple[bool, str | None] | None:
