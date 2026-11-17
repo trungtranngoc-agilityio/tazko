@@ -19,7 +19,8 @@ from typing import Any
 from tazko.core import clock
 
 
-def _b64(data: bytes) -> str:
+def b64url(data: bytes) -> str:
+    """Base64url without padding (JWT and PKCE style)."""
     return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
 
 
@@ -34,8 +35,8 @@ def _mac(secret: bytes, purpose: str, body: str) -> bytes:
 
 def sign(payload: dict[str, Any], secret: bytes, *, purpose: str, max_age: int) -> str:
     expires = int(clock.now().timestamp()) + max_age
-    body = _b64(json.dumps({"v": payload, "exp": expires}, separators=(",", ":")).encode())
-    return f"{body}.{_b64(_mac(secret, purpose, body))}"
+    body = b64url(json.dumps({"v": payload, "exp": expires}, separators=(",", ":")).encode())
+    return f"{body}.{b64url(_mac(secret, purpose, body))}"
 
 
 def unsign(value: str, secret: bytes, *, purpose: str) -> dict[str, Any] | None:

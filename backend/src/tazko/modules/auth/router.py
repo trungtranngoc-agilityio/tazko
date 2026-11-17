@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, Request, Response
 from fastapi.responses import RedirectResponse
 
 from tazko.core.cookies import clear_cookie, set_cookie
-from tazko.core.deps import ControlDep, CurrentUser, SecretDep, SettingsDep
+from tazko.core.deps import ControlDep, CurrentUser, SameOrigin, SecretDep, SettingsDep
 from tazko.core.errors import NotFound
 from tazko.modules.auth import service
 from tazko.modules.auth.google import IdentityProvider, get_provider
@@ -98,7 +98,7 @@ def refusal(request: Request, secret: SecretDep) -> RefusalOut:
     return RefusalOut(email=email)
 
 
-@router.post("/auth/signout", status_code=204)
+@router.post("/auth/signout", status_code=204, dependencies=[SameOrigin])
 def sign_out(request: Request, control: ControlDep) -> Response:
     service.sign_out(control, request.cookies.get(service.SESSION_COOKIE))
     response = Response(status_code=204)

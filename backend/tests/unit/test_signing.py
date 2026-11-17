@@ -31,7 +31,7 @@ def test_signed_value_reads_back() -> None:
 def test_tampered_value_is_refused(tamper: object) -> None:
     value = sign({"state": "abc"}, SECRET, purpose="signin", max_age=600)
 
-    assert unsign(tamper(value), SECRET, purpose="signin") is None  # type: ignore[operator]
+    assert unsign(tamper(value), SECRET, purpose="signin") is None  # type: ignore[operator]  # parametrize erases the lambda's type
 
 
 def test_value_for_another_purpose_is_refused() -> None:

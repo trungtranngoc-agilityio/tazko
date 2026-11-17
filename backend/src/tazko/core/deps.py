@@ -5,7 +5,7 @@ Database work blocks, so routes that use ControlDep, CurrentUser or
 CompanyDep are plain `def` routes (FastAPI runs them in its thread pool),
 never `async def`.
 
-TODO(M1-05): RequireOrigin (write guard).
+TODO(M1-05): apply SameOrigin to every write route and the WebSocket handshake.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ from fastapi import Depends, Request, Response
 
 from tazko.core.config import Settings
 from tazko.core.cookies import set_cookie
-from tazko.core.errors import Unauthorized
+from tazko.core.errors import Forbidden, Unauthorized
 from tazko.db import Database
 from tazko.modules.orgs import service as orgs
 from tazko.modules.orgs.service import Company
@@ -39,6 +39,17 @@ def get_secret(request: Request) -> bytes:
 
 
 SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+
+def require_same_origin(request: Request, settings: SettingsDep) -> None:
+    """403 unless the request's Origin is exactly TAZKO_WEB_ORIGIN. A missing
+    Origin is refused too. SameSite=Lax still lets other sites send top-level
+    POSTs, and lets sibling hosts under the same site send cookies."""
+    if request.headers.get("origin") != settings.web_origin:
+        raise Forbidden("request from another origin")
+
+
+SameOrigin = Depends(require_same_origin)
 ControlDep = Annotated[Database, Depends(get_control)]
 SecretDep = Annotated[bytes, Depends(get_secret)]
 

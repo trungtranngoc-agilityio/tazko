@@ -14,7 +14,6 @@ Sessions last 30 days from last use. The token is never stored, only its SHA-256
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import hmac
 import secrets
@@ -25,7 +24,7 @@ from datetime import timedelta
 import jwt
 
 from tazko.core import clock
-from tazko.core.signing import sign, unsign
+from tazko.core.signing import b64url, sign, unsign
 from tazko.db import Database
 from tazko.modules.audit import service as audit
 from tazko.modules.auth import repository as repo
@@ -67,8 +66,8 @@ class Refusal:
     reason: str
 
 
-def _b64(data: bytes) -> str:
-    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
+def _same(given: object, expected: object) -> bool:
+    return hmac.compare_digest(str(given).encode(), str(expected).encode())
 
 
 def _hash(token: str) -> str:
@@ -89,7 +88,7 @@ def start_sign_in(
             "scope": "openid email profile",
             "state": state,
             "nonce": nonce,
-            "code_challenge": _b64(hashlib.sha256(verifier.encode()).digest()),
+            "code_challenge": b64url(hashlib.sha256(verifier.encode()).digest()),
             "code_challenge_method": "S256",
             "prompt": "select_account",
         }
@@ -115,7 +114,8 @@ def finish_sign_in(
     flow = unsign(flow_cookie, secret, purpose="signin") if flow_cookie else None
     if flow is None:
         raise SignInFailed("no valid sign-in cookie (expired, replayed or another browser)")
-    if not code or not state or not hmac.compare_digest(state, str(flow.get("state"))):
+    # Bytes: compare_digest refuses str values with non-ASCII characters.
+    if not code or not state or not _same(state, flow.get("state")):
         raise SignInFailed("state does not match")
     try:
         id_token = provider.exchange(
@@ -137,22 +137,35 @@ def finish_sign_in(
                 ip=ip,
             )
             return Refusal(account.email, match.reason)
-        if old_token:
-            repo.delete_session(conn, _hash(old_token))
-        token = secrets.token_urlsafe(32)
-        now = clock.now()
-        repo.insert_session(
-            conn,
-            token_hash=_hash(token),
-            user_id=match.id,
-            now=clock.iso(now),
-            expires_at=clock.iso(now + timedelta(days=SESSION_DAYS)),
-            ip=ip,
-            user_agent=user_agent[:300] if user_agent else None,
-        )
+        token = _issue_session(conn, match, old_token=old_token, ip=ip, user_agent=user_agent)
         return SignedIn(match, token)
 
     return control.write(run)
+
+
+def _issue_session(
+    conn: sqlite3.Connection,
+    user: User,
+    *,
+    old_token: str | None,
+    ip: str | None,
+    user_agent: str | None,
+) -> str:
+    """A fresh random token for a new session row; the browser's old session goes."""
+    if old_token:
+        repo.delete_session(conn, _hash(old_token))
+    token = secrets.token_urlsafe(32)
+    now = clock.now()
+    repo.insert_session(
+        conn,
+        token_hash=_hash(token),
+        user_id=user.id,
+        now=clock.iso(now),
+        expires_at=clock.iso(now + timedelta(days=SESSION_DAYS)),
+        ip=ip,
+        user_agent=user_agent[:300] if user_agent else None,
+    )
+    return token
 
 
 def verify_id_token(
@@ -171,7 +184,7 @@ def verify_id_token(
         )
     except jwt.PyJWTError as err:
         raise SignInFailed(f"ID token: {err}") from None
-    if not hmac.compare_digest(str(claims["nonce"]), nonce):
+    if not _same(claims["nonce"], nonce):
         raise SignInFailed("ID token: nonce does not match")
     if claims.get("email_verified") is not True:
         raise SignInFailed("ID token: email not verified")
@@ -182,7 +195,9 @@ def verify_id_token(
     hd = claims.get("hd")
     return GoogleAccount(
         sub=str(claims["sub"]),
-        email=email[:254],
+        # Never cut: normalize_email refuses an over-long address, so it cannot
+        # be shortened into someone else's.
+        email=email,
         name=str(claims.get("name") or "")[:200],
         avatar_url=picture if isinstance(picture, str) and picture.startswith("https://") else None,
         hd=hd[:253] if isinstance(hd, str) else None,

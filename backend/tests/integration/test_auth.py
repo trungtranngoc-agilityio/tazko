@@ -39,6 +39,7 @@ from tazko.modules.users import service as users
 WEB = "https://tazko.example.com"
 API = "https://testserver"
 CLIENT_ID = "client-123.apps.googleusercontent.com"
+SAME_ORIGIN = {"origin": WEB}
 
 
 @pytest.fixture(scope="module")
@@ -123,7 +124,7 @@ def client(app: FastAPI) -> Iterator[TestClient]:
 
 @pytest.fixture
 def control(client: TestClient) -> Database:
-    db: Database = client.app.state.control  # type: ignore[attr-defined]
+    db: Database = client.app.state.control  # type: ignore[attr-defined]  # TestClient.app is typed as ASGIApp
     return db
 
 
@@ -274,6 +275,23 @@ def test_disabled_person_is_refused(
     ]
 
 
+def test_disabled_person_with_a_linked_account_is_refused(
+    client: TestClient, google: FakeGoogle, control: Database
+) -> None:
+    ana = users.get_or_create(control, "ana@example.com")
+    sign_in(client, google)
+    client.post("/auth/signout", headers=SAME_ORIGIN)
+    control.write(lambda c: c.execute("UPDATE users SET disabled_at = 'x' WHERE id = ?", (ana.id,)))
+
+    response = sign_in(client, google)
+
+    assert response.headers["location"] == f"{WEB}/signin/refused"
+    assert [json.loads(r["detail"]) for r in audit(control, "signin.refused")] == [
+        {"reason": "disabled"}
+    ]
+    assert session_count(control) == 0
+
+
 @pytest.mark.parametrize(
     "claims",
     [
@@ -317,6 +335,31 @@ def test_bad_state_is_refused(client: TestClient, google: FakeGoogle, control: D
     response = client.get("/auth/google/callback", params={"code": code, "state": "forged"})
 
     assert response.headers["location"] == f"{WEB}/signin?error=failed"
+    assert session_count(control) == 0
+
+
+def test_non_ascii_state_is_refused_not_a_crash(
+    client: TestClient, google: FakeGoogle, control: Database
+) -> None:
+    start = client.get("/auth/google/start")
+    code = google.authorize(start.headers["location"])
+
+    response = client.get("/auth/google/callback", params={"code": code, "state": "été"})
+
+    assert response.headers["location"] == f"{WEB}/signin?error=failed"
+    assert session_count(control) == 0
+
+
+def test_over_long_email_is_refused_not_cut_to_match_someone(
+    client: TestClient, google: FakeGoogle, control: Database
+) -> None:
+    # given a person whose address is the first 254 characters of a longer one
+    victim = "a" * 242 + "@example.com"  # 254, the longest allowed
+    users.get_or_create(control, victim)
+
+    response = sign_in(client, google, sub="sub-long", email=victim + "x")
+
+    assert response.headers["location"] == f"{WEB}/signin/refused"
     assert session_count(control) == 0
 
 
@@ -380,7 +423,7 @@ def test_person_found_by_sub_signs_in_after_an_email_change(
 ) -> None:
     ana = users.get_or_create(control, "ana@example.com")
     sign_in(client, google)
-    client.post("/auth/signout")
+    client.post("/auth/signout", headers=SAME_ORIGIN)
 
     response = sign_in(client, google, email="ana.new@example.com")
 
@@ -420,7 +463,7 @@ def test_email_match_never_relinks_a_person_who_has_a_sub(
     # given Ana already linked to her Google account
     users.get_or_create(control, "ana@example.com")
     sign_in(client, google)
-    client.post("/auth/signout")
+    client.post("/auth/signout", headers=SAME_ORIGIN)
 
     # when another Google account claiming the same email signs in
     response = sign_in(client, google, sub="sub-impostor")
@@ -467,7 +510,7 @@ def test_sign_out_deletes_the_session_and_the_old_cookie_gets_401(
     sign_in(client, google)
     old_token = client.cookies[SESSION_COOKIE]
 
-    response = client.post("/auth/signout")
+    response = client.post("/auth/signout", headers=SAME_ORIGIN)
 
     assert response.status_code == 204
     assert session_count(control) == 0
@@ -477,7 +520,22 @@ def test_sign_out_deletes_the_session_and_the_old_cookie_gets_401(
 
 
 def test_sign_out_without_a_session_still_answers_204(client: TestClient) -> None:
-    assert client.post("/auth/signout").status_code == 204
+    assert client.post("/auth/signout", headers=SAME_ORIGIN).status_code == 204
+
+
+@pytest.mark.parametrize("origin", ["https://evil.example", "https://other.example.com", None])
+def test_sign_out_from_another_origin_is_refused(
+    client: TestClient, google: FakeGoogle, control: Database, origin: str | None
+) -> None:
+    users.get_or_create(control, "ana@example.com")
+    sign_in(client, google)
+    headers = {"origin": origin} if origin else {}
+
+    response = client.post("/auth/signout", headers=headers)
+
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+    assert session_count(control) == 1
 
 
 def test_signing_in_again_replaces_the_previous_session(
@@ -534,7 +592,7 @@ def test_company_dependency_opens_only_the_signed_in_persons_companies(
     def probe(company: CompanyDep) -> dict[str, str]:
         return {"slug": company.org.slug, "role": company.role}
 
-    tenants = client.app.state.tenants  # type: ignore[attr-defined]
+    tenants = client.app.state.tenants  # type: ignore[attr-defined]  # TestClient.app is typed as ASGIApp
     acme = orgs.create_company(control, tenants, slug="acme", name="Acme", actor_id=None)
     orgs.create_company(control, tenants, slug="beta", name="Beta", actor_id=None)
     ana = users.get_or_create(control, "ana@example.com")

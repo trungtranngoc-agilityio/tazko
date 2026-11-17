@@ -90,6 +90,15 @@ def test_refresh_fetches_new_keys_at_most_once_a_minute() -> None:
     assert google.keys(refresh=True) == {"keys": [{"kid": "b"}]}
 
 
+def test_stale_keys_are_kept_when_google_cannot_be_reached() -> None:
+    network = FakeNetwork({"keys": [{"kid": "a"}]}, URLError("down"))
+    google = provider(network)
+    google.keys()
+    google.fetched_at -= 3601
+
+    assert google.keys() == {"keys": [{"kid": "a"}]}
+
+
 def test_unreachable_key_endpoint_raises_provider_error() -> None:
     with pytest.raises(ProviderError):
         provider(FakeNetwork(URLError("down"))).keys()

@@ -8,6 +8,7 @@ Tests replace the provider through FastAPI's dependency overrides
 from __future__ import annotations
 
 import json
+import logging
 import threading
 import time
 from collections.abc import Callable, Mapping
@@ -17,6 +18,8 @@ from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
 from fastapi import Request as HttpRequest
+
+log = logging.getLogger(__name__)
 
 AUTHORIZE_URL = "https://accounts.google.com/o/oauth2/v2/auth"
 TOKEN_URL = "https://oauth2.googleapis.com/token"  # noqa: S105 (a URL, not a password)
@@ -82,7 +85,13 @@ class GoogleProvider:
             age = time.monotonic() - self.fetched_at
             stale = age > KEYS_MAX_AGE
             if self._keys is None or stale or (refresh and age > KEYS_MIN_REFRESH):
-                self._keys = self._json(Request(KEYS_URL))
+                try:
+                    self._keys = self._json(Request(KEYS_URL))
+                except ProviderError:
+                    # Keys rotate slowly: an hour-old set beats no sign-in at all.
+                    if self._keys is None:
+                        raise
+                    log.warning("Google keys unreachable; using the cached ones")
                 self.fetched_at = time.monotonic()
             return self._keys
 
