@@ -27,6 +27,50 @@ def by_slug(conn: sqlite3.Connection, slug: str) -> Org | None:
     return _org(row) if row else None
 
 
+def by_id(conn: sqlite3.Connection, org_id: int) -> Org | None:
+    row = conn.execute("SELECT id, slug, name, status FROM orgs WHERE id = ?", (org_id,)).fetchone()
+    return _org(row) if row else None
+
+
+@dataclass(frozen=True)
+class OrgCounts:
+    org: Org
+    members: int
+    storage_limit_bytes: int | None
+
+
+COMPANIES_CAP = 500
+
+
+def _counts(row: sqlite3.Row) -> OrgCounts:
+    return OrgCounts(
+        org=_org(row), members=row["members"], storage_limit_bytes=row["storage_limit_bytes"]
+    )
+
+
+COUNTS_SELECT = (
+    "SELECT o.id, o.slug, o.name, o.status, o.storage_limit_bytes,"
+    " (SELECT count(*) FROM org_members m WHERE m.org_id = o.id) AS members FROM orgs o"
+)
+
+
+def all_with_counts(conn: sqlite3.Connection) -> list[OrgCounts]:
+    """Every company not deleted, by name, at most COMPANIES_CAP."""
+    rows = conn.execute(
+        COUNTS_SELECT
+        + " WHERE o.status != 'deleted' ORDER BY o.name COLLATE NOCASE, o.slug LIMIT ?",
+        (COMPANIES_CAP,),
+    ).fetchall()
+    return [_counts(row) for row in rows]
+
+
+def one_with_counts(conn: sqlite3.Connection, slug: str) -> OrgCounts | None:
+    row = conn.execute(
+        COUNTS_SELECT + " WHERE o.slug = ? AND o.status != 'deleted'", (slug,)
+    ).fetchone()
+    return _counts(row) if row else None
+
+
 def insert(conn: sqlite3.Connection, *, slug: str, name: str, now: str) -> Org:
     conn.execute("INSERT INTO orgs (slug, name, created_at) VALUES (?, ?, ?)", (slug, name, now))
     org = by_slug(conn, slug)
@@ -187,6 +231,12 @@ def active_membership(conn: sqlite3.Connection, user_id: int, slug: str) -> Memb
 
 
 # --- in the company's own file -------------------------------------------------
+
+
+def last_event_at(conn: sqlite3.Connection) -> str | None:
+    """The company file's newest event (index events_by_created)."""
+    row = conn.execute("SELECT max(created_at) FROM events").fetchone()
+    return row[0] if row else None
 
 
 def has_person(conn: sqlite3.Connection, user_id: int) -> bool:

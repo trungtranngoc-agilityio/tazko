@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from tazko.modules.orgs import service
+
 Role = Literal["owner", "member"]
 AccountKind = Literal["workspace", "personal"]
 
@@ -30,6 +32,18 @@ class MemberOut(BaseModel):
     account: AccountKind | None
     role: Role
     last_seen_at: str | None
+
+    @classmethod
+    def from_row(cls, row: service.MemberRow) -> MemberOut:
+        return cls(
+            user_id=row.user_id,
+            name=row.name,
+            email=row.email,
+            avatar_url=row.avatar_url,
+            account=service.account_kind(row),
+            role=row.role,
+            last_seen_at=row.last_seen_at,
+        )
 
 
 class RoleIn(BaseModel):

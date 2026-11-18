@@ -17,7 +17,7 @@ from tazko.core.errors import Conflict, Invalid, NotFound
 from tazko.db import Database
 from tazko.modules.audit import service as audit
 from tazko.modules.invites import repository as repo
-from tazko.modules.invites.repository import Invite, PendingInvite
+from tazko.modules.invites.repository import Invite, PendingAnywhere, PendingInvite
 from tazko.modules.orgs import service as orgs
 from tazko.modules.orgs.service import Company, Org
 from tazko.modules.users.service import User, normalize_email
@@ -25,12 +25,15 @@ from tazko.modules.users.service import User, normalize_email
 __all__ = [
     "INVITE_DAYS",
     "Invite",
+    "PendingAnywhere",
     "PendingInvite",
     "accept_usable",
     "account_kind",
     "create_invite",
     "has_usable",
+    "list_everywhere",
     "list_pending",
+    "revoke_anywhere",
     "revoke_invite",
     "why_unusable",
 ]
@@ -112,6 +115,30 @@ def list_pending(control: Database, company: Company, *, actor_id: int) -> list[
         return repo.pending_for_org(conn, company.org.id, now=clock.now_iso())
 
     return control.read(run)
+
+
+def list_everywhere(control: Database, *, actor_id: int) -> list[PendingAnywhere]:
+    """Usable invites of every company, for the console. Super admins only."""
+
+    def run(conn: sqlite3.Connection) -> list[PendingAnywhere]:
+        orgs.require_super_admin(conn, actor_id)
+        return repo.pending_everywhere(conn, now=clock.now_iso())
+
+    return control.read(run)
+
+
+def revoke_anywhere(control: Database, *, invite_id: int, actor_id: int, ip: str | None) -> None:
+    """Revoke any company's invite from the console's Invites page."""
+
+    def find(conn: sqlite3.Connection) -> Org | None:
+        orgs.require_super_admin(conn, actor_id)
+        invite = repo.by_id(conn, invite_id)
+        return orgs.org_by_id(conn, invite.org_id) if invite else None
+
+    org = control.read(find)
+    if org is None:
+        raise NotFound()
+    revoke_invite(control, org=org, invite_id=invite_id, actor_id=actor_id, ip=ip)
 
 
 def revoke_invite(

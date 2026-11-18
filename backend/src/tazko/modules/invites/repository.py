@@ -119,6 +119,30 @@ def pending_for_org(conn: sqlite3.Connection, org_id: int, *, now: str) -> list[
     return [_pending(row) for row in rows]
 
 
+@dataclass(frozen=True)
+class PendingAnywhere:
+    invite: PendingInvite
+    org_slug: str
+    org_name: str
+
+
+def pending_everywhere(conn: sqlite3.Connection, *, now: str) -> list[PendingAnywhere]:
+    """Usable invites of every company not deleted, newest first, at most PENDING_CAP."""
+    rows = conn.execute(
+        PENDING_SELECT.replace(
+            " FROM invites i", ", o.slug AS org_slug, o.name AS org_name FROM invites i"
+        )
+        + " JOIN orgs o ON o.id = i.org_id"
+        " WHERE i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?"
+        " AND o.status != 'deleted' ORDER BY i.id DESC LIMIT ?",
+        (now, PENDING_CAP),
+    ).fetchall()
+    return [
+        PendingAnywhere(invite=_pending(row), org_slug=row["org_slug"], org_name=row["org_name"])
+        for row in rows
+    ]
+
+
 def pending_by_id(conn: sqlite3.Connection, invite_id: int) -> PendingInvite:
     """One invite as the pending list shows it (just made, in the same transaction)."""
     row = conn.execute(PENDING_SELECT + " WHERE i.id = ?", (invite_id,)).fetchone()
