@@ -3,4 +3,5 @@
 export { googleSignInUrl, refusedEmail, type Me } from "./api";
 export { AuthCard, AuthNote, GoogleButton, GoogleDot } from "./components/AuthCard";
 export { RequireSession } from "./components/RequireSession";
+export { useMe } from "./session";
 export { SignOutButton } from "./components/SignOutButton";

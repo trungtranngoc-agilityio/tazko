@@ -2,13 +2,14 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Navigate } from "react-router";
 import { ApiError } from "@/shared/api";
 import { errorText, t } from "@/shared/i18n";
-import { currentUser } from "../api";
+import { currentUser, type Me } from "../api";
+import { Session } from "../session";
 
 type State =
   | { kind: "loading" }
   | { kind: "signed-out" }
   | { kind: "failed"; message: string }
-  | { kind: "signed-in" };
+  | { kind: "signed-in"; me: Me };
 
 /** Shows its children to a signed-in person; anyone else goes to /signin. */
 export function RequireSession({ children }: { children: ReactNode }) {
@@ -18,8 +19,8 @@ export function RequireSession({ children }: { children: ReactNode }) {
   useEffect(() => {
     let live = true;
     currentUser().then(
-      () => {
-        if (live) setState({ kind: "signed-in" });
+      (me) => {
+        if (live) setState({ kind: "signed-in", me });
       },
       (error: unknown) => {
         if (!live) return;
@@ -37,7 +38,8 @@ export function RequireSession({ children }: { children: ReactNode }) {
   }, [attempt]);
 
   if (state.kind === "signed-out") return <Navigate to="/signin" replace />;
-  if (state.kind === "signed-in") return children;
+  if (state.kind === "signed-in")
+    return <Session.Provider value={state.me}>{children}</Session.Provider>;
   return (
     <div className="grid min-h-screen place-items-center bg-bg px-4 text-center text-muted">
       {state.kind === "loading" ? (

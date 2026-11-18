@@ -1,0 +1,84 @@
+import { NavLink, Outlet, useParams } from "react-router";
+import { RequireSession, SignOutButton, useMe } from "@/features/auth";
+import { CompanySwitcher, Initials, myCompanies, type CompanyContext } from "@/features/orgs";
+import { errorText, t } from "@/shared/i18n";
+import { useAsync } from "@/shared/lib/useAsync";
+
+// The app shell inside one company (prototype: sidebar with the company card,
+// navigation, and the signed-in person at the bottom). Pages get the current
+// company through useCompany().
+export function CompanyLayout() {
+  return (
+    <RequireSession>
+      <CompanyShell />
+    </RequireSession>
+  );
+}
+
+function CompanyShell() {
+  const { slug = "" } = useParams();
+  const me = useMe();
+  const [companies] = useAsync(myCompanies, "companies");
+
+  if (companies.kind === "loading") {
+    return (
+      <p role="status" className="p-6 text-muted">
+        {t("session.loading")}
+      </p>
+    );
+  }
+  if (companies.kind === "failed") {
+    return (
+      <p role="alert" className="p-6">
+        {errorText(companies.code)}
+      </p>
+    );
+  }
+  const company = companies.value.find((c) => c.slug === slug && c.status === "active");
+  if (!company) {
+    return (
+      <p role="alert" className="p-6">
+        {errorText("NOT_FOUND")}
+      </p>
+    );
+  }
+  const context: CompanyContext = { company, companies: companies.value };
+  const link = ({ isActive }: { isActive: boolean }) =>
+    `flex h-9 items-center rounded-md px-3 ${isActive ? "bg-accent-soft font-semibold text-accent" : "hover:bg-sunken"}`;
+
+  return (
+    <div className="flex min-h-screen bg-bg text-ink">
+      <aside className="flex w-64 shrink-0 flex-col gap-4 border-r border-line bg-surface p-4">
+        <CompanySwitcher companies={companies.value} current={company} />
+        <nav className="flex flex-col gap-1 text-sm">
+          <NavLink end to={`/c/${company.slug}`} className={link}>
+            {t("nav.projects")}
+          </NavLink>
+          {company.role === "owner" && (
+            <NavLink to={`/c/${company.slug}/settings`} className={link}>
+              {t("nav.settings")}
+            </NavLink>
+          )}
+          {me.is_super_admin && (
+            <NavLink to="/admin" className={link}>
+              {t("nav.admin")}
+            </NavLink>
+          )}
+        </nav>
+        <div className="mt-auto flex items-center gap-3 text-sm">
+          <Initials name={me.name || me.email} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-semibold">{me.name || me.email}</span>
+            {me.is_super_admin && (
+              <span className="block text-xs text-muted">{t("nav.superAdmin")}</span>
+            )}
+          </span>
+        </div>
+        <SignOutButton />
+      </aside>
+      <main className="min-w-0 flex-1 p-7">
+        <Outlet context={context} />
+      </main>
+    </div>
+  );
+}
