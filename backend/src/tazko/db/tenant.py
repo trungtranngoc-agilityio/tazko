@@ -93,6 +93,10 @@ class Tenants:
                     self._open[slug] = tenant
             return tenant
 
+    def is_open(self, slug: str) -> bool:
+        """Whether the company's file is open in the cache (tests, diagnostics)."""
+        return slug in self._open
+
     def evict(self, slug: str) -> None:
         """Close one company's file (before suspend, delete or restore)."""
         with self._lock:

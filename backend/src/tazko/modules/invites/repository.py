@@ -88,12 +88,15 @@ class PendingInvite:
 PENDING_CAP = 500
 
 
-PENDING_SELECT = (
+PENDING_COLUMNS = (
     "SELECT i.id, i.email, i.role, i.created_at, i.expires_at, u.name AS invited_by,"
     " w.domain IS NOT NULL AS workspace"
+)
+PENDING_FROM = (
     " FROM invites i LEFT JOIN users u ON u.id = i.created_by"
     " LEFT JOIN workspace_domains w ON w.domain = substr(i.email, instr(i.email, '@') + 1)"
 )
+PENDING_SELECT = PENDING_COLUMNS + PENDING_FROM
 
 
 def _pending(row: sqlite3.Row) -> PendingInvite:
@@ -129,9 +132,9 @@ class PendingAnywhere:
 def pending_everywhere(conn: sqlite3.Connection, *, now: str) -> list[PendingAnywhere]:
     """Usable invites of every company not deleted, newest first, at most PENDING_CAP."""
     rows = conn.execute(
-        PENDING_SELECT.replace(
-            " FROM invites i", ", o.slug AS org_slug, o.name AS org_name FROM invites i"
-        )
+        PENDING_COLUMNS
+        + ", o.slug AS org_slug, o.name AS org_name"
+        + PENDING_FROM
         + " JOIN orgs o ON o.id = i.org_id"
         " WHERE i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?"
         " AND o.status != 'deleted' ORDER BY i.id DESC LIMIT ?",

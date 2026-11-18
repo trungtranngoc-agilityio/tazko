@@ -37,6 +37,7 @@ class OrgCounts:
     org: Org
     members: int
     storage_limit_bytes: int | None
+    last_activity_at: str | None
 
 
 COMPANIES_CAP = 500
@@ -44,13 +45,19 @@ COMPANIES_CAP = 500
 
 def _counts(row: sqlite3.Row) -> OrgCounts:
     return OrgCounts(
-        org=_org(row), members=row["members"], storage_limit_bytes=row["storage_limit_bytes"]
+        org=_org(row),
+        members=row["members"],
+        storage_limit_bytes=row["storage_limit_bytes"],
+        last_activity_at=row["last_activity_at"],
     )
 
 
 COUNTS_SELECT = (
     "SELECT o.id, o.slug, o.name, o.status, o.storage_limit_bytes,"
-    " (SELECT count(*) FROM org_members m WHERE m.org_id = o.id) AS members FROM orgs o"
+    " (SELECT count(*) FROM org_members m WHERE m.org_id = o.id) AS members,"
+    # Newest audit row of the company (index audit_log_by_org); M2 adds board activity.
+    " (SELECT max(a.at) FROM audit_log a WHERE a.org_id = o.id) AS last_activity_at"
+    " FROM orgs o"
 )
 
 
@@ -114,6 +121,13 @@ def has_member_email(conn: sqlite3.Connection, *, org_id: int, email: str) -> bo
         ).fetchone()
         is not None
     )
+
+
+def by_slug_not_deleted(conn: sqlite3.Connection, slug: str) -> Org | None:
+    row = conn.execute(
+        "SELECT id, slug, name, status FROM orgs WHERE slug = ? AND status != 'deleted'", (slug,)
+    ).fetchone()
+    return _org(row) if row else None
 
 
 def is_enabled_super_admin(conn: sqlite3.Connection, user_id: int) -> bool:
@@ -231,12 +245,6 @@ def active_membership(conn: sqlite3.Connection, user_id: int, slug: str) -> Memb
 
 
 # --- in the company's own file -------------------------------------------------
-
-
-def last_event_at(conn: sqlite3.Connection) -> str | None:
-    """The company file's newest event (index events_by_created)."""
-    row = conn.execute("SELECT max(created_at) FROM events").fetchone()
-    return row[0] if row else None
 
 
 def has_person(conn: sqlite3.Connection, user_id: int) -> bool:

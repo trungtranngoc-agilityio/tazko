@@ -12,7 +12,8 @@ TENANT_ACCESS = {
     "db/tenant.py",
     "modules/orgs/service.py",
     "main.py",
-    "core/deps.py",  # CompanyDep, which calls open_company with the signed-in person
+    # CompanyDep (open_company for the signed-in person) and the console (super admins only)
+    "core/deps.py",
 }
 
 

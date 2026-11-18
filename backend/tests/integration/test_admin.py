@@ -124,8 +124,70 @@ def test_companies_list_shows_counts_storage_and_activity(
     ]
     assert rows[0]["storage_bytes"] > 0  # its database file
     assert rows[0]["storage_limit_bytes"] is None
-    assert rows[0]["last_activity_at"] is not None  # the member.added event
-    assert rows[1]["last_activity_at"] is None
+    # Newest audit row of the company: member.added for acme, company.created for beta.
+    assert rows[0]["last_activity_at"] >= rows[1]["last_activity_at"]
+
+
+def test_companies_page_opens_no_company_files(
+    client: TestClient, google: FakeGoogle, control: Database, tenants: Tenants, admin: User
+) -> None:
+    for slug in ("one", "two"):
+        orgs.create_company(control, tenants, slug=slug, name=slug.title(), actor_id=None)
+        tenants.evict(slug)
+    as_(client, google, admin)
+
+    client.get("/admin/api/companies")
+    client.get("/admin/api/companies/one/members")
+
+    assert not tenants.is_open("one")
+    assert not tenants.is_open("two")
+
+
+def test_deleted_companies_are_left_out(
+    client: TestClient, google: FakeGoogle, control: Database, admin: User, acme: Org
+) -> None:
+    invites.create_invite(control, org=acme, email="di@example.com", role="member", actor_id=None)
+    control.write(lambda c: c.execute("UPDATE orgs SET status = 'deleted'"))
+    as_(client, google, admin)
+
+    assert client.get("/admin/api/companies").json() == []
+    assert client.get("/admin/api/companies/acme").status_code == 404
+    assert client.get("/admin/api/companies/acme/members").status_code == 404
+    assert client.get("/admin/api/invites").json() == []
+
+
+def test_suspended_companies_are_listed_as_suspended(
+    client: TestClient, google: FakeGoogle, control: Database, admin: User, acme: Org
+) -> None:
+    control.write(lambda c: c.execute("UPDATE orgs SET status = 'suspended'"))
+    as_(client, google, admin)
+
+    assert [r["status"] for r in client.get("/admin/api/companies").json()] == ["suspended"]
+
+
+def test_company_row_without_its_file_is_a_clear_error(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    admin: User,
+    acme: Org,
+) -> None:
+    ana = users.get_or_create(control, "ana@example.com", name="Ana")
+    bo = users.get_or_create(control, "bo@example.com", name="Bo")
+    orgs.add_member(control, tenants, org=acme, user=ana, role="owner", actor_id=None)
+    orgs.add_member(control, tenants, org=acme, user=bo, role="member", actor_id=None)
+    tenants.evict("acme")
+    for path in sorted(tenants.folder("acme").rglob("*"), reverse=True):
+        path.unlink() if path.is_file() else path.rmdir()
+    as_(client, google, admin)
+
+    assert client.get("/admin/api/companies").status_code == 200  # listing needs no file
+    assert client.get("/admin/api/companies/acme/members").status_code == 200
+    response = call(
+        client, "PATCH", f"/admin/api/companies/acme/members/{bo.id}", {"role": "owner"}
+    )
+    assert response.status_code == 200  # the change stands; the missing file is logged
 
 
 def test_super_admin_creates_a_company(
