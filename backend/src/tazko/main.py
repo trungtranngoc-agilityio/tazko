@@ -22,6 +22,8 @@ from tazko.db import Database
 from tazko.db.tenant import Tenants
 from tazko.modules import auth, health
 from tazko.modules.auth.google import GoogleProvider
+from tazko.modules.invites import router as invites_router
+from tazko.modules.orgs import router as orgs_router
 
 
 @asynccontextmanager
@@ -75,6 +77,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app.include_router(health.router)
     app.include_router(auth.router)  # /auth/... and /api/me
+    # Imported as modules: core/deps.py imports the orgs service, so the orgs
+    # package cannot import its router when it is first loaded.
+    app.include_router(orgs_router.router)  # /api/orgs, members
+    app.include_router(invites_router.router)  # /api/orgs/{slug}/invites
     # Module routers are included here as milestones land:
     # app.include_router(admin.router, prefix="/admin/api")        M1-06
     # app.include_router(realtime.router, prefix="/ws")            M3-01

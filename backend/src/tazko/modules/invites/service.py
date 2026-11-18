@@ -17,22 +17,28 @@ from tazko.core.errors import Conflict, Invalid, NotFound
 from tazko.db import Database
 from tazko.modules.audit import service as audit
 from tazko.modules.invites import repository as repo
-from tazko.modules.invites.repository import Invite
+from tazko.modules.invites.repository import Invite, PendingInvite
 from tazko.modules.orgs import service as orgs
-from tazko.modules.orgs.service import Org
+from tazko.modules.orgs.service import Company, Org
 from tazko.modules.users.service import User, normalize_email
 
 __all__ = [
     "INVITE_DAYS",
     "Invite",
+    "PendingInvite",
     "accept_usable",
+    "account_kind",
     "create_invite",
     "has_usable",
+    "list_pending",
     "revoke_invite",
     "why_unusable",
 ]
 
 INVITE_DAYS = 14
+# Addresses on these domains are always personal Google accounts.
+PERSONAL_DOMAINS = frozenset({"gmail.com", "googlemail.com"})
+AccountKind = Literal["workspace", "personal"]
 ROLES = ("owner", "member")
 Role = Literal["owner", "member"]
 
@@ -86,6 +92,26 @@ def create_invite(
         return invite
 
     return control.write(run)
+
+
+def account_kind(invite: PendingInvite) -> AccountKind | None:
+    """What kind of Google account the address will sign in with, when we can
+    tell: a known Workspace domain (D26), or a consumer Gmail domain."""
+    if invite.workspace:
+        return "workspace"
+    if invite.email.rpartition("@")[2] in PERSONAL_DOMAINS:
+        return "personal"
+    return None
+
+
+def list_pending(control: Database, company: Company, *, actor_id: int) -> list[PendingInvite]:
+    """The company's usable invites, newest first. Owners and super admins only."""
+
+    def run(conn: sqlite3.Connection) -> list[PendingInvite]:
+        orgs.require_manager(conn, org_id=company.org.id, actor_id=actor_id)
+        return repo.pending_for_org(conn, company.org.id, now=clock.now_iso())
+
+    return control.read(run)
 
 
 def revoke_invite(

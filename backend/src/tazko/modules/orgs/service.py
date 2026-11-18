@@ -23,21 +23,25 @@ from tazko.db import Database
 from tazko.db.tenant import Tenant, Tenants, valid_slug
 from tazko.modules.audit import service as audit
 from tazko.modules.orgs import repository as repo
-from tazko.modules.orgs.repository import Membership, Org
+from tazko.modules.orgs.repository import MemberRow, Membership, Org
 from tazko.modules.users import service as users
 from tazko.modules.users.service import User
 
 __all__ = [
     "Company",
+    "MemberRow",
     "Membership",
     "Org",
     "add_member",
+    "change_role",
     "companies_of",
     "create_company",
     "has_member_email",
     "is_active",
     "join",
+    "list_members",
     "open_company",
+    "remove_member",
     "require_manager",
 ]
 
@@ -70,6 +74,7 @@ def create_company(
         raise Invalid("name: 1 to 100 characters", field="name")
 
     def run(conn: sqlite3.Connection) -> Org:
+        _require_super_admin(conn, actor_id)
         if repo.by_slug(conn, slug) or tenants.folder(slug).exists():
             raise Conflict("slug: already taken", code="SLUG_TAKEN", field="slug")
         org = repo.insert(conn, slug=slug, name=name, now=now_iso())
@@ -92,6 +97,7 @@ def add_member(
     """Add (or change the role of) a member, and copy the person into the company file."""
 
     def membership(conn: sqlite3.Connection) -> None:
+        require_manager(conn, org_id=org.id, actor_id=actor_id)
         repo.upsert_member(conn, org_id=org.id, user_id=user.id, role=role, now=now_iso())
         audit.record(
             conn,
@@ -132,6 +138,110 @@ def require_manager(conn: sqlite3.Connection, *, org_id: int, actor_id: int | No
     if role is None:
         raise NotFound()
     raise Forbidden("only an owner of the company can do this")
+
+
+def _require_super_admin(conn: sqlite3.Connection, actor_id: int | None) -> None:
+    if actor_id is None:
+        return
+    if not repo.is_enabled_super_admin(conn, actor_id):
+        raise Forbidden("only a super admin can do this")
+
+
+def list_members(control: Database, company: Company, *, actor_id: int) -> list[MemberRow]:
+    def run(conn: sqlite3.Connection) -> list[MemberRow]:
+        require_manager(conn, org_id=company.org.id, actor_id=actor_id)
+        return repo.members(conn, company.org.id)
+
+    return control.read(run)
+
+
+def change_role(
+    control: Database,
+    company: Company,
+    *,
+    user_id: int,
+    role: Role,
+    actor_id: int | None,
+    ip: str | None,
+) -> MemberRow:
+    """Change a member's role. The last owner is never demoted (409 LAST_OWNER);
+    the check and the change are one transaction, so two owners demoting each
+    other at once cannot leave the company without one."""
+    org = company.org
+
+    def run(conn: sqlite3.Connection) -> MemberRow:
+        require_manager(conn, org_id=org.id, actor_id=actor_id)
+        found = repo.member(conn, org.id, user_id)
+        if found is None:
+            raise NotFound()
+        if found.role == role:
+            return found
+        if found.role == "owner" and repo.owner_count(conn, org.id) == 1:
+            raise Conflict("the company needs at least one owner", code="LAST_OWNER")
+        repo.set_role(conn, org_id=org.id, user_id=user_id, role=role)
+        audit.record(
+            conn,
+            "member.role_changed",
+            actor_id=actor_id,
+            org_id=org.id,
+            target=found.email,
+            detail={"from": found.role, "to": role},
+            ip=ip,
+        )
+        changed = repo.member(conn, org.id, user_id)
+        if changed is None:
+            raise RuntimeError("row vanished inside its own transaction")
+        return changed
+
+    changed = control.write(run)
+    _company_event(
+        company.tenant, "member.role_changed", actor_id, {"user_id": user_id, "role": role}
+    )
+    return changed
+
+
+def remove_member(
+    control: Database, company: Company, *, user_id: int, actor_id: int | None, ip: str | None
+) -> None:
+    """Take a person out of the company. Never the last owner (409 LAST_OWNER,
+    KNOWN-DEVIATIONS #5). Their copy in the company file stays, so their name
+    still shows on what they did."""
+    org = company.org
+
+    def run(conn: sqlite3.Connection) -> None:
+        require_manager(conn, org_id=org.id, actor_id=actor_id)
+        found = repo.member(conn, org.id, user_id)
+        if found is None:
+            raise NotFound()
+        if found.role == "owner" and repo.owner_count(conn, org.id) == 1:
+            raise Conflict("the company needs at least one owner", code="LAST_OWNER")
+        repo.delete_member(conn, org_id=org.id, user_id=user_id)
+        audit.record(
+            conn,
+            "member.removed",
+            actor_id=actor_id,
+            org_id=org.id,
+            target=found.email,
+            detail={"role": found.role},
+            ip=ip,
+        )
+
+    control.write(run)
+    _company_event(company.tenant, "member.removed", actor_id, {"user_id": user_id})
+
+
+def _company_event(
+    tenant: Tenant, kind: str, actor_id: int | None, payload: dict[str, object]
+) -> None:
+    """The company file's own record of a membership change (a second file, so a
+    second transaction, after the control.db change committed)."""
+
+    def run(conn: sqlite3.Connection) -> None:
+        repo.add_event(
+            conn, type=kind, actor_id=actor_id, payload=json.dumps(payload), now=now_iso()
+        )
+
+    tenant.db.write(run)
 
 
 def join(conn: sqlite3.Connection, *, org_id: int, user: User, role: str, ip: str | None) -> bool:
