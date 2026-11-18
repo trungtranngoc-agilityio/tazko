@@ -3,7 +3,9 @@ in the service; routes only parse and shape."""
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Response
+from typing import Annotated
+
+from fastapi import APIRouter, Path, Response
 
 from tazko.core.deps import ClientIp, CompanyDep, ControlDep, CurrentUser
 from tazko.modules.orgs import service
@@ -11,15 +13,17 @@ from tazko.modules.orgs.schemas import CompanyOut, MemberOut, RoleIn
 
 router = APIRouter()
 
+# A SQLite integer: a bigger id would crash the query instead of answering 404.
+UserId = Annotated[int, Path(ge=1, le=2**63 - 1)]
+
 
 def _member(row: service.MemberRow) -> MemberOut:
-    account = None if row.last_seen_at is None else ("workspace" if row.hd else "personal")
     return MemberOut(
         user_id=row.user_id,
         name=row.name,
         email=row.email,
         avatar_url=row.avatar_url,
-        account=account,
+        account=service.account_kind(row),
         role=row.role,
         last_seen_at=row.last_seen_at,
     )
@@ -47,7 +51,7 @@ def members(company: CompanyDep, user: CurrentUser, control: ControlDep) -> list
 
 @router.patch("/api/orgs/{slug}/members/{user_id}")
 def change_role(
-    user_id: int,
+    user_id: UserId,
     body: RoleIn,
     company: CompanyDep,
     user: CurrentUser,
@@ -62,7 +66,7 @@ def change_role(
 
 @router.delete("/api/orgs/{slug}/members/{user_id}", status_code=204)
 def remove(
-    user_id: int, company: CompanyDep, user: CurrentUser, control: ControlDep, ip: ClientIp
+    user_id: UserId, company: CompanyDep, user: CurrentUser, control: ControlDep, ip: ClientIp
 ) -> Response:
     service.remove_member(control, company, user_id=user_id, actor_id=user.id, ip=ip)
     return Response(status_code=204)

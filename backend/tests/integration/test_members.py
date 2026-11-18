@@ -8,10 +8,11 @@ from typing import Any
 import pytest
 from fastapi.testclient import TestClient
 
-from tazko.core.errors import Forbidden
+from tazko.core.errors import Conflict, Forbidden
 from tazko.db import Database
 from tazko.db.tenant import Tenants
 from tazko.modules.invites import service as invites
+from tazko.modules.orgs import repository as orgs_repo
 from tazko.modules.orgs import service as orgs
 from tazko.modules.orgs.service import Org
 from tazko.modules.users import service as users
@@ -80,6 +81,16 @@ def test_switcher_needs_a_session(client: TestClient) -> None:
     assert client.get("/api/orgs").status_code == 401
 
 
+ROUTES = [
+    ("GET", "/api/orgs/acme/members", None),
+    ("PATCH", "/api/orgs/acme/members/1", {"role": "member"}),
+    ("DELETE", "/api/orgs/acme/members/1", None),
+    ("GET", "/api/orgs/acme/invites", None),
+    ("POST", "/api/orgs/acme/invites", {"email": "cy@example.com", "role": "member"}),
+    ("DELETE", "/api/orgs/acme/invites/1", None),
+]
+
+
 # --- members -----------------------------------------------------------------------
 
 
@@ -111,17 +122,7 @@ def test_owner_sees_the_members(
     }
 
 
-@pytest.mark.parametrize(
-    ("method", "path", "body"),
-    [
-        ("GET", "/api/orgs/acme/members", None),
-        ("PATCH", "/api/orgs/acme/members/1", {"role": "member"}),
-        ("DELETE", "/api/orgs/acme/members/1", None),
-        ("GET", "/api/orgs/acme/invites", None),
-        ("POST", "/api/orgs/acme/invites", {"email": "cy@example.com", "role": "member"}),
-        ("DELETE", "/api/orgs/acme/invites/1", None),
-    ],
-)
+@pytest.mark.parametrize(("method", "path", "body"), ROUTES)
 def test_a_member_cannot_manage_the_company(
     client: TestClient,
     google: FakeGoogle,
@@ -139,15 +140,90 @@ def test_a_member_cannot_manage_the_company(
     assert response.json()["error"]["code"] == "FORBIDDEN"
 
 
+@pytest.mark.parametrize(("method", "path", "body"), ROUTES)
 def test_another_companys_people_get_404(
-    client: TestClient, google: FakeGoogle, control: Database, tenants: Tenants, ana: User
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    ana: User,
+    method: str,
+    path: str,
+    body: Any,
 ) -> None:
     beta = orgs.create_company(control, tenants, slug="beta", name="Beta", actor_id=None)
     cy = person(control, tenants, beta, "cy", "owner")
     as_(client, google, cy)
 
-    assert client.get("/api/orgs/acme/members").status_code == 404
-    assert write(client, "DELETE", f"/api/orgs/acme/members/{ana.id}").status_code == 404
+    assert write(client, method, path, body).status_code == 404
+
+
+@pytest.mark.parametrize(
+    "path", ["/api/orgs/acme/members/99999999999999999999", "/api/orgs/acme/members/0"]
+)
+def test_an_impossible_id_is_422_not_a_crash(
+    client: TestClient, google: FakeGoogle, ana: User, path: str
+) -> None:
+    as_(client, google, ana)
+
+    assert write(client, "DELETE", path).status_code == 422
+
+
+def test_a_disabled_owner_does_not_count_as_an_owner(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    acme: Org,
+    ana: User,
+) -> None:
+    dee = person(control, tenants, acme, "dee", "owner")
+    control.write(
+        lambda c: c.execute(
+            "UPDATE users SET disabled_at = '2026-01-01T00:00:00.000Z' WHERE id = ?", (dee.id,)
+        )
+    )
+    as_(client, google, ana)
+
+    assert (
+        write(client, "DELETE", f"/api/orgs/acme/members/{ana.id}").json()["error"]["code"]
+        == "LAST_OWNER"
+    )
+    response = write(client, "PATCH", f"/api/orgs/acme/members/{ana.id}", {"role": "member"})
+    assert response.json()["error"]["code"] == "LAST_OWNER"
+
+
+def test_members_of_a_suspended_company_cannot_be_changed(
+    control: Database, tenants: Tenants, acme: Org, ana: User, bo: User
+) -> None:
+    company = orgs.open_company(control, tenants, user_id=ana.id, slug="acme")
+    control.write(lambda c: c.execute("UPDATE orgs SET status = 'suspended'"))
+
+    with pytest.raises(Conflict) as err:
+        orgs.change_role(control, company, user_id=bo.id, role="owner", actor_id=ana.id, ip=None)
+    assert err.value.code == "COMPANY_NOT_ACTIVE"
+    with pytest.raises(Conflict):
+        orgs.remove_member(control, company, user_id=bo.id, actor_id=ana.id, ip=None)
+
+
+def test_a_failed_company_file_event_does_not_undo_the_change(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    ana: User,
+    bo: User,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def broken(*args: object, **kwargs: object) -> None:
+        raise OSError("disk full")
+
+    monkeypatch.setattr(orgs_repo, "add_event", broken)
+    as_(client, google, ana)
+
+    response = write(client, "PATCH", f"/api/orgs/acme/members/{bo.id}", {"role": "owner"})
+
+    assert response.status_code == 200
+    assert [r["role"] for r in client.get("/api/orgs/acme/members").json()] == ["owner", "owner"]
 
 
 def test_owner_changes_a_role(
@@ -240,6 +316,7 @@ def test_removed_member_can_no_longer_open_the_company(
     as_(client, google, bo)
 
     assert client.get("/api/orgs").json() == []
+    assert client.get("/api/orgs/acme/invites").status_code == 404
 
 
 def test_changing_someone_not_in_the_company_is_404(
@@ -369,6 +446,33 @@ def test_add_member_checks_the_actor(
 
     with pytest.raises(Forbidden):
         orgs.add_member(control, tenants, org=acme, user=cy, role="owner", actor_id=bo.id)
+
+
+def test_add_member_never_changes_an_existing_members_role(
+    control: Database, tenants: Tenants, acme: Org, ana: User
+) -> None:
+    # Role changes go through change_role, which keeps the last owner.
+    with pytest.raises(Conflict) as err:
+        orgs.add_member(control, tenants, org=acme, user=ana, role="member", actor_id=None)
+    assert err.value.code == "ALREADY_MEMBER"
+
+
+def test_people_without_a_name_are_listed_last(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    acme: Org,
+    ana: User,
+) -> None:
+    nameless = users.get_or_create(control, "aaa@example.com")
+    orgs.add_member(control, tenants, org=acme, user=nameless, role="member", actor_id=None)
+    as_(client, google, ana)
+
+    assert [r["email"] for r in client.get("/api/orgs/acme/members").json()] == [
+        "ana@example.com",
+        "aaa@example.com",
+    ]
 
 
 def test_only_a_super_admin_creates_a_company(

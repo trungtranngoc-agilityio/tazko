@@ -88,30 +88,43 @@ class PendingInvite:
 PENDING_CAP = 500
 
 
+PENDING_SELECT = (
+    "SELECT i.id, i.email, i.role, i.created_at, i.expires_at, u.name AS invited_by,"
+    " w.domain IS NOT NULL AS workspace"
+    " FROM invites i LEFT JOIN users u ON u.id = i.created_by"
+    " LEFT JOIN workspace_domains w ON w.domain = substr(i.email, instr(i.email, '@') + 1)"
+)
+
+
+def _pending(row: sqlite3.Row) -> PendingInvite:
+    return PendingInvite(
+        id=row["id"],
+        email=row["email"],
+        role=row["role"],
+        invited_by=row["invited_by"] or None,
+        created_at=row["created_at"],
+        expires_at=row["expires_at"],
+        workspace=bool(row["workspace"]),
+    )
+
+
 def pending_for_org(conn: sqlite3.Connection, org_id: int, *, now: str) -> list[PendingInvite]:
     """Unused, unrevoked, unexpired invites of one company, newest first, at
     most PENDING_CAP. `workspace`: the address's domain is a known Workspace."""
     rows = conn.execute(
-        "SELECT i.id, i.email, i.role, i.created_at, i.expires_at, u.name AS invited_by,"
-        " w.domain IS NOT NULL AS workspace"
-        " FROM invites i LEFT JOIN users u ON u.id = i.created_by"
-        " LEFT JOIN workspace_domains w ON w.domain = substr(i.email, instr(i.email, '@') + 1)"
-        " WHERE i.org_id = ? AND i.accepted_at IS NULL AND i.revoked_at IS NULL"
+        PENDING_SELECT + " WHERE i.org_id = ? AND i.accepted_at IS NULL AND i.revoked_at IS NULL"
         " AND i.expires_at > ? ORDER BY i.id DESC LIMIT ?",
         (org_id, now, PENDING_CAP),
     ).fetchall()
-    return [
-        PendingInvite(
-            id=row["id"],
-            email=row["email"],
-            role=row["role"],
-            invited_by=row["invited_by"] or None,
-            created_at=row["created_at"],
-            expires_at=row["expires_at"],
-            workspace=bool(row["workspace"]),
-        )
-        for row in rows
-    ]
+    return [_pending(row) for row in rows]
+
+
+def pending_by_id(conn: sqlite3.Connection, invite_id: int) -> PendingInvite:
+    """One invite as the pending list shows it (just made, in the same transaction)."""
+    row = conn.execute(PENDING_SELECT + " WHERE i.id = ?", (invite_id,)).fetchone()
+    if row is None:
+        raise RuntimeError("row vanished inside its own transaction")
+    return _pending(row)
 
 
 def usable(conn: sqlite3.Connection, email: str, *, now: str) -> list[Invite]:

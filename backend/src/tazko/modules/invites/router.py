@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, Response
+from typing import Annotated
+
+from fastapi import APIRouter, Path, Response
 
 from tazko.core.deps import ClientIp, CompanyDep, ControlDep, CurrentUser
 from tazko.modules.invites import service
 from tazko.modules.invites.schemas import InviteIn, InviteOut
 
 router = APIRouter()
+
+# A SQLite integer: a bigger id would crash the query instead of answering 404.
+InviteId = Annotated[int, Path(ge=1, le=2**63 - 1)]
 
 
 def _out(invite: service.PendingInvite) -> InviteOut:
@@ -41,16 +46,14 @@ def invite(
     made = service.create_invite(
         control, org=company.org, email=body.email, role=body.role, actor_id=user.id, ip=ip
     )
-    found = next(
-        i for i in service.list_pending(control, company, actor_id=user.id) if i.id == made.id
-    )
+    # Identifies the invite (DELETE answers there); there is no GET for one invite.
     response.headers["Location"] = f"/api/orgs/{company.org.slug}/invites/{made.id}"
-    return _out(found)
+    return _out(made)
 
 
 @router.delete("/api/orgs/{slug}/invites/{invite_id}", status_code=204)
 def revoke(
-    invite_id: int, company: CompanyDep, user: CurrentUser, control: ControlDep, ip: ClientIp
+    invite_id: InviteId, company: CompanyDep, user: CurrentUser, control: ControlDep, ip: ClientIp
 ) -> Response:
     service.revoke_invite(control, org=company.org, invite_id=invite_id, actor_id=user.id, ip=ip)
     return Response(status_code=204)

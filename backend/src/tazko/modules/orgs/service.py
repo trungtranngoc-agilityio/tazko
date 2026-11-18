@@ -5,7 +5,6 @@ so a handler can never touch a company the caller is not in. Unknown,
 suspended and not-a-member all answer NotFound: the caller learns nothing
 about companies they are not in.
 
-TODO(M1-06): change role, remove member (never the last owner, KNOWN-DEVIATIONS #5).
 TODO(M1-07): suspend, resume, delete to trash/.
 """
 
@@ -32,6 +31,7 @@ __all__ = [
     "MemberRow",
     "Membership",
     "Org",
+    "account_kind",
     "add_member",
     "change_role",
     "companies_of",
@@ -94,11 +94,15 @@ def add_member(
     role: Role,
     actor_id: int | None,
 ) -> None:
-    """Add (or change the role of) a member, and copy the person into the company file."""
+    """Add a member and copy the person into the company file. An existing
+    member is a conflict: role changes go through change_role, which keeps the
+    last owner (KNOWN-DEVIATIONS #5)."""
 
     def membership(conn: sqlite3.Connection) -> None:
         require_manager(conn, org_id=org.id, actor_id=actor_id)
-        repo.upsert_member(conn, org_id=org.id, user_id=user.id, role=role, now=now_iso())
+        if repo.member(conn, org.id, user.id) is not None:
+            raise Conflict("already a member of the company", code="ALREADY_MEMBER")
+        repo.insert_member(conn, org_id=org.id, user_id=user.id, role=role, now=now_iso())
         audit.record(
             conn,
             "member.added",
@@ -147,6 +151,13 @@ def _require_super_admin(conn: sqlite3.Connection, actor_id: int | None) -> None
         raise Forbidden("only a super admin can do this")
 
 
+def account_kind(row: MemberRow) -> Literal["workspace", "personal"] | None:
+    """None until they first sign in; then a Workspace account if Google sent hd."""
+    if row.last_seen_at is None:
+        return None
+    return "workspace" if row.hd else "personal"
+
+
 def list_members(control: Database, company: Company, *, actor_id: int) -> list[MemberRow]:
     def run(conn: sqlite3.Connection) -> list[MemberRow]:
         require_manager(conn, org_id=company.org.id, actor_id=actor_id)
@@ -171,6 +182,8 @@ def change_role(
 
     def run(conn: sqlite3.Connection) -> MemberRow:
         require_manager(conn, org_id=org.id, actor_id=actor_id)
+        if not repo.is_active(conn, org.id):
+            raise Conflict("company: not active", code="COMPANY_NOT_ACTIVE")
         found = repo.member(conn, org.id, user_id)
         if found is None:
             raise NotFound()
@@ -210,6 +223,8 @@ def remove_member(
 
     def run(conn: sqlite3.Connection) -> None:
         require_manager(conn, org_id=org.id, actor_id=actor_id)
+        if not repo.is_active(conn, org.id):
+            raise Conflict("company: not active", code="COMPANY_NOT_ACTIVE")
         found = repo.member(conn, org.id, user_id)
         if found is None:
             raise NotFound()
@@ -241,7 +256,11 @@ def _company_event(
             conn, type=kind, actor_id=actor_id, payload=json.dumps(payload), now=now_iso()
         )
 
-    tenant.db.write(run)
+    try:
+        tenant.db.write(run)
+    except Exception:
+        # The change happened and control.db's audit log has it: log, do not fail.
+        log.exception("company file event %s not written", kind)
 
 
 def join(conn: sqlite3.Connection, *, org_id: int, user: User, role: str, ip: str | None) -> bool:

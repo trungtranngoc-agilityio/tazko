@@ -35,12 +35,11 @@ def insert(conn: sqlite3.Connection, *, slug: str, name: str, now: str) -> Org:
     return org
 
 
-def upsert_member(
+def insert_member(
     conn: sqlite3.Connection, *, org_id: int, user_id: int, role: str, now: str
 ) -> None:
     conn.execute(
-        "INSERT INTO org_members (org_id, user_id, role, created_at) VALUES (?, ?, ?, ?)"
-        " ON CONFLICT (org_id, user_id) DO UPDATE SET role = excluded.role",
+        "INSERT INTO org_members (org_id, user_id, role, created_at) VALUES (?, ?, ?, ?)",
         (org_id, user_id, role, now),
     )
 
@@ -114,7 +113,7 @@ def members(conn: sqlite3.Connection, org_id: int) -> list[MemberRow]:
     rows = conn.execute(
         "SELECT u.id, u.name, u.email, u.avatar_url, u.hd, m.role, u.last_seen_at"
         " FROM org_members m JOIN users u ON u.id = m.user_id"
-        " WHERE m.org_id = ? ORDER BY u.name COLLATE NOCASE, u.email LIMIT ?",
+        " WHERE m.org_id = ? ORDER BY u.name = '', u.name COLLATE NOCASE, u.email LIMIT ?",
         (org_id, MEMBERS_CAP),
     ).fetchall()
     return [_member(row) for row in rows]
@@ -143,9 +142,12 @@ def _member(row: sqlite3.Row) -> MemberRow:
 
 
 def owner_count(conn: sqlite3.Connection, org_id: int) -> int:
+    """Owners who can still act: a disabled owner cannot sign in, so does not count."""
     return int(
         conn.execute(
-            "SELECT count(*) FROM org_members WHERE org_id = ? AND role = 'owner'", (org_id,)
+            "SELECT count(*) FROM org_members m JOIN users u ON u.id = m.user_id"
+            " WHERE m.org_id = ? AND m.role = 'owner' AND u.disabled_at IS NULL",
+            (org_id,),
         ).fetchone()[0]
     )
 

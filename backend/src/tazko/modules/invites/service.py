@@ -51,15 +51,15 @@ def create_invite(
     role: Role,
     actor_id: int | None,
     ip: str | None = None,
-) -> Invite:
+) -> PendingInvite:
     """One pending invite per email and company: a second one is a conflict
-    (revoke the first to change its role)."""
+    (revoke the first to change its role). Returns it as the pending list shows it."""
     address = normalize_email(email)
     if role not in ROLES:
         raise Invalid("role: owner or member", field="role")
     now = clock.now()
 
-    def run(conn: sqlite3.Connection) -> Invite:
+    def run(conn: sqlite3.Connection) -> PendingInvite:
         orgs.require_manager(conn, org_id=org.id, actor_id=actor_id)
         if not orgs.is_active(conn, org.id):
             raise Conflict("company: not active", code="COMPANY_NOT_ACTIVE")
@@ -89,7 +89,7 @@ def create_invite(
             detail={"role": role},
             ip=ip,
         )
-        return invite
+        return repo.pending_by_id(conn, invite.id)
 
     return control.write(run)
 
