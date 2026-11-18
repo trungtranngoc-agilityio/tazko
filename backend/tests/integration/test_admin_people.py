@@ -3,14 +3,18 @@ Workspace domains. Through HTTP with real sessions."""
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
 from tazko import __version__
+from tazko.core.config import load_settings
 from tazko.db import Database
 from tazko.db.tenant import Tenants
+from tazko.modules.admin import service as admin_service
+from tazko.modules.admin.schemas import ServerOut
 from tazko.modules.invites import service as invites
 from tazko.modules.orgs import service as orgs
 from tazko.modules.orgs.service import Org
@@ -97,6 +101,10 @@ def test_people_search_matches_name_or_email(
     ]
     assert [r["email"] for r in client.get("/admin/api/people?q=BO@").json()["items"]] == [
         "bo@example.com"
+    ]
+    users.get_or_create(control, "anh@example.com", name="Trần Ánh")
+    assert [r["email"] for r in client.get("/admin/api/people?q=Ánh").json()["items"]] == [
+        "anh@example.com"
     ]
     # LIKE wildcards are matched as plain characters.
     assert client.get("/admin/api/people?q=%25").json()["items"] == []
@@ -294,6 +302,30 @@ def test_server_page_shows_version_uptime_size_and_email(
     assert body["public_url"] == "https://testserver"
 
 
+def test_server_page_never_shows_the_smtp_login(tmp_path: Path) -> None:
+    # With email on: host, port and sender only.
+    settings = load_settings(
+        data_dir=tmp_path,
+        smtp_host="smtp.example.com",
+        smtp_user="mailer",
+        smtp_password="s3cret-pass",  # a made-up password the page must not show
+        mail_from="Tazko <no-reply@example.com>",
+    )
+    control = Database(tmp_path / "control.db", "control")
+    try:
+        admin_user, _ = users.grant_super_admin(control, "admin@example.com", actor_id=None)
+        info = admin_service.server_info(control, settings, actor_id=admin_user.id, started=0.0)
+    finally:
+        control.close()
+
+    body = ServerOut.from_info(info).model_dump_json()
+
+    assert '"enabled":true' in body
+    assert '"host":"smtp.example.com"' in body
+    assert "s3cret-pass" not in body
+    assert "mailer" not in body
+
+
 # --- workspace domains (D26) -----------------------------------------------------------
 
 
@@ -310,7 +342,28 @@ def test_super_admin_lists_and_removes_a_workspace_domain(
     assert client.get("/admin/api/workspace-domains").json() == [
         {"domain": "corp.example", "first_seen_at": "2026-01-01T00:00:00.000Z"}
     ]
-    assert call(client, "DELETE", "/admin/api/workspace-domains/corp.example").status_code == 204
+    assert call(client, "DELETE", "/admin/api/workspace-domains/CORP.example").status_code == 204
     assert client.get("/admin/api/workspace-domains").json() == []
-    assert [r["target"] for r in audit(control, "workspace_domain.removed")] == ["corp.example"]
+    removed = audit(control, "workspace_domain.removed")
+    assert [(r["target"], r["detail"]) for r in removed] == [
+        ("corp.example", '{"first_seen_at":"2026-01-01T00:00:00.000Z"}')
+    ]
     assert call(client, "DELETE", "/admin/api/workspace-domains/corp.example").status_code == 404
+
+
+def test_after_removing_a_domain_a_personal_account_can_use_its_invite(
+    client: TestClient, google: FakeGoogle, control: Database, admin: User, acme: Org
+) -> None:
+    control.write(
+        lambda c: c.execute(
+            "INSERT INTO workspace_domains (domain, first_seen_at) VALUES ('corp.example', '2026-01-01T00:00:00.000Z')"
+        )
+    )
+    invites.create_invite(control, org=acme, email="bo@corp.example", role="member", actor_id=None)
+    as_(client, google, admin)
+    call(client, "DELETE", "/admin/api/workspace-domains/corp.example")
+    client.cookies.clear()
+
+    response = sign_in(client, google, sub="sub-bo", email="bo@corp.example", name="Bo")
+
+    assert response.headers["location"].endswith("/")  # signed in, not refused

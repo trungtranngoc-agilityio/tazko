@@ -59,7 +59,8 @@ def set_disabled(conn: sqlite3.Connection, user_id: int, at: str | None) -> None
 
 def end_sessions(conn: sqlite3.Connection, user_id: int) -> None:
     """Sign a person out everywhere. The sessions table belongs to auth, but a
-    disabled person's sessions must go in the same transaction that disables them."""
+    disabled person's sessions must go in the same transaction that disables them.
+    TODO(M3-01): also close that person's open WebSockets."""
     conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
 
 
@@ -87,15 +88,16 @@ def people_page(
     conn: sqlite3.Connection, *, query: str | None, after: int | None, limit: int
 ) -> list[PersonRow]:
     """By id, rows with id > after, at most `limit`. `query` matches name or
-    email anywhere, case-insensitively, with LIKE wildcards taken literally."""
+    email anywhere, with LIKE wildcards taken literally. SQLite's LIKE ignores
+    case for ASCII letters only, so an accented name matches as typed."""
     pattern = None
     if query:
-        escaped = query.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        escaped = query.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
         pattern = f"%{escaped}%"
     rows = conn.execute(
         "SELECT id, name, email, avatar_url, hd, is_super_admin, disabled_at, last_seen_at"
         " FROM users WHERE (? IS NULL OR id > ?)"
-        " AND (? IS NULL OR lower(name) LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\')"
+        " AND (? IS NULL OR name LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\')"
         " ORDER BY id LIMIT ?",
         (after, after, pattern, pattern, pattern, limit),
     ).fetchall()
@@ -157,9 +159,12 @@ def workspace_domains(conn: sqlite3.Connection) -> list[tuple[str, str]]:
     return [(row["domain"], row["first_seen_at"]) for row in rows]
 
 
-def forget_workspace_domain(conn: sqlite3.Connection, domain: str) -> bool:
-    cursor = conn.execute("DELETE FROM workspace_domains WHERE domain = ?", (domain,))
-    return cursor.rowcount == 1
+def forget_workspace_domain(conn: sqlite3.Connection, domain: str) -> str | None:
+    """Remove the domain; returns when it was first seen, or None if unknown."""
+    row = conn.execute(
+        "DELETE FROM workspace_domains WHERE domain = ? RETURNING first_seen_at", (domain,)
+    ).fetchone()
+    return row[0] if row else None
 
 
 def set_super_admin(conn: sqlite3.Connection, user_id: int, value: bool) -> None:

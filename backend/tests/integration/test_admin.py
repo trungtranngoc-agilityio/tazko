@@ -50,7 +50,10 @@ def admin_routes(app: FastAPI) -> list[tuple[str, str]]:
     return [
         (
             method,
-            path.replace("{slug}", "acme").replace("{user_id}", "1").replace("{invite_id}", "1"),
+            path.replace("{slug}", "acme")
+            .replace("{user_id}", "1")
+            .replace("{invite_id}", "1")
+            .replace("{domain}", "corp.example"),
         )
         for path, route in walk(app.routes)
         if path.startswith("/admin/api")
@@ -124,9 +127,16 @@ def test_companies_list_shows_counts_storage_and_activity(
     ]
     assert rows[0]["storage_bytes"] > 0  # its database file
     assert rows[0]["storage_limit_bytes"] is None
-    # Newest audit row of each company (member.added, company.created).
-    assert rows[0]["last_activity_at"] is not None
-    assert rows[1]["last_activity_at"] is not None
+    # Each company's newest audit row: member.added for acme, company.created for beta.
+    newest = dict(
+        control.read(
+            lambda c: c.execute(
+                "SELECT o.slug, max(a.at) FROM audit_log a JOIN orgs o ON o.id = a.org_id GROUP BY o.slug"
+            ).fetchall()
+        )
+    )
+    assert rows[0]["last_activity_at"] == newest["acme"]
+    assert rows[1]["last_activity_at"] == newest["beta"]
 
 
 def test_companies_page_opens_no_company_files(

@@ -128,15 +128,9 @@ def set_flags(
         if user_id == actor_id:
             raise Conflict("you cannot change your own access", code="SELF_CHANGE")
         if is_super_admin is not None and is_super_admin != found.is_super_admin:
-            repo.set_super_admin(conn, user_id, is_super_admin)
-            action = "super_admin.granted" if is_super_admin else "super_admin.revoked"
-            audit.record(conn, action, actor_id=actor_id, target=found.email, ip=ip)
+            _set_super_admin(conn, found, is_super_admin, actor_id=actor_id, ip=ip)
         if active is not None and active == found.disabled:
-            repo.set_disabled(conn, user_id, None if active else now_iso())
-            if not active:
-                repo.end_sessions(conn, user_id)
-            action = "person.enabled" if active else "person.disabled"
-            audit.record(conn, action, actor_id=actor_id, target=found.email, ip=ip)
+            _set_active(conn, found, active, actor_id=actor_id, ip=ip)
         fresh = repo.person(conn, user_id)
         if fresh is None:
             raise RuntimeError("row vanished inside its own transaction")
@@ -147,6 +141,24 @@ def set_flags(
         return Person(row=fresh, companies=companies)
 
     return control.write(run)
+
+
+def _set_super_admin(
+    conn: sqlite3.Connection, found: repo.PersonRow, value: bool, *, actor_id: int, ip: str | None
+) -> None:
+    repo.set_super_admin(conn, found.id, value)
+    action = "super_admin.granted" if value else "super_admin.revoked"
+    audit.record(conn, action, actor_id=actor_id, target=found.email, ip=ip)
+
+
+def _set_active(
+    conn: sqlite3.Connection, found: repo.PersonRow, value: bool, *, actor_id: int, ip: str | None
+) -> None:
+    repo.set_disabled(conn, found.id, None if value else now_iso())
+    if not value:
+        repo.end_sessions(conn, found.id)  # signed out at once
+    action = "person.enabled" if value else "person.disabled"
+    audit.record(conn, action, actor_id=actor_id, target=found.email, ip=ip)
 
 
 def list_workspace_domains(control: Database, *, actor_id: int) -> list[tuple[str, str]]:
@@ -166,9 +178,18 @@ def forget_workspace_domain(
 
     def run(conn: sqlite3.Connection) -> None:
         require_super_admin(conn, actor_id)
-        if not repo.forget_workspace_domain(conn, name):
+        first_seen = repo.forget_workspace_domain(conn, name)
+        if first_seen is None:
             raise NotFound()
-        audit.record(conn, "workspace_domain.removed", actor_id=actor_id, target=name, ip=ip)
+        # When it was first seen, so a removal followed by a takeover can be traced.
+        audit.record(
+            conn,
+            "workspace_domain.removed",
+            actor_id=actor_id,
+            target=name,
+            detail={"first_seen_at": first_seen},
+            ip=ip,
+        )
 
     control.write(run)
 

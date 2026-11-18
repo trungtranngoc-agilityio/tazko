@@ -7,7 +7,7 @@ same services as Company settings, with the super admin as the actor.
 
 from __future__ import annotations
 
-from typing import Annotated, Literal
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Path, Query, Response
 
@@ -34,6 +34,7 @@ from tazko.modules.admin.schemas import (
     ServerOut,
     WorkspaceDomainOut,
 )
+from tazko.modules.audit import service as audit
 from tazko.modules.invites import service as invites
 from tazko.modules.invites.schemas import InviteIn, InviteOut
 from tazko.modules.orgs import service as orgs
@@ -203,17 +204,7 @@ def set_person_flags(
 def audit_log(
     console: ConsoleDep,
     control: ControlDep,
-    kind: Literal[
-        "account",
-        "company",
-        "invite",
-        "member",
-        "person",
-        "signin",
-        "super_admin",
-        "workspace_domain",
-    ]
-    | None = None,
+    kind: audit.Kind | None = None,
     before: Cursor = None,
     limit: Limit = 50,
 ) -> AuditPage:

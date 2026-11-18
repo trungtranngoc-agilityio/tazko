@@ -3,24 +3,19 @@ from __future__ import annotations
 import json
 import sqlite3
 from collections.abc import Mapping
+from typing import Literal, get_args
 
 from tazko.core.clock import now_iso
 from tazko.modules.audit import repository as repo
 from tazko.modules.audit.repository import Entry
 
-__all__ = ["KINDS", "Entry", "page", "record"]
+__all__ = ["KINDS", "Entry", "Kind", "page", "record"]
 
 # The kinds the console's Audit log filter offers: the part of `action` before the dot.
-KINDS = (
-    "account",
-    "company",
-    "invite",
-    "member",
-    "person",
-    "signin",
-    "super_admin",
-    "workspace_domain",
-)
+Kind = Literal[
+    "account", "company", "invite", "member", "person", "signin", "super_admin", "workspace_domain"
+]
+KINDS: tuple[str, ...] = get_args(Kind)
 
 
 def record(
