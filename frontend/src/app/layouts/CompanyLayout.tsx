@@ -1,4 +1,4 @@
-import { NavLink, Outlet, useParams } from "react-router";
+import { Navigate, NavLink, Outlet, useParams } from "react-router";
 import { RequireSession, SignOutButton, useMe } from "@/features/auth";
 import { CompanySwitcher, Initials, myCompanies, type CompanyContext } from "@/features/orgs";
 import { errorText, t } from "@/shared/i18n";
@@ -18,7 +18,7 @@ export function CompanyLayout() {
 function CompanyShell() {
   const { slug = "" } = useParams();
   const me = useMe();
-  const [companies] = useAsync(myCompanies, "companies");
+  const [companies, reloadCompanies] = useAsync(myCompanies, "companies");
 
   if (companies.kind === "loading") {
     return (
@@ -28,28 +28,34 @@ function CompanyShell() {
     );
   }
   if (companies.kind === "failed") {
+    if (companies.status === 401) return <Navigate to="/signin" replace />;
     return (
       <p role="alert" className="p-6">
         {errorText(companies.code)}
       </p>
     );
   }
-  const company = companies.value.find((c) => c.slug === slug && c.status === "active");
-  if (!company) {
+  const found = companies.value.find((c) => c.slug === slug);
+  if (!found || found.status !== "active") {
     return (
       <p role="alert" className="p-6">
-        {errorText("NOT_FOUND")}
+        {found ? t("company.isSuspended") : errorText("NOT_FOUND")}
       </p>
     );
   }
-  const context: CompanyContext = { company, companies: companies.value };
+  const company = found;
+  const context: CompanyContext = { company, companies: companies.value, reloadCompanies };
   const link = ({ isActive }: { isActive: boolean }) =>
     `flex h-9 items-center rounded-md px-3 ${isActive ? "bg-accent-soft font-semibold text-accent" : "hover:bg-sunken"}`;
 
   return (
     <div className="flex min-h-screen bg-bg text-ink">
       <aside className="flex w-64 shrink-0 flex-col gap-4 border-r border-line bg-surface p-4">
-        <CompanySwitcher companies={companies.value} current={company} />
+        <CompanySwitcher
+          companies={companies.value}
+          current={company}
+          superAdmin={me.is_super_admin}
+        />
         <nav className="flex flex-col gap-1 text-sm">
           <NavLink end to={`/c/${company.slug}`} className={link}>
             {t("nav.projects")}
@@ -57,11 +63,6 @@ function CompanyShell() {
           {company.role === "owner" && (
             <NavLink to={`/c/${company.slug}/settings`} className={link}>
               {t("nav.settings")}
-            </NavLink>
-          )}
-          {me.is_super_admin && (
-            <NavLink to="/admin" className={link}>
-              {t("nav.admin")}
             </NavLink>
           )}
         </nav>

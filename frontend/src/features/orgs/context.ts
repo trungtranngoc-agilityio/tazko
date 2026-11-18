@@ -5,6 +5,8 @@ import type { Company } from "./api";
 export interface CompanyContext {
   company: Company;
   companies: Company[];
+  /** Load the person's companies again (after their own role changed). */
+  reloadCompanies: () => void;
 }
 
 /** The company named in the URL, for pages under /c/:slug. */

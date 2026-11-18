@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { Link, MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CompanyHomePage } from "@/pages/company/CompanyHomePage";
 import { CompanySettingsPage } from "@/pages/company/CompanySettingsPage";
@@ -51,8 +51,9 @@ const INVITES = [
 
 type Reply = { status: number; body?: unknown };
 
-/** A fake API: answers by "METHOD path"; anything else is a 404. Records every call. */
-function fakeApi(routes: Record<string, Reply | ((body: unknown) => Reply)>) {
+/** A fake API: answers by "METHOD path"; anything else is a 404. "hang" never
+ * answers (a slow load). Records every call. */
+function fakeApi(routes: Record<string, Reply | "hang" | ((body: unknown) => Reply)>) {
   const calls: { method: string; path: string; body: unknown }[] = [];
   const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
     const method = init?.method ?? "GET";
@@ -60,6 +61,7 @@ function fakeApi(routes: Record<string, Reply | ((body: unknown) => Reply)>) {
     const body = init?.body ? JSON.parse(String(init.body)) : undefined;
     calls.push({ method, path, body });
     const route = routes[`${method} ${path}`];
+    if (route === "hang") return new Promise<Response>(() => {});
     const reply =
       typeof route === "function"
         ? route(body)
@@ -80,6 +82,7 @@ function error(code: string) {
 function show(path: string) {
   render(
     <MemoryRouter initialEntries={[path]}>
+      <Link to="/c/north/settings">go to north settings</Link>
       <Routes>
         <Route path="/signin" element={<p>Sign in page</p>} />
         <Route path="/admin" element={<p>Admin console</p>} />
@@ -162,17 +165,59 @@ describe("company switcher", () => {
     expect(screen.queryByRole("link", { name: "Company settings" })).not.toBeInTheDocument();
   });
 
-  it("offers the admin console to super admins only", async () => {
+  it("offers the admin console in the menu to super admins only", async () => {
     fakeApi({
       ...SIGNED_IN,
       "GET /api/me": { status: 200, body: { ...ANA, is_super_admin: true } },
     });
     show("/c/harbor");
 
-    expect(await screen.findByRole("link", { name: "Admin console" })).toHaveAttribute(
+    fireEvent.click(await screen.findByRole("button", { name: /Harbor Studio/ }));
+
+    expect(screen.getByRole("menuitem", { name: "Admin console" })).toHaveAttribute(
       "href",
       "/admin",
     );
+  });
+
+  it("hides the admin console from others", async () => {
+    fakeApi(SIGNED_IN);
+    show("/c/harbor");
+
+    fireEvent.click(await screen.findByRole("button", { name: /Harbor Studio/ }));
+
+    expect(screen.queryByRole("menuitem", { name: "Admin console" })).not.toBeInTheDocument();
+  });
+
+  it("closes the menu with Escape and gives focus back", async () => {
+    fakeApi(SIGNED_IN);
+    show("/c/harbor");
+    const button = await screen.findByRole("button", { name: /Harbor Studio/ });
+
+    fireEvent.click(button);
+    expect(screen.getByRole("menuitem", { name: /Harbor Studio/ })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole("menu"), { key: "Escape" });
+
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+    expect(button).toHaveFocus();
+  });
+
+  it("closes the menu on a click outside", async () => {
+    fakeApi(SIGNED_IN);
+    show("/c/harbor");
+    fireEvent.click(await screen.findByRole("button", { name: /Harbor Studio/ }));
+
+    fireEvent.mouseDown(document.body);
+
+    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
+  });
+
+  it("says a suspended company is suspended", async () => {
+    fakeApi(SIGNED_IN);
+
+    show("/c/lark");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("This company is suspended");
   });
 
   it("says when the company is not one of the person's", async () => {
@@ -250,22 +295,85 @@ describe("company settings", () => {
     );
   });
 
-  it("changes a role", async () => {
+  it("changes a role and shows the role the server kept", async () => {
+    let people = MEMBERS;
     const calls = fakeApi({
       ...SETTINGS,
-      "PATCH /api/orgs/harbor/members/2": { status: 200, body: { ...MEMBERS[1], role: "owner" } },
+      "GET /api/orgs/harbor/members": () => ({ status: 200, body: people }),
+      "PATCH /api/orgs/harbor/members/2": () => {
+        people = [MEMBERS[0]!, { ...MEMBERS[1]!, role: "owner" }];
+        return { status: 200, body: people[1] };
+      },
+    });
+    show("/c/harbor/settings");
+    const select = await screen.findByRole("combobox", { name: "Role of Bo Le" });
+
+    fireEvent.change(select, { target: { value: "owner" } });
+
+    await waitFor(() => expect(calls.filter((c) => c.path.endsWith("/members")).length).toBe(2));
+    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ role: "owner" });
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Role of Bo Le" })).toHaveValue("owner"),
+    );
+  });
+
+  it("puts the role back when the server refuses the change", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true); // demoting yourself asks first
+    fakeApi({
+      ...SETTINGS,
+      "PATCH /api/orgs/harbor/members/1": { status: 409, body: error("LAST_OWNER") },
     });
     show("/c/harbor/settings");
 
-    fireEvent.change(await screen.findByRole("combobox", { name: "Role of Bo Le" }), {
-      target: { value: "owner" },
+    fireEvent.change(await screen.findByRole("combobox", { name: "Role of Ana Tran" }), {
+      target: { value: "member" },
     });
 
-    await waitFor(() => expect(calls.some((c) => c.method === "PATCH")).toBe(true));
-    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ role: "owner" });
+    await screen.findByRole("alert");
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Role of Ana Tran" })).toHaveValue("owner"),
+    );
+  });
+
+  it("leaves Company settings when the owner makes themselves a member", async () => {
+    let companies = [HARBOR, NORTH, LARK];
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    fakeApi({
+      ...SETTINGS,
+      "GET /api/orgs": () => ({ status: 200, body: companies }),
+      "PATCH /api/orgs/harbor/members/1": () => {
+        companies = [{ ...HARBOR, role: "member" }, NORTH, LARK];
+        return { status: 200, body: { ...MEMBERS[0], role: "member" } };
+      },
+    });
+    show("/c/harbor/settings");
+
+    fireEvent.change(await screen.findByRole("combobox", { name: "Role of Ana Tran" }), {
+      target: { value: "member" },
+    });
+
+    expect(await screen.findByRole("heading", { name: "Projects" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Company settings" })).not.toBeInTheDocument();
+  });
+
+  it("never shows one company's members under another company", async () => {
+    fakeApi({
+      ...SETTINGS,
+      "GET /api/orgs": { status: 200, body: [HARBOR, { ...NORTH, role: "owner" }] },
+      "GET /api/orgs/north/members": "hang",
+      "GET /api/orgs/north/invites": "hang",
+    });
+    show("/c/harbor/settings");
+    await screen.findByRole("table", { name: "Members" });
+
+    fireEvent.click(screen.getByRole("link", { name: "go to north settings" }));
+
+    expect(await screen.findByText(/Northwind Labs · you manage/)).toBeInTheDocument();
+    expect(screen.queryByRole("table", { name: "Members" })).not.toBeInTheDocument();
   });
 
   it("says the last owner must stay", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true); // demoting yourself asks first
     fakeApi({
       ...SETTINGS,
       "PATCH /api/orgs/harbor/members/1": { status: 409, body: error("LAST_OWNER") },
@@ -295,12 +403,21 @@ describe("company settings", () => {
 
   it("removes someone after the owner confirms", async () => {
     vi.spyOn(window, "confirm").mockReturnValue(true);
-    const calls = fakeApi({ ...SETTINGS, "DELETE /api/orgs/harbor/members/2": { status: 204 } });
+    let people = MEMBERS;
+    fakeApi({
+      ...SETTINGS,
+      "GET /api/orgs/harbor/members": () => ({ status: 200, body: people }),
+      "DELETE /api/orgs/harbor/members/2": () => {
+        people = [MEMBERS[0]!];
+        return { status: 204 };
+      },
+    });
     show("/c/harbor/settings");
 
     fireEvent.click(await screen.findByRole("button", { name: "Remove Bo Le" }));
 
-    await waitFor(() => expect(calls.some((c) => c.method === "DELETE")).toBe(true));
+    await waitFor(() => expect(screen.queryByText("bo@gmail.com")).not.toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: /Members/ })).toHaveTextContent("(1)");
   });
 
   it("warns harder when an owner removes themselves, then leaves the company", async () => {
@@ -317,24 +434,46 @@ describe("company settings", () => {
   });
 
   it("revokes an invite", async () => {
-    const calls = fakeApi({ ...SETTINGS, "DELETE /api/orgs/harbor/invites/7": { status: 204 } });
+    let pending = INVITES;
+    fakeApi({
+      ...SETTINGS,
+      "GET /api/orgs/harbor/invites": () => ({ status: 200, body: pending }),
+      "DELETE /api/orgs/harbor/invites/7": () => {
+        pending = [];
+        return { status: 204 };
+      },
+    });
     show("/c/harbor/settings");
 
     fireEvent.click(await screen.findByRole("button", { name: "Revoke cy@gmail.com" }));
 
-    await waitFor(() =>
-      expect(calls.some((c) => c.path === "/api/orgs/harbor/invites/7")).toBe(true),
-    );
+    expect(await screen.findByText("No pending invites.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Pending invites/ })).toHaveTextContent("(0)");
   });
 
-  it("shows a member that only owners manage the company", async () => {
+  it("shows a member that only owners manage the company, under the heading, with Retry", async () => {
     fakeApi({
       ...SIGNED_IN,
       "GET /api/orgs/north/members": { status: 403, body: error("FORBIDDEN") },
+      "GET /api/orgs/north/invites": { status: 403, body: error("FORBIDDEN") },
     });
 
     show("/c/north/settings");
 
     expect(await screen.findByRole("alert")).toHaveTextContent("You do not have access to this.");
+    expect(screen.getByRole("heading", { name: "Company settings" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("sends a person whose session ended to sign in", async () => {
+    fakeApi({
+      ...SIGNED_IN,
+      "GET /api/orgs/harbor/members": { status: 401, body: error("UNAUTHENTICATED") },
+      "GET /api/orgs/harbor/invites": { status: 401, body: error("UNAUTHENTICATED") },
+    });
+
+    show("/c/harbor/settings");
+
+    expect(await screen.findByText("Sign in page")).toBeInTheDocument();
   });
 });

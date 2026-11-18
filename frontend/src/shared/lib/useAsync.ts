@@ -6,34 +6,47 @@ export type Async<T> =
   | { kind: "failed"; code: string; status: number }
   | { kind: "ready"; value: T };
 
+type Held<T> = { key: string; state: Async<T> };
+
 /**
- * Load something once per `key`, and again on `reload()`. A failure keeps the
- * API error code (D19) so the screen can explain it with errorText(code).
+ * Load something once per `key`, and again on `reload()`. A reload keeps the
+ * shown value until the new one arrives; a new `key` (another company) starts
+ * from loading, so one company's data is never shown under another. A failure
+ * keeps the API error code (D19) for errorText(code).
  */
 export function useAsync<T>(load: () => Promise<T>, key: string): [Async<T>, () => void] {
-  const [state, setState] = useState<Async<T>>({ kind: "loading" });
+  const [held, setHeld] = useState<Held<T>>({ key, state: { kind: "loading" } });
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let live = true;
-    setState((current) => (current.kind === "ready" ? current : { kind: "loading" }));
+    setHeld((current) =>
+      current.key === key && current.state.kind === "ready"
+        ? current
+        : { key, state: { kind: "loading" } },
+    );
     load().then(
       (value) => {
-        if (live) setState({ kind: "ready", value });
+        if (live) setHeld({ key, state: { kind: "ready", value } });
       },
       (error: unknown) => {
         if (!live) return;
         const api = error instanceof ApiError ? error : null;
-        setState({ kind: "failed", code: api?.code ?? "UNKNOWN", status: api?.status ?? 0 });
+        const state = {
+          kind: "failed",
+          code: api?.code ?? "UNKNOWN",
+          status: api?.status ?? 0,
+        } as const;
+        setHeld({ key, state });
       },
     );
     return () => {
       live = false;
     };
-    // `load` changes every render; `key` and `attempt` say when to load again.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `load` is new every render; `key` and `attempt` decide when to load
   }, [key, attempt]);
 
   const reload = useCallback(() => setAttempt((n) => n + 1), []);
-  return [state, reload];
+  // Until the effect runs for a new key, the held state belongs to the old one.
+  return [held.key === key ? held.state : { kind: "loading" }, reload];
 }

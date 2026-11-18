@@ -13,11 +13,14 @@ interface Props {
   meId: number;
   onChanged: () => void;
   onLeft: () => void;
+  onSelfDemoted: () => void;
 }
 
-/** Members with role and Remove. Every removal is confirmed (KNOWN-DEVIATIONS #5);
- * the server refuses to drop the last owner and the reason is shown. */
-export function MembersTable({ slug, company, members, meId, onChanged, onLeft }: Props) {
+/** Members with role and Remove. Every removal is confirmed (KNOWN-DEVIATIONS #5),
+ * and so is making yourself a member; the server refuses to drop the last owner
+ * and the reason is shown. */
+export function MembersTable(props: Props) {
+  const { slug, company, members, meId, onChanged, onLeft, onSelfDemoted } = props;
   const [problem, setProblem] = useState<string | null>(null);
 
   async function act(run: () => Promise<unknown>, after: () => void) {
@@ -38,6 +41,12 @@ export function MembersTable({ slug, company, members, meId, onChanged, onLeft }
       : t("members.confirmRemove", { name: member.name || member.email, company });
     if (!window.confirm(question)) return;
     void act(() => removeMember(slug, member.user_id), me ? onLeft : onChanged);
+  }
+
+  function setRole(member: Member, role: Role) {
+    const demotingMe = member.user_id === meId && role === "member";
+    if (demotingMe && !window.confirm(t("members.confirmDemote", { company }))) return;
+    void act(() => changeRole(slug, member.user_id, role), demotingMe ? onSelfDemoted : onChanged);
   }
 
   return (
@@ -83,12 +92,7 @@ export function MembersTable({ slug, company, members, meId, onChanged, onLeft }
                   <select
                     aria-label={t("members.roleOf", { name: label })}
                     value={member.role}
-                    onChange={(e) =>
-                      void act(
-                        () => changeRole(slug, member.user_id, e.target.value as Role),
-                        onChanged,
-                      )
-                    }
+                    onChange={(e) => setRole(member, e.target.value as Role)}
                     className="h-9 rounded-md border border-line bg-surface px-2"
                   >
                     <option value="owner">{t("role.owner")}</option>

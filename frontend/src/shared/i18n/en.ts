@@ -8,6 +8,8 @@ export const en = {
     "Ask the owner of your company to invite this Google account. When they do, sign in again.",
   "company.switch": "Switch company",
   "company.suspended": "Suspended",
+  "company.isSuspended":
+    "This company is suspended. Its owners can ask a super admin of Tazko to resume it.",
   "role.owner": "Owner",
   "role.member": "Member",
   "nav.projects": "Projects",
@@ -40,6 +42,8 @@ export const en = {
   "members.removeOf": "Remove {name}",
   "members.confirmRemove": "Remove {name} from {company}?",
   "members.confirmLeave": "Remove yourself from {company}? You will lose access to it.",
+  "members.confirmDemote":
+    "Make yourself a member of {company}? You will no longer manage its people.",
   "members.never": "Never",
   "account.workspace": "Workspace",
   "account.personal": "Personal Gmail",
@@ -51,6 +55,7 @@ export const en = {
   "invites.revokeOf": "Revoke {email}",
   "invites.none": "No pending invites.",
   "when.today": "Today {time}",
+  "when.todayOnly": "Today",
   "when.yesterday": "Yesterday",
   "when.daysAgo": "{days} days ago",
   "signin.title": "Sign in to Tazko",

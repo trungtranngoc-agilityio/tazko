@@ -21,10 +21,13 @@ export function InvitesTable({
     setProblem(null);
     try {
       await revokeInvite(slug, invite.id);
+      onChanged();
     } catch (error) {
-      setProblem(errorText(error instanceof ApiError ? error.code : "UNKNOWN"));
+      const code = error instanceof ApiError ? error.code : "UNKNOWN";
+      setProblem(errorText(code));
+      // Someone else used or revoked it meanwhile: show the list as it is now.
+      if (code === "INVITE_USED" || code === "INVITE_REVOKED") onChanged();
     }
-    onChanged();
   }
 
   return (
@@ -66,7 +69,7 @@ export function InvitesTable({
                   </span>
                 </td>
                 <td className="px-3 text-muted">{invite.invited_by ?? ""}</td>
-                <td className="px-3 text-muted">{when(invite.created_at)}</td>
+                <td className="px-3 text-muted">{when(invite.created_at, { dateOnly: true })}</td>
                 <td className="px-3">
                   <button
                     type="button"

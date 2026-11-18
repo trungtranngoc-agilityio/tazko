@@ -7,13 +7,18 @@ function startOfDay(d: Date): number {
 }
 
 /**
- * A past moment as the prototype writes it: "Today 09:12", "Yesterday",
- * "3 days ago", then "12 Oct". `now` is a parameter so tests can fix it.
+ * A past moment as the prototype writes it: "Today 09:12" ("Today" with
+ * `dateOnly`), "Yesterday", "3 days ago", then "12 Oct". `now` is a parameter
+ * so tests can fix it.
  */
-export function when(iso: string, now: Date = new Date()): string {
+export function when(
+  iso: string,
+  { dateOnly = false, now = new Date() }: { dateOnly?: boolean; now?: Date } = {},
+): string {
   const at = new Date(iso);
   const days = Math.round((startOfDay(now) - startOfDay(at)) / DAY);
   if (days <= 0) {
+    if (dateOnly) return t("when.todayOnly");
     const time = at.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
     return t("when.today", { time });
   }
