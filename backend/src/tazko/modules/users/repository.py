@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from dataclasses import dataclass
 
@@ -50,6 +51,115 @@ def insert(conn: sqlite3.Connection, *, email: str, name: str, now: str) -> User
     if user is None:
         raise RuntimeError("row vanished inside its own transaction")
     return user
+
+
+def set_disabled(conn: sqlite3.Connection, user_id: int, at: str | None) -> None:
+    conn.execute("UPDATE users SET disabled_at = ? WHERE id = ?", (at, user_id))
+
+
+def end_sessions(conn: sqlite3.Connection, user_id: int) -> None:
+    """Sign a person out everywhere. The sessions table belongs to auth, but a
+    disabled person's sessions must go in the same transaction that disables them."""
+    conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+
+
+def is_enabled_super_admin(conn: sqlite3.Connection, user_id: int) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM users WHERE id = ? AND is_super_admin = 1 AND disabled_at IS NULL",
+        (user_id,),
+    ).fetchone()
+    return row is not None
+
+
+@dataclass(frozen=True)
+class PersonRow:
+    id: int
+    name: str
+    email: str
+    avatar_url: str | None
+    hd: str | None
+    is_super_admin: bool
+    disabled: bool
+    last_seen_at: str | None
+
+
+def people_page(
+    conn: sqlite3.Connection, *, query: str | None, after: int | None, limit: int
+) -> list[PersonRow]:
+    """By id, rows with id > after, at most `limit`. `query` matches name or
+    email anywhere, case-insensitively, with LIKE wildcards taken literally."""
+    pattern = None
+    if query:
+        escaped = query.lower().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+        pattern = f"%{escaped}%"
+    rows = conn.execute(
+        "SELECT id, name, email, avatar_url, hd, is_super_admin, disabled_at, last_seen_at"
+        " FROM users WHERE (? IS NULL OR id > ?)"
+        " AND (? IS NULL OR lower(name) LIKE ? ESCAPE '\\' OR email LIKE ? ESCAPE '\\')"
+        " ORDER BY id LIMIT ?",
+        (after, after, pattern, pattern, pattern, limit),
+    ).fetchall()
+    return [
+        PersonRow(
+            id=row["id"],
+            name=row["name"],
+            email=row["email"],
+            avatar_url=row["avatar_url"],
+            hd=row["hd"],
+            is_super_admin=bool(row["is_super_admin"]),
+            disabled=row["disabled_at"] is not None,
+            last_seen_at=row["last_seen_at"],
+        )
+        for row in rows
+    ]
+
+
+def person(conn: sqlite3.Connection, user_id: int) -> PersonRow | None:
+    row = conn.execute(
+        "SELECT id, name, email, avatar_url, hd, is_super_admin, disabled_at, last_seen_at"
+        " FROM users WHERE id = ?",
+        (user_id,),
+    ).fetchone()
+    if row is None:
+        return None
+    return PersonRow(
+        id=row["id"],
+        name=row["name"],
+        email=row["email"],
+        avatar_url=row["avatar_url"],
+        hd=row["hd"],
+        is_super_admin=bool(row["is_super_admin"]),
+        disabled=row["disabled_at"] is not None,
+        last_seen_at=row["last_seen_at"],
+    )
+
+
+def companies_of_people(
+    conn: sqlite3.Connection, user_ids: list[int]
+) -> list[tuple[int, str, str, str]]:
+    """(user id, company slug, company name, role) for these people, one query."""
+    if not user_ids:
+        return []
+    rows = conn.execute(
+        "SELECT m.user_id, o.slug, o.name, m.role FROM org_members m JOIN orgs o ON o.id = m.org_id"
+        " WHERE m.user_id IN (SELECT value FROM json_each(?)) AND o.status != 'deleted'"
+        " ORDER BY o.name COLLATE NOCASE, o.slug",
+        (json.dumps(user_ids),),
+    ).fetchall()
+    return [(row["user_id"], row["slug"], row["name"], row["role"]) for row in rows]
+
+
+def workspace_domains(conn: sqlite3.Connection) -> list[tuple[str, str]]:
+    """(domain, first seen) by domain, at most 500."""
+    rows = conn.execute(
+        "SELECT domain, first_seen_at FROM workspace_domains ORDER BY domain LIMIT 500"
+    ).fetchall()
+    return [(row["domain"], row["first_seen_at"]) for row in rows]
+
+
+def forget_workspace_domain(conn: sqlite3.Connection, domain: str) -> bool:
+    cursor = conn.execute("DELETE FROM workspace_domains WHERE domain = ?", (domain,))
+    return cursor.rowcount == 1
 
 
 def set_super_admin(conn: sqlite3.Connection, user_id: int, value: bool) -> None:

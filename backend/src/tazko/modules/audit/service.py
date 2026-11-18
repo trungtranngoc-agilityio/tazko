@@ -5,6 +5,22 @@ import sqlite3
 from collections.abc import Mapping
 
 from tazko.core.clock import now_iso
+from tazko.modules.audit import repository as repo
+from tazko.modules.audit.repository import Entry
+
+__all__ = ["KINDS", "Entry", "page", "record"]
+
+# The kinds the console's Audit log filter offers: the part of `action` before the dot.
+KINDS = (
+    "account",
+    "company",
+    "invite",
+    "member",
+    "person",
+    "signin",
+    "super_admin",
+    "workspace_domain",
+)
 
 
 def record(
@@ -35,3 +51,12 @@ def record(
             ip,
         ),
     )
+
+
+def page(
+    conn: sqlite3.Connection, *, before: int | None, limit: int, kind: str | None
+) -> list[Entry]:
+    """Audit rows newest first, inside the caller's read. The caller checks who asks."""
+    if kind is not None and kind not in KINDS:
+        raise ValueError(f"unknown kind {kind!r}")
+    return repo.page(conn, before=before, limit=limit, prefix=kind)

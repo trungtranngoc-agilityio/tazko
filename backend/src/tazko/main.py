@@ -7,6 +7,7 @@ hostname belong to the tunnel.
 
 from __future__ import annotations
 
+import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -59,6 +60,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         dependencies=[Depends(require_same_origin)],
     )
     app.state.settings = settings
+    app.state.started = time.monotonic()  # for the console's Server page
     app.state.identity_provider = GoogleProvider(
         settings.google_client_id, settings.google_client_secret.get_secret_value()
     )
