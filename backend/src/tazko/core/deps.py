@@ -125,3 +125,12 @@ def get_console_company(slug: str, console: ConsoleDep) -> Company:
 
 
 ConsoleCompanyDep = Annotated[Company, Depends(get_console_company)]
+
+
+def get_started(request: Request) -> float:
+    """When this server started, by time.monotonic()."""
+    started: float = request.app.state.started
+    return started
+
+
+StartedDep = Annotated[float, Depends(get_started)]

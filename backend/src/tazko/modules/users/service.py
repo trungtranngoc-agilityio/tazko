@@ -10,25 +10,32 @@ from dataclasses import dataclass
 from typing import Literal
 
 from tazko.core.clock import now_iso
-from tazko.core.errors import Invalid
+from tazko.core.errors import Conflict, Forbidden, Invalid, NotFound
 from tazko.db import Database
 from tazko.modules.audit import service as audit
 from tazko.modules.users import repository as repo
 from tazko.modules.users.repository import User
 
 __all__ = [
+    "Company",
     "GoogleAccount",
+    "Person",
     "Refused",
     "User",
     "create_from_google",
+    "forget_workspace_domain",
     "get",
     "get_or_create",
     "grant_super_admin",
     "is_workspace_domain",
+    "list_workspace_domains",
     "match_google_account",
     "needs_workspace",
     "normalize_email",
+    "people_page",
     "remember_workspace",
+    "require_super_admin",
+    "set_flags",
 ]
 
 log = logging.getLogger(__name__)
@@ -50,6 +57,141 @@ def normalize_email(email: str) -> str:
     if len(value) > 254 or not EMAIL.fullmatch(value):
         raise Invalid("email: not a valid email address", field="email")
     return value
+
+
+def require_super_admin(conn: sqlite3.Connection, actor_id: int | None) -> None:
+    """None is the command line. Anyone else must be an enabled super admin."""
+    if actor_id is not None and not repo.is_enabled_super_admin(conn, actor_id):
+        raise Forbidden("only a super admin can do this")
+
+
+@dataclass(frozen=True)
+class Company:
+    slug: str
+    name: str
+    role: str
+
+
+@dataclass(frozen=True)
+class Person:
+    """A row of the console's People page."""
+
+    row: repo.PersonRow
+    companies: list[Company]
+
+    @property
+    def account(self) -> Literal["workspace", "personal"] | None:
+        if self.row.last_seen_at is None:
+            return None
+        return "workspace" if self.row.hd else "personal"
+
+
+def people_page(
+    control: Database, *, actor_id: int, query: str | None, after: int | None, limit: int
+) -> tuple[list[Person], int | None]:
+    """One page of everyone, by id, and the cursor for the next page (None at the end)."""
+
+    def run(conn: sqlite3.Connection) -> tuple[list[Person], int | None]:
+        require_super_admin(conn, actor_id)
+        rows = repo.people_page(conn, query=query, after=after, limit=limit + 1)
+        more = len(rows) > limit
+        rows = rows[:limit]
+        companies: dict[int, list[Company]] = {r.id: [] for r in rows}
+        for user_id, slug, name, role in repo.companies_of_people(conn, list(companies)):
+            companies[user_id].append(Company(slug=slug, name=name, role=role))
+        people = [Person(row=r, companies=companies[r.id]) for r in rows]
+        return people, (rows[-1].id if more else None)
+
+    return control.read(run)
+
+
+def set_flags(
+    control: Database,
+    *,
+    user_id: int,
+    actor_id: int,
+    ip: str | None,
+    is_super_admin: bool | None = None,
+    active: bool | None = None,
+) -> Person:
+    """Grant or revoke super admin, disable or re-enable, from the console.
+
+    A super admin never changes themselves (409 SELF_CHANGE), so the console
+    always keeps one who can sign in. Disabling ends every session of that
+    person in the same transaction; each change is audit-logged."""
+
+    def run(conn: sqlite3.Connection) -> Person:
+        require_super_admin(conn, actor_id)
+        found = repo.person(conn, user_id)
+        if found is None:
+            raise NotFound()
+        if user_id == actor_id:
+            raise Conflict("you cannot change your own access", code="SELF_CHANGE")
+        if is_super_admin is not None and is_super_admin != found.is_super_admin:
+            _set_super_admin(conn, found, is_super_admin, actor_id=actor_id, ip=ip)
+        if active is not None and active == found.disabled:
+            _set_active(conn, found, active, actor_id=actor_id, ip=ip)
+        fresh = repo.person(conn, user_id)
+        if fresh is None:
+            raise RuntimeError("row vanished inside its own transaction")
+        companies = [
+            Company(slug=slug, name=name, role=role)
+            for _, slug, name, role in repo.companies_of_people(conn, [user_id])
+        ]
+        return Person(row=fresh, companies=companies)
+
+    return control.write(run)
+
+
+def _set_super_admin(
+    conn: sqlite3.Connection, found: repo.PersonRow, value: bool, *, actor_id: int, ip: str | None
+) -> None:
+    repo.set_super_admin(conn, found.id, value)
+    action = "super_admin.granted" if value else "super_admin.revoked"
+    audit.record(conn, action, actor_id=actor_id, target=found.email, ip=ip)
+
+
+def _set_active(
+    conn: sqlite3.Connection, found: repo.PersonRow, value: bool, *, actor_id: int, ip: str | None
+) -> None:
+    repo.set_disabled(conn, found.id, None if value else now_iso())
+    if not value:
+        repo.end_sessions(conn, found.id)  # signed out at once
+    action = "person.enabled" if value else "person.disabled"
+    audit.record(conn, action, actor_id=actor_id, target=found.email, ip=ip)
+
+
+def list_workspace_domains(control: Database, *, actor_id: int) -> list[tuple[str, str]]:
+    def run(conn: sqlite3.Connection) -> list[tuple[str, str]]:
+        require_super_admin(conn, actor_id)
+        return repo.workspace_domains(conn)
+
+    return control.read(run)
+
+
+def forget_workspace_domain(
+    control: Database, *, domain: str, actor_id: int, ip: str | None
+) -> None:
+    """For a company that left Google Workspace: personal accounts on its
+    addresses can link and use invites again (D26). Unknown domain: NotFound."""
+    name = domain.lower()
+
+    def run(conn: sqlite3.Connection) -> None:
+        require_super_admin(conn, actor_id)
+        first_seen = repo.forget_workspace_domain(conn, name)
+        if first_seen is None:
+            raise NotFound()
+        # When it was first seen, so a removal followed by a takeover can be traced.
+        audit.record(
+            conn,
+            "workspace_domain.removed",
+            actor_id=actor_id,
+            target=name,
+            detail={"first_seen_at": first_seen},
+            ip=ip,
+        )
+
+    control.write(run)
 
 
 def get(control: Database, user_id: int) -> User | None:

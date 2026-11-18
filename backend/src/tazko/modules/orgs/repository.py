@@ -130,14 +130,6 @@ def by_slug_not_deleted(conn: sqlite3.Connection, slug: str) -> Org | None:
     return _org(row) if row else None
 
 
-def is_enabled_super_admin(conn: sqlite3.Connection, user_id: int) -> bool:
-    row = conn.execute(
-        "SELECT 1 FROM users WHERE id = ? AND is_super_admin = 1 AND disabled_at IS NULL",
-        (user_id,),
-    ).fetchone()
-    return row is not None
-
-
 def standing(
     conn: sqlite3.Connection, *, org_id: int, user_id: int
 ) -> tuple[bool, str | None] | None:

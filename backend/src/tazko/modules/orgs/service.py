@@ -159,10 +159,7 @@ def require_manager(conn: sqlite3.Connection, *, org_id: int, actor_id: int | No
 
 
 def require_super_admin(conn: sqlite3.Connection, actor_id: int | None) -> None:
-    if actor_id is None:
-        return
-    if not repo.is_enabled_super_admin(conn, actor_id):
-        raise Forbidden("only a super admin can do this")
+    users.require_super_admin(conn, actor_id)
 
 
 def account_kind(row: MemberRow) -> Literal["workspace", "personal"] | None:
