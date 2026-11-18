@@ -88,12 +88,15 @@ class PendingInvite:
 PENDING_CAP = 500
 
 
-PENDING_SELECT = (
+PENDING_COLUMNS = (
     "SELECT i.id, i.email, i.role, i.created_at, i.expires_at, u.name AS invited_by,"
     " w.domain IS NOT NULL AS workspace"
+)
+PENDING_FROM = (
     " FROM invites i LEFT JOIN users u ON u.id = i.created_by"
     " LEFT JOIN workspace_domains w ON w.domain = substr(i.email, instr(i.email, '@') + 1)"
 )
+PENDING_SELECT = PENDING_COLUMNS + PENDING_FROM
 
 
 def _pending(row: sqlite3.Row) -> PendingInvite:
@@ -117,6 +120,30 @@ def pending_for_org(conn: sqlite3.Connection, org_id: int, *, now: str) -> list[
         (org_id, now, PENDING_CAP),
     ).fetchall()
     return [_pending(row) for row in rows]
+
+
+@dataclass(frozen=True)
+class PendingAnywhere:
+    invite: PendingInvite
+    org_slug: str
+    org_name: str
+
+
+def pending_everywhere(conn: sqlite3.Connection, *, now: str) -> list[PendingAnywhere]:
+    """Usable invites of every company not deleted, newest first, at most PENDING_CAP."""
+    rows = conn.execute(
+        PENDING_COLUMNS
+        + ", o.slug AS org_slug, o.name AS org_name"
+        + PENDING_FROM
+        + " JOIN orgs o ON o.id = i.org_id"
+        " WHERE i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?"
+        " AND o.status != 'deleted' ORDER BY i.id DESC LIMIT ?",
+        (now, PENDING_CAP),
+    ).fetchall()
+    return [
+        PendingAnywhere(invite=_pending(row), org_slug=row["org_slug"], org_name=row["org_name"])
+        for row in rows
+    ]
 
 
 def pending_by_id(conn: sqlite3.Connection, invite_id: int) -> PendingInvite:

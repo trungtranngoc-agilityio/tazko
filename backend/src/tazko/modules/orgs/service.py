@@ -12,8 +12,11 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import sqlite3
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Literal
 
 from tazko.core.clock import now_iso
@@ -28,6 +31,8 @@ from tazko.modules.users.service import User
 
 __all__ = [
     "Company",
+    "CompanySummary",
+    "Console",
     "MemberRow",
     "Membership",
     "Org",
@@ -41,8 +46,10 @@ __all__ = [
     "join",
     "list_members",
     "open_company",
+    "org_by_id",
     "remove_member",
     "require_manager",
+    "require_super_admin",
 ]
 
 log = logging.getLogger(__name__)
@@ -52,11 +59,18 @@ Role = Literal["owner", "member"]
 
 @dataclass(frozen=True)
 class Company:
-    """A company opened for one person: their role and the company's own file."""
+    """A company opened for one person: their role and the company's own file.
+
+    The file is opened on first use of `tenant`, so a request that only reads
+    control.db (the console's member list) never opens or caches it."""
 
     org: Org
     role: str
-    tenant: Tenant
+    open_tenant: Callable[[], Tenant] = field(repr=False)
+
+    @property
+    def tenant(self) -> Tenant:
+        return self.open_tenant()
 
 
 def create_company(
@@ -74,7 +88,7 @@ def create_company(
         raise Invalid("name: 1 to 100 characters", field="name")
 
     def run(conn: sqlite3.Connection) -> Org:
-        _require_super_admin(conn, actor_id)
+        require_super_admin(conn, actor_id)
         if repo.by_slug(conn, slug) or tenants.folder(slug).exists():
             raise Conflict("slug: already taken", code="SLUG_TAKEN", field="slug")
         org = repo.insert(conn, slug=slug, name=name, now=now_iso())
@@ -144,7 +158,7 @@ def require_manager(conn: sqlite3.Connection, *, org_id: int, actor_id: int | No
     raise Forbidden("only an owner of the company can do this")
 
 
-def _require_super_admin(conn: sqlite3.Connection, actor_id: int | None) -> None:
+def require_super_admin(conn: sqlite3.Connection, actor_id: int | None) -> None:
     if actor_id is None:
         return
     if not repo.is_enabled_super_admin(conn, actor_id):
@@ -207,9 +221,7 @@ def change_role(
         return changed
 
     changed = control.write(run)
-    _company_event(
-        company.tenant, "member.role_changed", actor_id, {"user_id": user_id, "role": role}
-    )
+    _company_event(company, "member.role_changed", actor_id, {"user_id": user_id, "role": role})
     return changed
 
 
@@ -242,14 +254,15 @@ def remove_member(
         )
 
     control.write(run)
-    _company_event(company.tenant, "member.removed", actor_id, {"user_id": user_id})
+    _company_event(company, "member.removed", actor_id, {"user_id": user_id})
 
 
 def _company_event(
-    tenant: Tenant, kind: str, actor_id: int | None, payload: dict[str, object]
+    company: Company, kind: str, actor_id: int | None, payload: dict[str, object]
 ) -> None:
     """The company file's own record of a membership change (a second file, so a
-    second transaction, after the control.db change committed)."""
+    second transaction, after the control.db change committed). The actor may be
+    a super admin who is not in the company's people (D28)."""
 
     def run(conn: sqlite3.Connection) -> None:
         repo.add_event(
@@ -257,7 +270,7 @@ def _company_event(
         )
 
     try:
-        tenant.db.write(run)
+        company.tenant.db.write(run)  # opening the file can fail too
     except Exception:
         # The change happened and control.db's audit log has it: log, do not fail.
         log.exception("company file event %s not written", kind)
@@ -317,6 +330,96 @@ def _copy_person(
     tenant.db.write(run)
 
 
+def org_by_id(conn: sqlite3.Connection, org_id: int) -> Org | None:
+    return repo.by_id(conn, org_id)
+
+
+@dataclass(frozen=True)
+class CompanySummary:
+    """A company as the console's Companies page shows it. Boards come in M2."""
+
+    org: Org
+    members: int
+    storage_bytes: int
+    storage_limit_bytes: int | None
+    last_activity_at: str | None
+
+
+@dataclass(frozen=True)
+class Console:
+    """What a super admin reaches in the console. Only core/deps.py makes one,
+    after checking the flag, so routes never hold the company cache itself.
+
+    A super admin manages a company's people and invites without being a
+    member, but never opens its boards: `open` gives a Company whose file is
+    used only for membership events here."""
+
+    control: Database
+    tenants: Tenants
+    actor_id: int
+
+    def companies(self) -> list[CompanySummary]:
+        def run(conn: sqlite3.Connection) -> list[repo.OrgCounts]:
+            require_super_admin(conn, self.actor_id)
+            return repo.all_with_counts(conn)
+
+        return [self._summary(c) for c in self.control.read(run)]
+
+    def company(self, slug: str) -> CompanySummary:
+        def run(conn: sqlite3.Connection) -> repo.OrgCounts | None:
+            require_super_admin(conn, self.actor_id)
+            return repo.one_with_counts(conn, slug)
+
+        found = self.control.read(run) if valid_slug(slug) else None
+        if found is None:
+            raise NotFound()
+        return self._summary(found)
+
+    def create(self, *, slug: str, name: str) -> Org:
+        return create_company(
+            self.control, self.tenants, slug=slug, name=name, actor_id=self.actor_id
+        )
+
+    def open(self, slug: str) -> Company:
+        """The company's row only; its file opens when a change writes an event."""
+
+        def run(conn: sqlite3.Connection) -> Org | None:
+            require_super_admin(conn, self.actor_id)
+            return repo.by_slug_not_deleted(conn, slug)
+
+        org = self.control.read(run) if valid_slug(slug) else None
+        if org is None:
+            raise NotFound()
+        return Company(org=org, role="super_admin", open_tenant=lambda: self._tenant(slug))
+
+    def _tenant(self, slug: str) -> Tenant:
+        try:
+            return self.tenants.get(slug)
+        except FileNotFoundError:
+            log.error("company %s has a row but no database file", slug)
+            raise AppError() from None
+
+    def _summary(self, counts: repo.OrgCounts) -> CompanySummary:
+        return CompanySummary(
+            org=counts.org,
+            members=counts.members,
+            storage_bytes=_folder_size(self.tenants.folder(counts.org.slug)),
+            storage_limit_bytes=counts.storage_limit_bytes,
+            last_activity_at=counts.last_activity_at,
+        )
+
+
+def _folder_size(folder: Path) -> int:
+    total = 0
+    for root, _dirs, files in os.walk(folder):
+        for name in files:
+            try:
+                total += (Path(root) / name).lstat().st_size  # a link counts as itself
+            except OSError:  # removed while we walked
+                continue
+    return total
+
+
 def companies_of(control: Database, user_id: int) -> list[Membership]:
     """The companies a person belongs to (for the switcher), by name."""
     return control.read(lambda c: repo.memberships(c, user_id))
@@ -348,4 +451,4 @@ def open_company(control: Database, tenants: Tenants, *, user_id: int, slug: str
             event="member.joined",
             only_if_missing=True,
         )
-    return Company(org=membership.org, role=membership.role, tenant=tenant)
+    return Company(org=membership.org, role=membership.role, open_tenant=lambda: tenant)

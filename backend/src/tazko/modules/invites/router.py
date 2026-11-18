@@ -16,22 +16,12 @@ router = APIRouter()
 InviteId = Annotated[int, Path(ge=1, le=2**63 - 1)]
 
 
-def _out(invite: service.PendingInvite) -> InviteOut:
-    return InviteOut(
-        id=invite.id,
-        email=invite.email,
-        role=invite.role,
-        account=service.account_kind(invite),
-        invited_by=invite.invited_by,
-        created_at=invite.created_at,
-        expires_at=invite.expires_at,
-    )
-
-
 @router.get("/api/orgs/{slug}/invites")
 def pending(company: CompanyDep, user: CurrentUser, control: ControlDep) -> list[InviteOut]:
     """At most 500 pending invites, newest first."""
-    return [_out(i) for i in service.list_pending(control, company, actor_id=user.id)]
+    return [
+        InviteOut.from_pending(i) for i in service.list_pending(control, company, actor_id=user.id)
+    ]
 
 
 @router.post("/api/orgs/{slug}/invites", status_code=201)
@@ -48,7 +38,7 @@ def invite(
     )
     # Identifies the invite (DELETE answers there); there is no GET for one invite.
     response.headers["Location"] = f"/api/orgs/{company.org.slug}/invites/{made.id}"
-    return _out(made)
+    return InviteOut.from_pending(made)
 
 
 @router.delete("/api/orgs/{slug}/invites/{invite_id}", status_code=204)

@@ -27,6 +27,57 @@ def by_slug(conn: sqlite3.Connection, slug: str) -> Org | None:
     return _org(row) if row else None
 
 
+def by_id(conn: sqlite3.Connection, org_id: int) -> Org | None:
+    row = conn.execute("SELECT id, slug, name, status FROM orgs WHERE id = ?", (org_id,)).fetchone()
+    return _org(row) if row else None
+
+
+@dataclass(frozen=True)
+class OrgCounts:
+    org: Org
+    members: int
+    storage_limit_bytes: int | None
+    last_activity_at: str | None
+
+
+COMPANIES_CAP = 500
+
+
+def _counts(row: sqlite3.Row) -> OrgCounts:
+    return OrgCounts(
+        org=_org(row),
+        members=row["members"],
+        storage_limit_bytes=row["storage_limit_bytes"],
+        last_activity_at=row["last_activity_at"],
+    )
+
+
+COUNTS_SELECT = (
+    "SELECT o.id, o.slug, o.name, o.status, o.storage_limit_bytes,"
+    " (SELECT count(*) FROM org_members m WHERE m.org_id = o.id) AS members,"
+    # Newest audit row of the company (index audit_log_by_org); M2 adds board activity.
+    " (SELECT max(a.at) FROM audit_log a WHERE a.org_id = o.id) AS last_activity_at"
+    " FROM orgs o"
+)
+
+
+def all_with_counts(conn: sqlite3.Connection) -> list[OrgCounts]:
+    """Every company not deleted, by name, at most COMPANIES_CAP."""
+    rows = conn.execute(
+        COUNTS_SELECT
+        + " WHERE o.status != 'deleted' ORDER BY o.name COLLATE NOCASE, o.slug LIMIT ?",
+        (COMPANIES_CAP,),
+    ).fetchall()
+    return [_counts(row) for row in rows]
+
+
+def one_with_counts(conn: sqlite3.Connection, slug: str) -> OrgCounts | None:
+    row = conn.execute(
+        COUNTS_SELECT + " WHERE o.slug = ? AND o.status != 'deleted'", (slug,)
+    ).fetchone()
+    return _counts(row) if row else None
+
+
 def insert(conn: sqlite3.Connection, *, slug: str, name: str, now: str) -> Org:
     conn.execute("INSERT INTO orgs (slug, name, created_at) VALUES (?, ?, ?)", (slug, name, now))
     org = by_slug(conn, slug)
@@ -70,6 +121,13 @@ def has_member_email(conn: sqlite3.Connection, *, org_id: int, email: str) -> bo
         ).fetchone()
         is not None
     )
+
+
+def by_slug_not_deleted(conn: sqlite3.Connection, slug: str) -> Org | None:
+    row = conn.execute(
+        "SELECT id, slug, name, status FROM orgs WHERE slug = ? AND status != 'deleted'", (slug,)
+    ).fetchone()
+    return _org(row) if row else None
 
 
 def is_enabled_super_admin(conn: sqlite3.Connection, user_id: int) -> bool:

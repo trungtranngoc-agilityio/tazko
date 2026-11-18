@@ -6,6 +6,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from tazko.modules.invites import service
+
 Role = Literal["owner", "member"]
 
 
@@ -26,3 +28,15 @@ class InviteOut(BaseModel):
     invited_by: str | None
     created_at: str
     expires_at: str
+
+    @classmethod
+    def from_pending(cls, invite: service.PendingInvite) -> InviteOut:
+        return cls(
+            id=invite.id,
+            email=invite.email,
+            role=invite.role,
+            account=service.account_kind(invite),
+            invited_by=invite.invited_by,
+            created_at=invite.created_at,
+            expires_at=invite.expires_at,
+        )

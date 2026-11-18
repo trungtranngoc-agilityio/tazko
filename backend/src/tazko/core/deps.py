@@ -107,3 +107,21 @@ def get_company(slug: str, user: CurrentUser, request: Request, control: Control
 
 
 CompanyDep = Annotated[Company, Depends(get_company)]
+
+
+def get_console(user: CurrentUser, request: Request, control: ControlDep) -> orgs.Console:
+    """The super admin console, or 403. modules/admin puts this on every route."""
+    if not user.is_super_admin:
+        raise Forbidden("super admins only")
+    return orgs.Console(control, request.app.state.tenants, actor_id=user.id)
+
+
+ConsoleDep = Annotated[orgs.Console, Depends(get_console)]
+
+
+def get_console_company(slug: str, console: ConsoleDep) -> Company:
+    """The company named by `{slug}`, opened for a super admin (not a member)."""
+    return console.open(slug)
+
+
+ConsoleCompanyDep = Annotated[Company, Depends(get_console_company)]
