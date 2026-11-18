@@ -35,12 +35,11 @@ def insert(conn: sqlite3.Connection, *, slug: str, name: str, now: str) -> Org:
     return org
 
 
-def upsert_member(
+def insert_member(
     conn: sqlite3.Connection, *, org_id: int, user_id: int, role: str, now: str
 ) -> None:
     conn.execute(
-        "INSERT INTO org_members (org_id, user_id, role, created_at) VALUES (?, ?, ?, ?)"
-        " ON CONFLICT (org_id, user_id) DO UPDATE SET role = excluded.role",
+        "INSERT INTO org_members (org_id, user_id, role, created_at) VALUES (?, ?, ?, ?)",
         (org_id, user_id, role, now),
     )
 
@@ -73,6 +72,14 @@ def has_member_email(conn: sqlite3.Connection, *, org_id: int, email: str) -> bo
     )
 
 
+def is_enabled_super_admin(conn: sqlite3.Connection, user_id: int) -> bool:
+    row = conn.execute(
+        "SELECT 1 FROM users WHERE id = ? AND is_super_admin = 1 AND disabled_at IS NULL",
+        (user_id,),
+    ).fetchone()
+    return row is not None
+
+
 def standing(
     conn: sqlite3.Connection, *, org_id: int, user_id: int
 ) -> tuple[bool, str | None] | None:
@@ -85,6 +92,74 @@ def standing(
         (org_id, user_id),
     ).fetchone()
     return (bool(row["is_super_admin"]), row["role"]) if row else None
+
+
+@dataclass(frozen=True)
+class MemberRow:
+    user_id: int
+    name: str
+    email: str
+    avatar_url: str | None
+    hd: str | None
+    role: str
+    last_seen_at: str | None
+
+
+MEMBERS_CAP = 500
+
+
+def members(conn: sqlite3.Connection, org_id: int) -> list[MemberRow]:
+    """The company's members by name, at most MEMBERS_CAP (a company is small)."""
+    rows = conn.execute(
+        "SELECT u.id, u.name, u.email, u.avatar_url, u.hd, m.role, u.last_seen_at"
+        " FROM org_members m JOIN users u ON u.id = m.user_id"
+        " WHERE m.org_id = ? ORDER BY u.name = '', u.name COLLATE NOCASE, u.email LIMIT ?",
+        (org_id, MEMBERS_CAP),
+    ).fetchall()
+    return [_member(row) for row in rows]
+
+
+def member(conn: sqlite3.Connection, org_id: int, user_id: int) -> MemberRow | None:
+    row = conn.execute(
+        "SELECT u.id, u.name, u.email, u.avatar_url, u.hd, m.role, u.last_seen_at"
+        " FROM org_members m JOIN users u ON u.id = m.user_id"
+        " WHERE m.org_id = ? AND m.user_id = ?",
+        (org_id, user_id),
+    ).fetchone()
+    return _member(row) if row else None
+
+
+def _member(row: sqlite3.Row) -> MemberRow:
+    return MemberRow(
+        user_id=row["id"],
+        name=row["name"],
+        email=row["email"],
+        avatar_url=row["avatar_url"],
+        hd=row["hd"],
+        role=row["role"],
+        last_seen_at=row["last_seen_at"],
+    )
+
+
+def owner_count(conn: sqlite3.Connection, org_id: int) -> int:
+    """Owners who can still act: a disabled owner cannot sign in, so does not count."""
+    return int(
+        conn.execute(
+            "SELECT count(*) FROM org_members m JOIN users u ON u.id = m.user_id"
+            " WHERE m.org_id = ? AND m.role = 'owner' AND u.disabled_at IS NULL",
+            (org_id,),
+        ).fetchone()[0]
+    )
+
+
+def set_role(conn: sqlite3.Connection, *, org_id: int, user_id: int, role: str) -> None:
+    conn.execute(
+        "UPDATE org_members SET role = ? WHERE org_id = ? AND user_id = ?", (role, org_id, user_id)
+    )
+
+
+def delete_member(conn: sqlite3.Connection, *, org_id: int, user_id: int) -> None:
+    conn.execute("DELETE FROM org_members WHERE org_id = ? AND user_id = ?", (org_id, user_id))
 
 
 def memberships(conn: sqlite3.Connection, user_id: int) -> list[Membership]:
