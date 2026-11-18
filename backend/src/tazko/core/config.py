@@ -67,6 +67,16 @@ class Settings(BaseSettings):
             raise ValueError("must be a URL like https://tazko-api.example.com")
         return value
 
+    @field_validator("host")
+    @classmethod
+    def _loopback(cls, value: IPv4Address | IPv6Address) -> IPv4Address | IPv6Address:
+        # The tunnel is the only way in, which is why CF-Connecting-IP is trusted.
+        if not value.is_loopback:
+            raise ValueError(
+                "must be a loopback address (127.0.0.1 or ::1); the tunnel serves the public"
+            )
+        return value
+
     @field_validator("secret")
     @classmethod
     def _secret(cls, value: SecretStr) -> SecretStr:

@@ -10,12 +10,13 @@ from __future__ import annotations
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from tazko import __version__
 from tazko.core import errors
 from tazko.core.config import Settings, load_settings
+from tazko.core.deps import require_same_origin
 from tazko.core.secret import load_secret
 from tazko.db import Database
 from tazko.db.tenant import Tenants
@@ -51,6 +52,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=None,
         openapi_url=None,
         lifespan=lifespan,
+        # Every write route checks Origin, including routes added later (M1-05).
+        dependencies=[Depends(require_same_origin)],
     )
     app.state.settings = settings
     app.state.identity_provider = GoogleProvider(
@@ -60,7 +63,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     # CORS for exactly one origin, with cookies. Other origins get no CORS
     # headers at all. CORS only tells browsers what they may read; the server
-    # still checks Origin on every write (M1-05).
+    # still checks Origin on every write (the app dependency above).
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[settings.web_origin],

@@ -81,7 +81,10 @@ def app_with_routes(settings: Settings) -> Iterator[TestClient]:
     def crash() -> None:
         raise RuntimeError("secret path /var/lib/tazko/data")
 
-    with TestClient(app, raise_server_exceptions=False) as test_client:
+    # Writes must come from the web origin (M1-05).
+    with TestClient(
+        app, raise_server_exceptions=False, headers={"origin": settings.web_origin}
+    ) as test_client:
         yield test_client
 
 

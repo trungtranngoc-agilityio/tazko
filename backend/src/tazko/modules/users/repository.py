@@ -68,6 +68,19 @@ def link_sub(conn: sqlite3.Connection, user_id: int, sub: str) -> None:
     )
 
 
+def is_workspace_domain(conn: sqlite3.Connection, domain: str) -> bool:
+    row = conn.execute("SELECT 1 FROM workspace_domains WHERE domain = ?", (domain,)).fetchone()
+    return row is not None
+
+
+def remember_workspace_domain(conn: sqlite3.Connection, domain: str, *, now: str) -> None:
+    conn.execute(
+        "INSERT INTO workspace_domains (domain, first_seen_at) VALUES (?, ?)"
+        " ON CONFLICT (domain) DO NOTHING",
+        (domain, now),
+    )
+
+
 def email_taken(conn: sqlite3.Connection, email: str, *, other_than: int) -> bool:
     row = conn.execute(
         "SELECT 1 FROM users WHERE email = ? AND id != ?", (email, other_than)

@@ -74,6 +74,9 @@ def serve(settings: Settings) -> None:
         # The access log would record query strings, such as the OAuth code on
         # /auth/google/callback. Requests that fail are logged by the app.
         access_log=False,
+        # cloudflared connects from loopback, which uvicorn would trust for
+        # X-Forwarded-For; the visitor's address comes from CF-Connecting-IP.
+        proxy_headers=False,
     )
 
 

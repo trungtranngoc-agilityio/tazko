@@ -85,3 +85,16 @@ def test_serve_turns_off_the_access_log(monkeypatch: pytest.MonkeyPatch, tmp_pat
 
     assert main(["serve"]) == 0
     assert seen["access_log"] is False
+
+
+def test_serve_ignores_forwarded_headers(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """cloudflared connects from loopback, which uvicorn trusts for X-Forwarded-For
+    by default; a visitor could then set the address the app falls back to."""
+    import uvicorn
+
+    seen: dict[str, object] = {}
+    monkeypatch.setattr(uvicorn, "run", lambda app, **kwargs: seen.update(kwargs))
+    monkeypatch.setenv("TAZKO_DATA_DIR", str(tmp_path))
+
+    assert main(["serve"]) == 0
+    assert seen["proxy_headers"] is False

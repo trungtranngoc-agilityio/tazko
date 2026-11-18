@@ -7,146 +7,34 @@ nonce, state, email_verified) all run for real.
 
 from __future__ import annotations
 
-import base64
 import hashlib
 import json
-import sqlite3
 import time
-from collections.abc import Iterator, Mapping
 from datetime import timedelta
-from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
-import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from httpx2 import Response
-from jwt.algorithms import RSAAlgorithm
 
 from tazko.core import clock
-from tazko.core.config import Settings, load_settings
 from tazko.core.deps import CompanyDep
 from tazko.db import Database
-from tazko.main import create_app
-from tazko.modules.auth.google import ProviderError, get_provider
 from tazko.modules.auth.service import SESSION_COOKIE
 from tazko.modules.orgs import service as orgs
 from tazko.modules.users import service as users
-
-WEB = "https://tazko.example.com"
-API = "https://testserver"
-CLIENT_ID = "client-123.apps.googleusercontent.com"
-SAME_ORIGIN = {"origin": WEB}
-
-
-@pytest.fixture(scope="module")
-def private_key() -> rsa.RSAPrivateKey:
-    return rsa.generate_private_key(public_exponent=65537, key_size=2048)
-
-
-class FakeGoogle:
-    """Hands out one code per authorization; the code turns into an ID token
-    with the nonce the server sent, unless a test overrides claims."""
-
-    def __init__(self, key: rsa.RSAPrivateKey) -> None:
-        self.key = key
-        self.codes: dict[str, tuple[str, dict[str, Any]]] = {}
-        public = json.loads(RSAAlgorithm.to_jwk(key.public_key()))
-        self.jwks = {"keys": [{**public, "kid": "k1", "alg": "RS256", "use": "sig"}]}
-
-    def authorization_url(self, params: Mapping[str, str]) -> str:
-        return "https://accounts.google.test/o/oauth2/v2/auth?" + "&".join(
-            f"{k}={v}" for k, v in params.items()
-        )
-
-    def authorize(self, location: str, **claims: Any) -> str:
-        params = {k: v[0] for k, v in parse_qs(urlsplit(location).query).items()}
-        now = int(time.time())
-        token_claims = {
-            "iss": "https://accounts.google.com",
-            "aud": CLIENT_ID,
-            "sub": "sub-ana",
-            "email": "ana@example.com",
-            "email_verified": True,
-            "name": "Ana",
-            "picture": "https://lh3.googleusercontent.com/a/ana",
-            "iat": now,
-            "exp": now + 3600,
-            "nonce": params["nonce"],
-            **claims,
-        }
-        code = f"code-{len(self.codes)}"
-        self.codes[code] = (params["code_challenge"], token_claims)
-        return code
-
-    def exchange(self, *, code: str, code_verifier: str, redirect_uri: str) -> str:
-        assert redirect_uri == f"{API}/auth/google/callback"
-        if code not in self.codes:
-            raise ProviderError("unknown code")
-        challenge, claims = self.codes.pop(code)
-        digest = hashlib.sha256(code_verifier.encode()).digest()
-        if base64.urlsafe_b64encode(digest).rstrip(b"=").decode() != challenge:
-            raise ProviderError("PKCE verifier does not match")
-        claims = {k: v for k, v in claims.items() if v is not None}
-        return jwt.encode(claims, self.key, algorithm="RS256", headers={"kid": "k1"})
-
-    def keys(self, *, refresh: bool = False) -> dict[str, Any]:
-        return self.jwks
-
-
-@pytest.fixture
-def settings(tmp_path: Path) -> Settings:
-    return load_settings(
-        web_origin=WEB, public_url=API, data_dir=tmp_path / "data", google_client_id=CLIENT_ID
-    )
-
-
-@pytest.fixture
-def google(private_key: rsa.RSAPrivateKey) -> FakeGoogle:
-    return FakeGoogle(private_key)
-
-
-@pytest.fixture
-def app(settings: Settings, google: FakeGoogle) -> FastAPI:
-    app = create_app(settings)
-    app.dependency_overrides[get_provider] = lambda: google
-    return app
-
-
-@pytest.fixture
-def client(app: FastAPI) -> Iterator[TestClient]:
-    with TestClient(app, base_url=API, follow_redirects=False) as test_client:
-        yield test_client
-
-
-@pytest.fixture
-def control(client: TestClient) -> Database:
-    db: Database = client.app.state.control  # type: ignore[attr-defined]  # TestClient.app is typed as ASGIApp
-    return db
-
-
-def sign_in(client: TestClient, google: FakeGoogle, **claims: Any) -> Response:
-    start = client.get("/auth/google/start")
-    assert start.status_code == 302
-    code = google.authorize(start.headers["location"], **claims)
-    state = parse_qs(urlsplit(start.headers["location"]).query)["state"][0]
-    return client.get("/auth/google/callback", params={"code": code, "state": state})
-
-
-def audit(control: Database, action: str) -> list[sqlite3.Row]:
-    return control.read(
-        lambda c: c.execute(
-            "SELECT target, detail, actor_id FROM audit_log WHERE action = ?", (action,)
-        ).fetchall()
-    )
-
-
-def session_count(control: Database) -> int:
-    return int(control.read(lambda c: c.execute("SELECT count(*) FROM sessions").fetchone()[0]))
-
+from tests.integration.oidc import (
+    API,
+    CLIENT_ID,
+    SAME_ORIGIN,
+    WEB,
+    FakeGoogle,
+    audit,
+    session_count,
+    sign_in,
+)
 
 # --- start -----------------------------------------------------------------------
 
@@ -224,6 +112,32 @@ def test_workspace_account_signs_in_and_keeps_its_domain(
         ).fetchone()
     )
     assert (stored["google_sub"], stored["hd"]) == ("sub-bo", "acme.example")
+
+
+def test_personal_account_cannot_take_a_workspace_persons_row(
+    client: TestClient, google: FakeGoogle, control: Database
+) -> None:
+    # given acme.example is a Workspace (Ana signed in with it) and Bo was made by
+    # `tazko admin`, so Bo's row has no Google account yet
+    users.get_or_create(control, "ana@acme.example")
+    sign_in(client, google, sub="sub-ana", email="ana@acme.example", hd="acme.example")
+    client.cookies.clear()
+    users.get_or_create(control, "bo@acme.example")
+
+    # when a personal Google account on Bo's address signs in
+    response = sign_in(client, google, sub="sub-ghost", email="bo@acme.example")
+
+    # then it is refused and Bo's row stays unlinked
+    assert response.headers["location"] == f"{WEB}/signin/refused"
+    assert [json.loads(r["detail"]) for r in audit(control, "signin.refused")] == [
+        {"reason": "workspace_required"}
+    ]
+    stored = control.read(
+        lambda c: c.execute(
+            "SELECT google_sub FROM users WHERE email = 'bo@acme.example'"
+        ).fetchone()
+    )
+    assert stored["google_sub"] is None
 
 
 def test_session_token_is_stored_only_as_a_hash(

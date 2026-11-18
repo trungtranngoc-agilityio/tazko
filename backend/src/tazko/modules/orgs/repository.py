@@ -45,6 +45,48 @@ def upsert_member(
     )
 
 
+def insert_member_if_absent(
+    conn: sqlite3.Connection, *, org_id: int, user_id: int, role: str, now: str
+) -> bool:
+    """Add the membership unless there is one; an existing role never changes."""
+    cursor = conn.execute(
+        "INSERT INTO org_members (org_id, user_id, role, created_at) VALUES (?, ?, ?, ?)"
+        " ON CONFLICT (org_id, user_id) DO NOTHING",
+        (org_id, user_id, role, now),
+    )
+    return cursor.rowcount == 1
+
+
+def is_active(conn: sqlite3.Connection, org_id: int) -> bool:
+    row = conn.execute("SELECT status FROM orgs WHERE id = ?", (org_id,)).fetchone()
+    return bool(row) and row["status"] == "active"
+
+
+def has_member_email(conn: sqlite3.Connection, *, org_id: int, email: str) -> bool:
+    return (
+        conn.execute(
+            "SELECT 1 FROM org_members m JOIN users u ON u.id = m.user_id"
+            " WHERE m.org_id = ? AND u.email = ?",
+            (org_id, email),
+        ).fetchone()
+        is not None
+    )
+
+
+def standing(
+    conn: sqlite3.Connection, *, org_id: int, user_id: int
+) -> tuple[bool, str | None] | None:
+    """(is super admin, role in this company or None) for an enabled person; None
+    for a missing or disabled one."""
+    row = conn.execute(
+        "SELECT u.is_super_admin, m.role FROM users u"
+        " LEFT JOIN org_members m ON m.user_id = u.id AND m.org_id = ?"
+        " WHERE u.id = ? AND u.disabled_at IS NULL",
+        (org_id, user_id),
+    ).fetchone()
+    return (bool(row["is_super_admin"]), row["role"]) if row else None
+
+
 def memberships(conn: sqlite3.Connection, user_id: int) -> list[Membership]:
     # Includes suspended companies (status is on Org) so the switcher can show them
     # as suspended; open_company still refuses them. TODO(M1-07): M1.md Q2.
@@ -70,6 +112,10 @@ def active_membership(conn: sqlite3.Connection, user_id: int, slug: str) -> Memb
 
 
 # --- in the company's own file -------------------------------------------------
+
+
+def has_person(conn: sqlite3.Connection, user_id: int) -> bool:
+    return conn.execute("SELECT 1 FROM people WHERE id = ?", (user_id,)).fetchone() is not None
 
 
 def upsert_person(
