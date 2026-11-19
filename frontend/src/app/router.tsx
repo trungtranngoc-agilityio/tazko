@@ -4,6 +4,7 @@ import { CompaniesPage } from "@/pages/admin/CompaniesPage";
 import { CompanyPage } from "@/pages/admin/CompanyPage";
 import { InvitesPage } from "@/pages/admin/InvitesPage";
 import { PeoplePage } from "@/pages/admin/PeoplePage";
+import { ServerPage } from "@/pages/admin/ServerPage";
 import { CompanyHomePage } from "@/pages/company/CompanyHomePage";
 import { CompanySettingsPage } from "@/pages/company/CompanySettingsPage";
 import { HomePage } from "@/pages/home/HomePage";
@@ -43,6 +44,7 @@ export const routes: RouteObject[] = [
       { path: "people", element: <PeoplePage /> },
       { path: "invites", element: <InvitesPage /> },
       { path: "audit", element: <AuditPage /> },
+      { path: "server", element: <ServerPage /> },
     ],
   },
   { path: "*", element: <NotFoundPage /> },

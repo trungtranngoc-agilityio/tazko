@@ -96,6 +96,7 @@ describe("console shell", () => {
       ["People", "/admin/people"],
       ["Invites", "/admin/invites"],
       ["Audit log", "/admin/audit"],
+      ["Server", "/admin/server"],
     ]);
   });
 
@@ -465,6 +466,60 @@ describe("audit log", () => {
   });
 });
 
+describe("server", () => {
+  const SERVER = {
+    ...SIGNED_IN,
+    "GET /admin/api/server": {
+      status: 200,
+      body: {
+        version: "0.1.0",
+        public_url: "https://tazko-dev.example.com",
+        uptime_seconds: 6 * 86400 + 4 * 3600 + 59,
+        data_bytes: Math.round(2.5 * 1024 ** 3),
+        last_backup: null,
+        email: { enabled: false, host: null, port: null, sender: null },
+      },
+    },
+    "GET /admin/api/workspace-domains": {
+      status: 200,
+      body: [{ domain: "harbor.vn", first_seen_at: "2026-11-01T00:00:00Z" }],
+    },
+  };
+
+  it("shows version, uptime, data size, backup and email status", async () => {
+    fakeApi(SERVER);
+
+    show("/admin/server");
+
+    expect(await screen.findByText("0.1.0")).toBeInTheDocument();
+    expect(screen.getByText("https://tazko-dev.example.com")).toBeInTheDocument();
+    expect(screen.getByText("6 days 4 h")).toBeInTheDocument();
+    expect(screen.getByText("2.5 GB")).toBeInTheDocument();
+    expect(screen.getByText("Not set up yet")).toBeInTheDocument();
+    expect(screen.getByText("Not configured")).toBeInTheDocument();
+  });
+
+  it("forgets a Workspace domain after asking", async () => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(true);
+    let domains = [{ domain: "harbor.vn", first_seen_at: "2026-11-01T00:00:00Z" }];
+    const calls = fakeApi({
+      ...SERVER,
+      "GET /admin/api/workspace-domains": () => ({ status: 200, body: domains }),
+      "DELETE /admin/api/workspace-domains/harbor.vn": () => {
+        domains = [];
+        return { status: 204 };
+      },
+    });
+    show("/admin/server");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Forget harbor.vn" }));
+
+    expect(confirm).toHaveBeenCalled();
+    expect(await screen.findByText("No Workspace domains recorded.")).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "DELETE")).toBe(true);
+  });
+});
+
 describe("states the review asked for", () => {
   it("says the companies list is empty", async () => {
     fakeApi({ ...SIGNED_IN, "GET /admin/api/companies": { status: 200, body: [] } });
@@ -566,6 +621,24 @@ describe("states the review asked for", () => {
     expect(screen.queryByRole("button", { name: "Remove Ana Tran" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Revoke cy@gmail.com" })).not.toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Role of Ana Tran" })).toBeDisabled();
+  });
+
+  it("keeps a Workspace domain when the super admin cancels", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    const calls = fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/server": "hang",
+      "GET /admin/api/workspace-domains": {
+        status: 200,
+        body: [{ domain: "harbor.vn", first_seen_at: "2026-11-01T00:00:00Z" }],
+      },
+    });
+    show("/admin/server");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Forget harbor.vn" }));
+
+    expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+    expect(screen.getByText("harbor.vn")).toBeInTheDocument();
   });
 
   it("keeps the list and says why Show more failed", async () => {

@@ -19,6 +19,7 @@ const PAGES = [
   { to: "/admin/people", label: "admin.people", end: false },
   { to: "/admin/invites", label: "admin.invites", end: false },
   { to: "/admin/audit", label: "admin.audit", end: false },
+  { to: "/admin/server", label: "admin.server", end: false },
 ] as const;
 
 function AdminShell() {

@@ -16,6 +16,7 @@ What people and API callers can notice, per release. Format: [Keep a Changelog](
 - Company screens: a sidebar with the company switcher, the Projects empty state, and Company settings for owners (invite someone, members with role and Remove, pending invites with Revoke). `/` opens your first company.
 - Super admin console screens at `/admin`: a sidebar, Companies (with New company, which invites the first owner) and Company detail (members and invites, read-only while the company is suspended).
 - Console screens: People (search, super admin and active switches), Invites across companies, and the Audit log (filter by kind).
+- Console screen: Server (version, uptime, data size, email) and Workspace domains with Forget.
 - On an email domain someone has signed in with as a Google Workspace, a personal Google account cannot claim an address of that domain (D26).
 
 ### Changed

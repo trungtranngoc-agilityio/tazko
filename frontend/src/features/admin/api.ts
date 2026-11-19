@@ -65,6 +65,20 @@ export interface AuditEntry {
   ip: string | null;
 }
 
+export interface ServerInfo {
+  version: string;
+  public_url: string;
+  uptime_seconds: number;
+  data_bytes: number;
+  last_backup: null;
+  email: { enabled: boolean; host: string | null; port: number | null; sender: string | null };
+}
+
+export interface WorkspaceDomain {
+  domain: string;
+  first_seen_at: string;
+}
+
 const ROOT = "/admin/api";
 
 /** The console's path for one company; pass it to the orgs members and invites calls. */
@@ -115,4 +129,18 @@ export function setPersonFlags(
 
 export function auditLog(kind: AuditKind | null, before: number | null): Promise<Page<AuditEntry>> {
   return api<Page<AuditEntry>>(`${ROOT}/audit${query({ kind, before })}`);
+}
+
+export function server(): Promise<ServerInfo> {
+  return api<ServerInfo>(`${ROOT}/server`);
+}
+
+export function workspaceDomains(): Promise<WorkspaceDomain[]> {
+  return api<WorkspaceDomain[]>(`${ROOT}/workspace-domains`);
+}
+
+export function forgetWorkspaceDomain(domain: string): Promise<void> {
+  return api<void>(`${ROOT}/workspace-domains/${encodeURIComponent(domain)}`, {
+    method: "DELETE",
+  });
 }
