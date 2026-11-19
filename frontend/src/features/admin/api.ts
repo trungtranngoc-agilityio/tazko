@@ -1,3 +1,4 @@
+import type { Account, Invite, Role } from "@/features/orgs";
 import { api } from "@/shared/api";
 
 // The super admin console API (/admin/api, M1-06). Members and invites of one
@@ -18,6 +19,52 @@ export interface CompanyRef {
   name: string;
 }
 
+export interface AnyInvite extends Invite {
+  company: CompanyRef;
+}
+
+export interface Person {
+  id: number;
+  name: string;
+  email: string;
+  avatar_url: string | null;
+  account: Account;
+  companies: (CompanyRef & { role: Role })[];
+  last_seen_at: string | null;
+  is_super_admin: boolean;
+  active: boolean;
+}
+
+export interface Page<T> {
+  items: T[];
+  next: number | null;
+}
+
+/** The audit log filter, as the API names the kinds (the part of `action`
+ * before the dot). */
+export const AUDIT_KINDS = [
+  "signin",
+  "company",
+  "member",
+  "invite",
+  "person",
+  "super_admin",
+  "account",
+  "workspace_domain",
+] as const;
+export type AuditKind = (typeof AUDIT_KINDS)[number];
+
+export interface AuditEntry {
+  id: number;
+  at: string;
+  action: string;
+  actor: { id: number; name: string; email: string } | null;
+  company: CompanyRef | null;
+  target: string | null;
+  detail: Record<string, unknown> | null;
+  ip: string | null;
+}
+
 const ROOT = "/admin/api";
 
 /** The console's path for one company; pass it to the orgs members and invites calls. */
@@ -36,4 +83,36 @@ export function createCompany(slug: string, name: string): Promise<CompanySummar
     method: "POST",
     body: JSON.stringify({ slug, name }),
   });
+}
+
+export function allInvites(): Promise<AnyInvite[]> {
+  return api<AnyInvite[]>(`${ROOT}/invites`);
+}
+
+export function revokeAnyInvite(id: number): Promise<void> {
+  return api<void>(`${ROOT}/invites/${id}`, { method: "DELETE" });
+}
+
+function query(params: Record<string, string | number | null | undefined>): string {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== null && value !== undefined && value !== "") search.set(key, String(value));
+  }
+  const text = search.toString();
+  return text ? `?${text}` : "";
+}
+
+export function people(q: string, after: number | null): Promise<Page<Person>> {
+  return api<Page<Person>>(`${ROOT}/people${query({ q: q.trim(), after })}`);
+}
+
+export function setPersonFlags(
+  id: number,
+  flags: { is_super_admin?: boolean; active?: boolean },
+): Promise<Person> {
+  return api<Person>(`${ROOT}/people/${id}`, { method: "PATCH", body: JSON.stringify(flags) });
+}
+
+export function auditLog(kind: AuditKind | null, before: number | null): Promise<Page<AuditEntry>> {
+  return api<Page<AuditEntry>>(`${ROOT}/audit${query({ kind, before })}`);
 }

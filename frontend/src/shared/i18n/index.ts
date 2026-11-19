@@ -1,5 +1,7 @@
 import { en, type MessageKey } from "./en";
 
+export type { MessageKey };
+
 /** Look up a UI string. Placeholders like `{name}` are filled from `vars`. */
 export function t(key: MessageKey, vars?: Record<string, string | number>): string {
   const text: string = en[key];

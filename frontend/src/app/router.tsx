@@ -1,6 +1,9 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
+import { AuditPage } from "@/pages/admin/AuditPage";
 import { CompaniesPage } from "@/pages/admin/CompaniesPage";
 import { CompanyPage } from "@/pages/admin/CompanyPage";
+import { InvitesPage } from "@/pages/admin/InvitesPage";
+import { PeoplePage } from "@/pages/admin/PeoplePage";
 import { CompanyHomePage } from "@/pages/company/CompanyHomePage";
 import { CompanySettingsPage } from "@/pages/company/CompanySettingsPage";
 import { HomePage } from "@/pages/home/HomePage";
@@ -37,6 +40,9 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <CompaniesPage /> },
       { path: "companies/:slug", element: <CompanyPage /> },
+      { path: "people", element: <PeoplePage /> },
+      { path: "invites", element: <InvitesPage /> },
+      { path: "audit", element: <AuditPage /> },
     ],
   },
   { path: "*", element: <NotFoundPage /> },

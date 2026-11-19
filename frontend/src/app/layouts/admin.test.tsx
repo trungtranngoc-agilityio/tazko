@@ -45,6 +45,18 @@ const INVITE = {
   created_at: "2026-11-05T10:00:00.000Z",
   expires_at: "2026-11-19T10:00:00.000Z",
 };
+const PERSON = {
+  id: 2,
+  name: "Ana Tran",
+  email: "ana@harbor.vn",
+  avatar_url: null,
+  account: "workspace",
+  companies: [{ slug: "harbor", name: "Harbor Studio", role: "owner" }],
+  last_seen_at: null,
+  is_super_admin: false,
+  active: true,
+};
+
 const SIGNED_IN = { "GET /api/me": { status: 200, body: ROOT } };
 
 let here = "";
@@ -81,6 +93,9 @@ describe("console shell", () => {
     ).toEqual([
       ["Back to app", "/"],
       ["Companies", "/admin"],
+      ["People", "/admin/people"],
+      ["Invites", "/admin/invites"],
+      ["Audit log", "/admin/audit"],
     ]);
   });
 
@@ -256,6 +271,200 @@ describe("company detail", () => {
   });
 });
 
+describe("people", () => {
+  it("lists people with their companies, names as text", async () => {
+    fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/people": {
+        status: 200,
+        body: {
+          items: [PERSON, { ...PERSON, id: 3, name: HOSTILE, email: "x@gmail.com" }],
+          next: null,
+        },
+      },
+    });
+
+    show("/admin/people");
+
+    const table = await screen.findByRole("table", { name: "People" });
+    const ana = within(table).getByRole("row", { name: /Ana Tran/ });
+    expect(ana).toHaveTextContent("Harbor Studio");
+    expect(ana).toHaveTextContent("Workspace");
+    expect(within(table).getByText(HOSTILE)).toBeInTheDocument();
+    expect(document.querySelector("img")).toBeNull();
+  });
+
+  it("searches by name or email on the server", async () => {
+    const calls = fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/people": (_body, query) => ({
+        status: 200,
+        body: { items: query.get("q") === "zed" ? [] : [PERSON], next: null },
+      }),
+    });
+    show("/admin/people");
+    await screen.findByText("ana@harbor.vn");
+
+    fireEvent.change(screen.getByRole("searchbox", { name: "Search people" }), {
+      target: { value: "zed" },
+    });
+
+    expect(await screen.findByText("No one matches.")).toBeInTheDocument();
+    expect(calls.at(-1)?.query.get("q")).toBe("zed");
+  });
+
+  it("loads the next page with the cursor", async () => {
+    const calls = fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/people": (_body, query) =>
+        query.get("after") === "2"
+          ? { status: 200, body: { items: [{ ...PERSON, id: 3, name: "Bo Le" }], next: null } }
+          : { status: 200, body: { items: [PERSON], next: 2 } },
+    });
+    show("/admin/people");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Show more" }));
+
+    expect(await screen.findByText("Bo Le")).toBeInTheDocument();
+    expect(screen.getByText("Ana Tran")).toBeInTheDocument();
+    expect(calls.at(-1)?.query.get("after")).toBe("2");
+    expect(screen.queryByRole("button", { name: "Show more" })).not.toBeInTheDocument();
+  });
+
+  it("turns super admin on and shows what the server kept", async () => {
+    const calls = fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/people": { status: 200, body: { items: [PERSON], next: null } },
+      "PATCH /admin/api/people/2": { status: 200, body: { ...PERSON, is_super_admin: true } },
+    });
+    show("/admin/people");
+
+    const toggle = await screen.findByRole("switch", { name: "Super admin for Ana Tran" });
+    expect(toggle).toHaveAttribute("aria-checked", "false");
+    fireEvent.click(toggle);
+
+    await waitFor(() => expect(toggle).toHaveAttribute("aria-checked", "true"));
+    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ is_super_admin: true });
+  });
+
+  it("explains that you cannot change your own access", async () => {
+    fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/people": {
+        status: 200,
+        body: {
+          items: [{ ...PERSON, id: 1, name: "Root Admin", is_super_admin: true }],
+          next: null,
+        },
+      },
+      "PATCH /admin/api/people/1": { status: 409, body: apiError("SELF_CHANGE") },
+    });
+    show("/admin/people");
+
+    fireEvent.click(await screen.findByRole("switch", { name: "Active for Root Admin" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("You cannot change your own access");
+    expect(screen.getByRole("switch", { name: "Active for Root Admin" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+  });
+});
+
+describe("invites", () => {
+  it("lists every pending invite with its company and revokes one", async () => {
+    let pending = [{ ...INVITE, company: { slug: "harbor", name: "Harbor Studio" } }];
+    const calls = fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/invites": () => ({ status: 200, body: pending }),
+      "DELETE /admin/api/invites/7": () => {
+        pending = [];
+        return { status: 204 };
+      },
+    });
+    show("/admin/invites");
+
+    const table = await screen.findByRole("table", { name: "Invites" });
+    expect(within(table).getByRole("row", { name: /cy@gmail.com/ })).toHaveTextContent(
+      "Harbor Studio",
+    );
+    fireEvent.click(within(table).getByRole("button", { name: "Revoke cy@gmail.com" }));
+
+    expect(await screen.findByText("No pending invites")).toBeInTheDocument();
+    expect(calls.some((c) => c.method === "DELETE" && c.path === "/admin/api/invites/7")).toBe(
+      true,
+    );
+  });
+});
+
+describe("audit log", () => {
+  const REFUSED = {
+    id: 9,
+    at: "2026-11-18T08:00:00Z",
+    action: "signin.refused",
+    actor: null,
+    company: null,
+    target: HOSTILE,
+    detail: null,
+    ip: "203.0.113.5",
+  };
+  const CREATED = {
+    ...REFUSED,
+    id: 8,
+    action: "company.created",
+    actor: { id: 1, name: "Root Admin", email: "root@tazko.dev" },
+    company: { slug: "harbor", name: "Harbor Studio" },
+    target: "harbor",
+  };
+
+  it("writes each entry as a sentence, targets as text, refusals marked", async () => {
+    fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/audit": { status: 200, body: { items: [REFUSED, CREATED], next: null } },
+    });
+
+    show("/admin/audit");
+
+    const log = await screen.findByRole("list", { name: "Audit log" });
+    const [refused, created] = within(log).getAllByRole("listitem");
+    expect(refused).toHaveTextContent(`Someone was refused sign-in ${HOSTILE}`);
+    expect(refused).toHaveTextContent("refused");
+    expect(created).toHaveTextContent("Root Admin created company harbor");
+    expect(document.querySelector("img")).toBeNull();
+  });
+
+  it("filters by kind on the server", async () => {
+    const calls = fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/audit": { status: 200, body: { items: [CREATED], next: null } },
+    });
+    show("/admin/audit");
+    await screen.findByRole("list", { name: "Audit log" });
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Filter" }), {
+      target: { value: "signin" },
+    });
+
+    await waitFor(() => expect(calls.at(-1)?.query.get("kind")).toBe("signin"));
+  });
+
+  it("loads older entries with the cursor", async () => {
+    const calls = fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/audit": (_body, query) =>
+        query.get("before") === "8"
+          ? { status: 200, body: { items: [{ ...CREATED, id: 3, target: "older" }], next: null } }
+          : { status: 200, body: { items: [CREATED], next: 8 } },
+    });
+    show("/admin/audit");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Show more" }));
+
+    expect(await screen.findByText("older")).toBeInTheDocument();
+    expect(calls.at(-1)?.query.get("before")).toBe("8");
+  });
+});
+
 describe("states the review asked for", () => {
   it("says the companies list is empty", async () => {
     fakeApi({ ...SIGNED_IN, "GET /admin/api/companies": { status: 200, body: [] } });
@@ -357,5 +566,21 @@ describe("states the review asked for", () => {
     expect(screen.queryByRole("button", { name: "Remove Ana Tran" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Revoke cy@gmail.com" })).not.toBeInTheDocument();
     expect(screen.getByRole("combobox", { name: "Role of Ana Tran" })).toBeDisabled();
+  });
+
+  it("keeps the list and says why Show more failed", async () => {
+    fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/people": (_body, query) =>
+        query.get("after")
+          ? { status: 429, body: apiError("RATE_LIMITED") }
+          : { status: 200, body: { items: [PERSON], next: 2 } },
+    });
+    show("/admin/people");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Show more" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Too many requests.");
+    expect(screen.getByText("Ana Tran")).toBeInTheDocument();
   });
 });
