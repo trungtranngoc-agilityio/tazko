@@ -1,23 +1,56 @@
-import { Outlet } from "react-router";
-import { RequireSession, SignOutButton } from "@/features/auth";
+import { Link, NavLink, Outlet } from "react-router";
+import { RequireSession, SignOutButton, useMe } from "@/features/auth";
+import { Initials } from "@/features/orgs";
 import { t } from "@/shared/i18n";
 
-// Super admin console shell (M1-06): Companies, Company detail, People,
-// Invites, Audit log, Server.
+// Super admin console shell (prototype rail in admin mode): Back to app, the
+// console pages, and the signed-in person. The API refuses everyone else with
+// 403; the shell says so instead of calling it.
 export function AdminLayout() {
   return (
     <RequireSession>
-      <div className="min-h-screen bg-bg text-ink">
-        <header className="flex h-12 items-center border-b border-line bg-surface px-4">
-          <span className="font-semibold">{t("admin.title")}</span>
-          <span className="ml-auto">
-            <SignOutButton />
-          </span>
-        </header>
-        <main className="p-6">
-          <Outlet />
-        </main>
-      </div>
+      <AdminShell />
     </RequireSession>
+  );
+}
+
+const PAGES = [{ to: "/admin", label: "admin.companies", end: true }] as const;
+
+function AdminShell() {
+  const me = useMe();
+  const link = ({ isActive }: { isActive: boolean }) =>
+    `flex h-9 items-center rounded-md px-3 ${isActive ? "bg-accent-soft font-semibold text-accent" : "hover:bg-sunken"}`;
+
+  return (
+    <div className="flex min-h-screen bg-bg text-ink">
+      <aside className="flex w-64 shrink-0 flex-col gap-4 border-r border-line bg-surface p-4">
+        <nav aria-label={t("admin.title")} className="flex flex-col gap-1 text-sm">
+          <Link to="/" className="flex h-9 items-center rounded-md px-3 hover:bg-sunken">
+            {t("admin.back")}
+          </Link>
+          <h2 className="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wide text-muted">
+            {t("admin.title")}
+          </h2>
+          {PAGES.map((page) => (
+            <NavLink key={page.to} to={page.to} end={page.end} className={link}>
+              {t(page.label)}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="mt-auto flex items-center gap-3 text-sm">
+          <Initials name={me.name || me.email} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate font-semibold">{me.name || me.email}</span>
+            {me.is_super_admin && (
+              <span className="block text-xs text-muted">{t("nav.superAdmin")}</span>
+            )}
+          </span>
+        </div>
+        <SignOutButton />
+      </aside>
+      <main className="min-w-0 flex-1 p-7">
+        {me.is_super_admin ? <Outlet /> : <p role="alert">{t("admin.onlySuperAdmins")}</p>}
+      </main>
+    </div>
   );
 }

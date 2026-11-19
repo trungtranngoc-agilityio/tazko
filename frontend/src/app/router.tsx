@@ -1,5 +1,6 @@
 import { createBrowserRouter, type RouteObject } from "react-router";
-import { AdminHomePage } from "@/pages/admin/AdminHomePage";
+import { CompaniesPage } from "@/pages/admin/CompaniesPage";
+import { CompanyPage } from "@/pages/admin/CompanyPage";
 import { CompanyHomePage } from "@/pages/company/CompanyHomePage";
 import { CompanySettingsPage } from "@/pages/company/CompanySettingsPage";
 import { HomePage } from "@/pages/home/HomePage";
@@ -33,7 +34,10 @@ export const routes: RouteObject[] = [
   {
     path: "/admin",
     element: <AdminLayout />,
-    children: [{ index: true, element: <AdminHomePage /> }],
+    children: [
+      { index: true, element: <CompaniesPage /> },
+      { path: "companies/:slug", element: <CompanyPage /> },
+    ],
   },
   { path: "*", element: <NotFoundPage /> },
 ];

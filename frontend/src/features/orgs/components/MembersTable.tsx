@@ -14,13 +14,15 @@ interface Props {
   onChanged: () => void;
   onLeft: () => void;
   onSelfDemoted: () => void;
+  /** A suspended company: roles shown, nothing can change. */
+  readOnly?: boolean;
 }
 
 /** Members with role and Remove. Every removal is confirmed (KNOWN-DEVIATIONS #5),
  * and so is making yourself a member; the server refuses to drop the last owner
  * and the reason is shown. */
 export function MembersTable(props: Props) {
-  const { base, company, members, meId, onChanged, onLeft, onSelfDemoted } = props;
+  const { base, company, members, meId, onChanged, onLeft, onSelfDemoted, readOnly } = props;
   const [problem, setProblem] = useState<string | null>(null);
 
   async function act(run: () => Promise<unknown>, after: () => void) {
@@ -92,6 +94,7 @@ export function MembersTable(props: Props) {
                   <select
                     aria-label={t("members.roleOf", { name: label })}
                     value={member.role}
+                    disabled={readOnly}
                     onChange={(e) => setRole(member, e.target.value as Role)}
                     className="h-9 rounded-md border border-line bg-surface px-2"
                   >
@@ -103,14 +106,16 @@ export function MembersTable(props: Props) {
                   {member.last_seen_at ? when(member.last_seen_at) : t("members.never")}
                 </td>
                 <td className="px-3">
-                  <button
-                    type="button"
-                    aria-label={t("members.removeOf", { name: label })}
-                    onClick={() => remove(member)}
-                    className="text-muted hover:text-danger"
-                  >
-                    × {t("members.remove")}
-                  </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      aria-label={t("members.removeOf", { name: label })}
+                      onClick={() => remove(member)}
+                      className="text-muted hover:text-danger"
+                    >
+                      × {t("members.remove")}
+                    </button>
+                  )}
                 </td>
               </tr>
             );

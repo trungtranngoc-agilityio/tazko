@@ -14,6 +14,7 @@ What people and API callers can notice, per release. Format: [Keep a Changelog](
 - Super admin console API under `/admin/api`: companies (list with members, storage and last activity; create), a company's members and invites, and pending invites across companies. Anyone who is not a super admin gets 403.
 - Super admin console API, second part: People (search, pages, grant or revoke super admin, disable or re-enable, which signs the person out), Audit log (newest first, by kind), Server page (version, uptime, data size, email status) and Workspace domains (list, remove).
 - Company screens: a sidebar with the company switcher, the Projects empty state, and Company settings for owners (invite someone, members with role and Remove, pending invites with Revoke). `/` opens your first company.
+- Super admin console screens at `/admin`: a sidebar, Companies (with New company, which invites the first owner) and Company detail (members and invites, read-only while the company is suspended).
 - On an email domain someone has signed in with as a Google Workspace, a personal Google account cannot claim an address of that domain (D26).
 
 ### Changed
