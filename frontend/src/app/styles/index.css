@@ -84,6 +84,29 @@ body {
   --tz-c4-fg: #c2d27f;
 }
 
+/* Avatar tones (Initials): classes, not inline styles, so they hold under the
+   style-src 'self' CSP whatever renders them. */
+.tone-c0 {
+  background: var(--tz-c0-bg);
+  color: var(--tz-c0-fg);
+}
+.tone-c1 {
+  background: var(--tz-c1-bg);
+  color: var(--tz-c1-fg);
+}
+.tone-c2 {
+  background: var(--tz-c2-bg);
+  color: var(--tz-c2-fg);
+}
+.tone-c3 {
+  background: var(--tz-c3-bg);
+  color: var(--tz-c3-fg);
+}
+.tone-c4 {
+  background: var(--tz-c4-bg);
+  color: var(--tz-c4-fg);
+}
+
 /* Sign-in screens: soft accent glow above the page background. */
 .auth-backdrop {
   background:

@@ -165,7 +165,9 @@ describe("companies", () => {
     });
     show("/admin");
 
-    fireEvent.click(await screen.findByRole("button", { name: "New company" }));
+    const newCompany = await screen.findByRole("button", { name: "New company" });
+    expect(newCompany.querySelector("svg")).toHaveAttribute("data-icon", "plus");
+    fireEvent.click(newCompany);
     const dialog = screen.getByRole("dialog", { name: "New company" });
     fireEvent.change(within(dialog).getByLabelText("Company name"), {
       target: { value: "Acme Studio" },

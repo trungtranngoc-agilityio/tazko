@@ -16,6 +16,16 @@ describe("Initials", () => {
     expect(container.firstElementChild).toHaveAttribute("data-tone", tone);
   });
 
+  it("gives a name the same tone however its accents are encoded", () => {
+    const composed = render(<Initials name={"Nguyễn Văn An".normalize("NFC")} />).container;
+    const decomposed = render(<Initials name={"Nguyễn Văn An".normalize("NFD")} />).container;
+
+    expect(decomposed.firstElementChild?.getAttribute("data-tone")).toBe(
+      composed.firstElementChild?.getAttribute("data-tone"),
+    );
+    expect(decomposed).toHaveTextContent("NA");
+  });
+
   it("uses the first letters of the first and last words, as the prototype", () => {
     const { container } = render(<Initials name="Anna Maria Tran" />);
 
