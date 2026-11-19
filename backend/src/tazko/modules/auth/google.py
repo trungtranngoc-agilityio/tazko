@@ -39,6 +39,9 @@ class ProviderError(Exception):
 
 
 class IdentityProvider(Protocol):
+    # The `iss` values an ID token from this provider may carry.
+    issuers: tuple[str, ...]
+
     def authorization_url(self, params: Mapping[str, str]) -> str: ...
 
     def exchange(self, *, code: str, code_verifier: str, redirect_uri: str) -> str:
@@ -51,7 +54,23 @@ class IdentityProvider(Protocol):
 
 
 class GoogleProvider:
-    def __init__(self, client_id: str, client_secret: str, *, opener: Opener = urlopen) -> None:
+    def __init__(
+        self,
+        client_id: str,
+        client_secret: str,
+        *,
+        opener: Opener = urlopen,
+        base_url: str = "",
+    ) -> None:
+        """`base_url` points every call at a stand-in Google for e2e tests
+        (TAZKO_GOOGLE_URL, D32); empty means Google itself."""
+        base = base_url.rstrip("/")
+        if base and not base.startswith(("http://", "https://")):
+            raise ValueError("base_url must be an http(s) URL")
+        self._authorize_url = f"{base}/authorize" if base else AUTHORIZE_URL
+        self._token_url = f"{base}/token" if base else TOKEN_URL
+        self._keys_url = f"{base}/certs" if base else KEYS_URL
+        self.issuers: tuple[str, ...] = (base,) if base else ISSUERS
         self.client_id = client_id
         self._client_secret = client_secret
         self._open = opener
@@ -60,7 +79,7 @@ class GoogleProvider:
         self.fetched_at = 0.0
 
     def authorization_url(self, params: Mapping[str, str]) -> str:
-        return f"{AUTHORIZE_URL}?{urlencode(params)}"
+        return f"{self._authorize_url}?{urlencode(params)}"
 
     def exchange(self, *, code: str, code_verifier: str, redirect_uri: str) -> str:
         form = urlencode(
@@ -73,7 +92,7 @@ class GoogleProvider:
                 "client_secret": self._client_secret,
             }
         ).encode()
-        request = Request(TOKEN_URL, data=form, method="POST")
+        request = Request(self._token_url, data=form, method="POST")  # noqa: S310 (http(s) only, checked in __init__)
         request.add_header("Content-Type", "application/x-www-form-urlencoded")
         token = self._json(request).get("id_token")
         if not isinstance(token, str):
@@ -86,7 +105,7 @@ class GoogleProvider:
             stale = age > KEYS_MAX_AGE
             if self._keys is None or stale or (refresh and age > KEYS_MIN_REFRESH):
                 try:
-                    self._keys = self._json(Request(KEYS_URL))
+                    self._keys = self._json(Request(self._keys_url))  # noqa: S310 (http(s) only)
                 except ProviderError:
                     # Keys rotate slowly: an hour-old set beats no sign-in at all.
                     if self._keys is None:

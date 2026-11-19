@@ -14,9 +14,10 @@ from __future__ import annotations
 
 import os
 from functools import cached_property
-from ipaddress import IPv4Address, IPv6Address
+from ipaddress import IPv4Address, IPv6Address, ip_address
 from pathlib import Path
 from typing import Annotated, Literal, Self
+from urllib.parse import urlsplit
 
 from pydantic import Field, SecretStr, ValidationError, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -48,6 +49,10 @@ class Settings(BaseSettings):
     # Google OIDC web client (P0-2). Required in production.
     google_client_id: str = ""
     google_client_secret: SecretStr = SecretStr("")
+    # A stand-in Google on this machine for end-to-end tests (D32): its
+    # /authorize, /token and /certs replace Google's, and only its issuer is
+    # accepted. Empty means Google. Refused in production.
+    google_url: str = ""
     # Signs cookies and state. Empty means a random `secret` file in the data
     # folder, made on first start (tazko.core.secret).
     secret: SecretStr = SecretStr("")
@@ -65,6 +70,22 @@ class Settings(BaseSettings):
         value = value.rstrip("/")
         if value and not value.startswith(("https://", "http://")):
             raise ValueError("must be a URL like https://tazko-api.example.com")
+        return value
+
+    @field_validator("google_url")
+    @classmethod
+    def _google_url(cls, value: str) -> str:
+        value = value.rstrip("/")
+        if not value:
+            return value
+        parts = urlsplit(value)
+        host = parts.hostname or ""
+        try:
+            loopback = host == "localhost" or ip_address(host).is_loopback
+        except ValueError:
+            loopback = False
+        if parts.scheme not in ("http", "https") or not loopback or parts.path:
+            raise ValueError("must be a loopback URL like http://127.0.0.1:8792, or empty")
         return value
 
     @field_validator("host")
@@ -105,6 +126,8 @@ class Settings(BaseSettings):
             problems.append("TAZKO_GOOGLE_CLIENT_ID: required in production (TAZKO_ENV)")
         if not self.google_client_secret.get_secret_value():
             problems.append("TAZKO_GOOGLE_CLIENT_SECRET: required in production (TAZKO_ENV)")
+        if self.google_url:
+            problems.append("TAZKO_GOOGLE_URL: must be empty in production (it is for e2e tests)")
         if not self.public_url.startswith("https://"):
             problems.append("TAZKO_PUBLIC_URL: must be an https URL in production")
         if not self.web_origin.startswith("https://"):

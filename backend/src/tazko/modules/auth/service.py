@@ -32,7 +32,7 @@ from tazko.core.signing import b64url, sign, unsign
 from tazko.db import Database
 from tazko.modules.audit import service as audit
 from tazko.modules.auth import repository as repo
-from tazko.modules.auth.google import ISSUERS, IdentityProvider, ProviderError
+from tazko.modules.auth.google import IdentityProvider, ProviderError
 from tazko.modules.invites import service as invites
 from tazko.modules.users import service as users
 from tazko.modules.users.service import GoogleAccount, Refused, User
@@ -206,7 +206,7 @@ def verify_id_token(
             key,
             algorithms=["RS256"],
             audience=client_id,
-            issuer=ISSUERS,
+            issuer=provider.issuers,
             leeway=CLOCK_SKEW_SECONDS,
             options={"require": ["iss", "aud", "exp", "iat", "sub", "nonce"]},
         )

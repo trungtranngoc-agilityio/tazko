@@ -144,3 +144,24 @@ def test_host_must_be_loopback(host: str) -> None:
 @pytest.mark.parametrize("host", ["127.0.0.1", "127.0.0.2", "::1"])
 def test_loopback_hosts_are_accepted(host: str) -> None:
     assert str(load_settings(host=host).host) == host
+
+
+def test_production_refuses_a_stand_in_google(monkeypatch: pytest.MonkeyPatch) -> None:
+    # TAZKO_GOOGLE_URL exists for e2e; a production server must only trust Google
+    production(monkeypatch, TAZKO_GOOGLE_URL="http://127.0.0.1:8792")
+    with pytest.raises(ConfigError, match="TAZKO_GOOGLE_URL: must be empty in production"):
+        load_settings()
+
+
+def test_stand_in_google_is_read_in_development() -> None:
+    settings = load_settings(env="development", google_url="http://127.0.0.1:8792/")
+    assert settings.google_url == "http://127.0.0.1:8792"
+
+
+@pytest.mark.parametrize(
+    "value", ["127.0.0.1:8792", "https://accounts.example.com", "http://10.0.0.5:8792"]
+)
+def test_stand_in_google_must_be_a_loopback_url(value: str) -> None:
+    # a stand-in on another machine could sign anyone in
+    with pytest.raises(ConfigError, match="TAZKO_GOOGLE_URL"):
+        load_settings(env="development", google_url=value)

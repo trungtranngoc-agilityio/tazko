@@ -62,7 +62,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.settings = settings
     app.state.started = time.monotonic()  # for the console's Server page
     app.state.identity_provider = GoogleProvider(
-        settings.google_client_id, settings.google_client_secret.get_secret_value()
+        settings.google_client_id,
+        settings.google_client_secret.get_secret_value(),
+        base_url=settings.google_url,
     )
     # TODO(M3-01): realtime hub.
 

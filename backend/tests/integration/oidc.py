@@ -34,6 +34,8 @@ class FakeGoogle:
     """Hands out one code per authorization; the code turns into an ID token
     with the nonce the server sent, unless a test overrides claims."""
 
+    issuers = ("https://accounts.google.com", "accounts.google.com")
+
     def __init__(self, key: rsa.RSAPrivateKey) -> None:
         self.key = key
         self.codes: dict[str, tuple[str, dict[str, Any]]] = {}

@@ -102,3 +102,26 @@ def test_stale_keys_are_kept_when_google_cannot_be_reached() -> None:
 def test_unreachable_key_endpoint_raises_provider_error() -> None:
     with pytest.raises(ProviderError):
         provider(FakeNetwork(URLError("down"))).keys()
+
+
+STAND_IN = "http://127.0.0.1:8792"
+
+
+def test_a_stand_in_address_replaces_every_google_address() -> None:
+    # given a provider pointed at a stand-in Google (TAZKO_GOOGLE_URL, e2e only)
+    network = FakeNetwork({"id_token": "t"}, {"keys": []})
+    stand_in = GoogleProvider("client-1", "secret-1", opener=network, base_url=STAND_IN + "/")
+
+    # when it builds the sign-in address, exchanges a code and fetches keys
+    url = stand_in.authorization_url({"state": "s"})
+    stand_in.exchange(code="c", code_verifier="v", redirect_uri="https://api/cb")
+    stand_in.keys()
+
+    # then every address is the stand-in's, and only its issuer is accepted
+    assert url.startswith(f"{STAND_IN}/authorize?")
+    assert [r.full_url for r in network.requests] == [f"{STAND_IN}/token", f"{STAND_IN}/certs"]
+    assert stand_in.issuers == (STAND_IN,)
+
+
+def test_real_google_accepts_only_googles_issuers() -> None:
+    assert provider(FakeNetwork()).issuers == ("https://accounts.google.com", "accounts.google.com")

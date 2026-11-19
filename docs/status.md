@@ -3,11 +3,11 @@
 Where the project stands and what comes next. Read it at the start of a session; update it at the end of every task.
 Task details live in docs/milestones/Mx.md, judgment calls in docs/decisions.md, milestone reports in docs/progress.md.
 
-Updated 2026-11-19 · `dev` at fd5e9d3 (#17)
+Updated 2026-11-19 · `dev` at 1ec6b8a (#18) · part 5 on `feature/e2e-fake-google`, not pushed
 
 ## Now
 
-M1 · Platform (release 0.1.0) · task **M1-06** Admin console and company settings, part 5 of 5 next.
+M1 · Platform (release 0.1.0) · task **M1-06** Admin console and company settings, done (ticked) once part 5 merges.
 
 | Part | What | State |
 |---|---|---|
@@ -15,19 +15,20 @@ M1 · Platform (release 0.1.0) · task **M1-06** Admin console and company setti
 | 2a, 2b | Console API: companies, invites, people, audit log, server, Workspace domains (D28, D29) | merged |
 | 3 | Company screens: sidebar, switcher, Projects empty state, Company settings (D30) | merged, #12 |
 | 4 | Console screens (6 pages) on the console API (D31) | merged, #14 to #17 |
-| 5 | Fake Google sign-in for e2e; `admin.spec.ts`; side-by-side check with the prototype | **next** |
+| 5 | Stand-in Google for e2e (D32); `admin.spec.ts`; prototype comparison (M1.md, Visual check; D33) | committed on `feature/e2e-fake-google`, PR waits for the owner |
 
 ## Next
 
-1. M1-06 part 5: fake OIDC server, `admin.spec.ts`, prototype comparison of Company home, Company settings and the console (prototype-compare skill). Then tick M1-06.
-2. M1-07 company lifecycle: create, suspend, resume, delete to `trash/`.
-3. M1-08 deploy (parallel ok with M1-07): scripts in deploy/, the owner runs them. This also proves M1-01's last line (web on Pages reaches the API), so tick M1-01 then.
-4. Cut `release/0.1.0`.
+1. M1-06 part 5: open the PR for `feature/e2e-fake-google` and merge it.
+2. Icons in the sidebars and buttons, and avatar tones (M1.md, Visual check): a small UI task, proposed.
+3. M1-07 company lifecycle: create, suspend, resume, delete to `trash/`.
+4. M1-08 deploy (parallel ok with M1-07): scripts in deploy/, the owner runs them. This also proves M1-01's last line (web on Pages reaches the API), so tick M1-01 then.
+5. Cut `release/0.1.0`.
 
 ## Waiting on the owner
 
 - Q2 (M1.md): list a suspended company in the switcher, greyed. Built that way (D30); still proposed.
-- D23, D25, D27 to D31 are proposed, not decided.
+- D23, D25, D27 to D33 are proposed, not decided.
 - Real design tokens: design/tokens.css is still the placeholder, so colours and font differ from the prototype (M1.md, Visual check).
 
 ## Housekeeping
