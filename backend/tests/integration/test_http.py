@@ -3,13 +3,14 @@
 import os
 import stat
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 from httpx2 import Response
 from pydantic import BaseModel, Field
 
-from tazko.core.config import Settings
+from tazko.core.config import Settings, load_settings
 from tazko.core.errors import Conflict
 from tazko.main import create_app
 from tests.conftest import WEB_ORIGIN
@@ -137,3 +138,17 @@ def test_cors_allows_the_web_origin_with_credentials(client: TestClient) -> None
 def test_cors_ignores_other_origins(client: TestClient) -> None:
     headers = preflight(client, "https://evil.example.net").headers
     assert "access-control-allow-origin" not in headers
+
+
+def test_a_stand_in_google_is_announced_at_start(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    # a server that trusts a stand-in Google says so, so nobody mistakes it for a real one
+    settings = load_settings(
+        env="development", data_dir=tmp_path, google_url="http://127.0.0.1:8792"
+    )
+
+    with caplog.at_level("WARNING"):
+        create_app(settings)
+
+    assert "stand-in Google at http://127.0.0.1:8792" in caplog.text

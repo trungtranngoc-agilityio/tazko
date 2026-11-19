@@ -7,7 +7,7 @@ Updated 2026-11-19 · `dev` at 1ec6b8a (#18) · part 5 on `feature/e2e-fake-goog
 
 ## Now
 
-M1 · Platform (release 0.1.0) · task **M1-06** Admin console and company settings, done (ticked) once part 5 merges.
+M1 · Platform (release 0.1.0) · task **M1-06** Admin console and company settings: all five parts built; ticked once the owner accepts the visual gaps (D34).
 
 | Part | What | State |
 |---|---|---|
@@ -20,7 +20,7 @@ M1 · Platform (release 0.1.0) · task **M1-06** Admin console and company setti
 ## Next
 
 1. M1-06 part 5: open the PR for `feature/e2e-fake-google` and merge it.
-2. Icons in the sidebars and buttons, and avatar tones (M1.md, Visual check): a small UI task, proposed.
+2. Owner: decide D34. Then icons in the sidebars and buttons, avatar tones and the header badge (a small UI task), and tick M1-06.
 3. M1-07 company lifecycle: create, suspend, resume, delete to `trash/`.
 4. M1-08 deploy (parallel ok with M1-07): scripts in deploy/, the owner runs them. This also proves M1-01's last line (web on Pages reaches the API), so tick M1-01 then.
 5. Cut `release/0.1.0`.
@@ -28,7 +28,7 @@ M1 · Platform (release 0.1.0) · task **M1-06** Admin console and company setti
 ## Waiting on the owner
 
 - Q2 (M1.md): list a suspended company in the switcher, greyed. Built that way (D30); still proposed.
-- D23, D25, D27 to D33 are proposed, not decided.
+- D23, D25, D27 to D34 are proposed, not decided. D34 decides whether M1-06 can be ticked.
 - Real design tokens: design/tokens.css is still the placeholder, so colours and font differ from the prototype (M1.md, Visual check).
 
 ## Housekeeping

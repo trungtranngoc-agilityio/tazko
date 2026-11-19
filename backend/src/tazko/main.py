@@ -7,6 +7,7 @@ hostname belong to the tunnel.
 
 from __future__ import annotations
 
+import logging
 import time
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
@@ -26,6 +27,8 @@ from tazko.modules.admin import router as admin_router
 from tazko.modules.auth.google import GoogleProvider
 from tazko.modules.invites import router as invites_router
 from tazko.modules.orgs import router as orgs_router
+
+log = logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -61,6 +64,10 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     )
     app.state.settings = settings
     app.state.started = time.monotonic()  # for the console's Server page
+    if settings.google_url:
+        log.warning(
+            "sign-in trusts a stand-in Google at %s (TAZKO_GOOGLE_URL)", settings.google_url
+        )
     app.state.identity_provider = GoogleProvider(
         settings.google_client_id,
         settings.google_client_secret.get_secret_value(),

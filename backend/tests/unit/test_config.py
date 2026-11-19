@@ -159,7 +159,16 @@ def test_stand_in_google_is_read_in_development() -> None:
 
 
 @pytest.mark.parametrize(
-    "value", ["127.0.0.1:8792", "https://accounts.example.com", "http://10.0.0.5:8792"]
+    "value",
+    [
+        "127.0.0.1:8792",
+        "https://accounts.example.com",
+        "http://10.0.0.5:8792",
+        "http://127.0.0.1@evil.example",
+        "http://127.0.0.1:8792?x=1",
+        "http://127.0.0.1:8792#x",
+        "http://user@127.0.0.1:8792",
+    ],
 )
 def test_stand_in_google_must_be_a_loopback_url(value: str) -> None:
     # a stand-in on another machine could sign anyone in

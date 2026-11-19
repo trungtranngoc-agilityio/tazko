@@ -115,9 +115,17 @@ async function authorize(req, res, url) {
     return send(res, 200, chooser(p), "text/html; charset=utf-8");
   }
   const chosen = await form(req);
+  let back;
+  try {
+    back = new URL(chosen.redirect_uri);
+  } catch {
+    return send(res, 400, "missing redirect_uri", "text/plain");
+  }
+  if (chosen.client_id !== CLIENT_ID) {
+    return send(res, 400, "unknown client", "text/plain");
+  }
   const code = b64url(randomBytes(24));
   codes.set(code, chosen);
-  const back = new URL(chosen.redirect_uri);
   back.searchParams.set("code", code);
   back.searchParams.set("state", chosen.state);
   res.writeHead(302, { location: back.toString() });

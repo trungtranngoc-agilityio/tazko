@@ -11,6 +11,8 @@ const api = {
   TAZKO_ENV: "development",
   TAZKO_DATA_DIR: ".e2e-data",
   TAZKO_PUBLIC_URL: "http://localhost:5173",
+  // Set here so a developer's .env cannot change them (it is read in development).
+  TAZKO_WEB_ORIGIN: "http://localhost:5173",
   TAZKO_GOOGLE_URL: "http://127.0.0.1:8792",
   TAZKO_GOOGLE_CLIENT_ID: "e2e-client",
   TAZKO_GOOGLE_CLIENT_SECRET: "e2e-secret",
@@ -39,7 +41,8 @@ export default defineConfig({
     {
       command: "node tests/e2e/fake-google.mjs",
       url: "http://127.0.0.1:8792/health",
-      reuseExistingServer: !process.env.CI,
+      // Never reuse: a server already on the port is not this stand-in.
+      reuseExistingServer: false,
       timeout: 30_000,
     },
     {
@@ -51,7 +54,8 @@ export default defineConfig({
       ].join(" && "),
       env: api,
       url: "http://127.0.0.1:8791/health",
-      reuseExistingServer: !process.env.CI,
+      // Never reuse a developer's own API: it has their data and real Google.
+      reuseExistingServer: false,
       timeout: 60_000,
     },
     {

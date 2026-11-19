@@ -12,6 +12,7 @@ test("the super admin made with `tazko admin` signs in and reaches the console",
   await page.goto("/admin");
 
   await expect(page.getByRole("heading", { name: "Companies" })).toBeVisible();
+  await expect(page.getByRole("alert")).toHaveCount(0); // not "Only super admins…"
   await expect(
     page.getByRole("navigation", { name: "Admin console" }),
   ).toBeVisible();

@@ -84,7 +84,8 @@ class Settings(BaseSettings):
             loopback = host == "localhost" or ip_address(host).is_loopback
         except ValueError:
             loopback = False
-        if parts.scheme not in ("http", "https") or not loopback or parts.path:
+        extra = parts.path or parts.query or parts.fragment or parts.username
+        if parts.scheme not in ("http", "https") or not loopback or extra:
             raise ValueError("must be a loopback URL like http://127.0.0.1:8792, or empty")
         return value
 
