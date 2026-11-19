@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CompanyHomePage } from "@/pages/company/CompanyHomePage";
 import { CompanySettingsPage } from "@/pages/company/CompanySettingsPage";
 import { HomePage } from "@/pages/home/HomePage";
+import { apiError as error, fakeApi } from "@/test/fakeApi";
 import { AppLayout } from "./AppLayout";
 import { CompanyLayout } from "./CompanyLayout";
 
@@ -48,36 +49,6 @@ const INVITES = [
     expires_at: "2026-11-19T10:00:00.000Z",
   },
 ];
-
-type Reply = { status: number; body?: unknown };
-
-/** A fake API: answers by "METHOD path"; anything else is a 404. "hang" never
- * answers (a slow load). Records every call. */
-function fakeApi(routes: Record<string, Reply | "hang" | ((body: unknown) => Reply)>) {
-  const calls: { method: string; path: string; body: unknown }[] = [];
-  const fetchMock = vi.fn(async (url: string, init?: RequestInit) => {
-    const method = init?.method ?? "GET";
-    const path = new URL(url, "http://web").pathname;
-    const body = init?.body ? JSON.parse(String(init.body)) : undefined;
-    calls.push({ method, path, body });
-    const route = routes[`${method} ${path}`];
-    if (route === "hang") return new Promise<Response>(() => {});
-    const reply =
-      typeof route === "function"
-        ? route(body)
-        : (route ?? { status: 404, body: error("NOT_FOUND") });
-    return new Response(reply.status === 204 ? null : JSON.stringify(reply.body), {
-      status: reply.status,
-      headers: { "content-type": "application/json" },
-    });
-  });
-  vi.stubGlobal("fetch", fetchMock);
-  return calls;
-}
-
-function error(code: string) {
-  return { error: { code, message: code.toLowerCase(), details: [] } };
-}
 
 function show(path: string) {
   render(

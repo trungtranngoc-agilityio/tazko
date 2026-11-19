@@ -6,10 +6,10 @@ import { invite, type Invite, type Role } from "../api";
 /** "Invite someone": email and role. Email delivery comes with M6, so the
  * owner is told to share the site address themselves. */
 export function InviteForm({
-  slug,
+  base,
   onInvited,
 }: {
-  slug: string;
+  base: string;
   onInvited: (invite: Invite) => void;
 }) {
   const [email, setEmail] = useState("");
@@ -24,7 +24,7 @@ export function InviteForm({
     setProblem(null);
     setDone(null);
     try {
-      const made = await invite(slug, email.trim(), role);
+      const made = await invite(base, email.trim(), role);
       setDone(t("invite.done", { email: made.email, url: window.location.origin }));
       setEmail("");
       onInvited(made);

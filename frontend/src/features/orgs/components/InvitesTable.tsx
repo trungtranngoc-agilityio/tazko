@@ -7,11 +7,11 @@ import { AccountBadge } from "./AccountBadge";
 
 /** Invites nobody has used yet, newest first, with Revoke. */
 export function InvitesTable({
-  slug,
+  base,
   invites,
   onChanged,
 }: {
-  slug: string;
+  base: string;
   invites: Invite[];
   onChanged: () => void;
 }) {
@@ -20,7 +20,7 @@ export function InvitesTable({
   async function revoke(invite: Invite) {
     setProblem(null);
     try {
-      await revokeInvite(slug, invite.id);
+      await revokeInvite(base, invite.id);
       onChanged();
     } catch (error) {
       const code = error instanceof ApiError ? error.code : "UNKNOWN";

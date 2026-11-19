@@ -7,7 +7,7 @@ import { AccountBadge } from "./AccountBadge";
 import { Initials } from "./Initials";
 
 interface Props {
-  slug: string;
+  base: string;
   company: string;
   members: Member[];
   meId: number;
@@ -20,7 +20,7 @@ interface Props {
  * and so is making yourself a member; the server refuses to drop the last owner
  * and the reason is shown. */
 export function MembersTable(props: Props) {
-  const { slug, company, members, meId, onChanged, onLeft, onSelfDemoted } = props;
+  const { base, company, members, meId, onChanged, onLeft, onSelfDemoted } = props;
   const [problem, setProblem] = useState<string | null>(null);
 
   async function act(run: () => Promise<unknown>, after: () => void) {
@@ -40,13 +40,13 @@ export function MembersTable(props: Props) {
       ? t("members.confirmLeave", { company })
       : t("members.confirmRemove", { name: member.name || member.email, company });
     if (!window.confirm(question)) return;
-    void act(() => removeMember(slug, member.user_id), me ? onLeft : onChanged);
+    void act(() => removeMember(base, member.user_id), me ? onLeft : onChanged);
   }
 
   function setRole(member: Member, role: Role) {
     const demotingMe = member.user_id === meId && role === "member";
     if (demotingMe && !window.confirm(t("members.confirmDemote", { company }))) return;
-    void act(() => changeRole(slug, member.user_id, role), demotingMe ? onSelfDemoted : onChanged);
+    void act(() => changeRole(base, member.user_id, role), demotingMe ? onSelfDemoted : onChanged);
   }
 
   return (
