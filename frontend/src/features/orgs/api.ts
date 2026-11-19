@@ -35,34 +35,36 @@ export function myCompanies(): Promise<Company[]> {
   return api<Company[]>("/api/orgs");
 }
 
-const base = (slug: string) => `/api/orgs/${encodeURIComponent(slug)}`;
+/** Where one company's members and invites live: `/api/orgs/<slug>` for its
+ * owners, `/admin/api/companies/<slug>` for super admins (same contract). */
+export const companyBase = (slug: string) => `/api/orgs/${encodeURIComponent(slug)}`;
 
-export function members(slug: string): Promise<Member[]> {
-  return api<Member[]>(`${base(slug)}/members`);
+export function members(base: string): Promise<Member[]> {
+  return api<Member[]>(`${base}/members`);
 }
 
-export function changeRole(slug: string, userId: number, role: Role): Promise<Member> {
-  return api<Member>(`${base(slug)}/members/${userId}`, {
+export function changeRole(base: string, userId: number, role: Role): Promise<Member> {
+  return api<Member>(`${base}/members/${userId}`, {
     method: "PATCH",
     body: JSON.stringify({ role }),
   });
 }
 
-export function removeMember(slug: string, userId: number): Promise<void> {
-  return api<void>(`${base(slug)}/members/${userId}`, { method: "DELETE" });
+export function removeMember(base: string, userId: number): Promise<void> {
+  return api<void>(`${base}/members/${userId}`, { method: "DELETE" });
 }
 
-export function invites(slug: string): Promise<Invite[]> {
-  return api<Invite[]>(`${base(slug)}/invites`);
+export function invites(base: string): Promise<Invite[]> {
+  return api<Invite[]>(`${base}/invites`);
 }
 
-export function invite(slug: string, email: string, role: Role): Promise<Invite> {
-  return api<Invite>(`${base(slug)}/invites`, {
+export function invite(base: string, email: string, role: Role): Promise<Invite> {
+  return api<Invite>(`${base}/invites`, {
     method: "POST",
     body: JSON.stringify({ email, role }),
   });
 }
 
-export function revokeInvite(slug: string, id: number): Promise<void> {
-  return api<void>(`${base(slug)}/invites/${id}`, { method: "DELETE" });
+export function revokeInvite(base: string, id: number): Promise<void> {
+  return api<void>(`${base}/invites/${id}`, { method: "DELETE" });
 }

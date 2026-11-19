@@ -1,5 +1,6 @@
 // Public surface of the orgs feature (companies, members, invites).
 export {
+  companyBase,
   invites,
   members,
   myCompanies,

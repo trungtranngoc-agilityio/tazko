@@ -4,6 +4,7 @@ import {
   InviteForm,
   InvitesTable,
   MembersTable,
+  companyBase,
   invites,
   members,
   useCompany,
@@ -19,8 +20,9 @@ export function CompanySettingsPage() {
   const me = useMe();
   const navigate = useNavigate();
   const slug = company.slug;
-  const [people, reloadPeople] = useAsync(() => members(slug), `members:${slug}`);
-  const [pending, reloadPending] = useAsync(() => invites(slug), `invites:${slug}`);
+  const base = companyBase(slug);
+  const [people, reloadPeople] = useAsync(() => members(base), `members:${slug}`);
+  const [pending, reloadPending] = useAsync(() => invites(base), `invites:${slug}`);
   const failed = people.kind === "failed" ? people : pending.kind === "failed" ? pending : null;
 
   if (failed?.status === 401) return <Navigate to="/signin" replace />;
@@ -46,10 +48,10 @@ export function CompanySettingsPage() {
         </div>
       ) : (
         <div className="mt-6 flex flex-col gap-5">
-          <InviteForm slug={slug} onInvited={reloadPending} />
+          <InviteForm base={base} onInvited={reloadPending} />
           {people.kind === "ready" ? (
             <MembersTable
-              slug={slug}
+              base={base}
               company={company.name}
               members={people.value}
               meId={me.id}
@@ -66,7 +68,7 @@ export function CompanySettingsPage() {
             </p>
           )}
           {pending.kind === "ready" ? (
-            <InvitesTable slug={slug} invites={pending.value} onChanged={reloadPending} />
+            <InvitesTable base={base} invites={pending.value} onChanged={reloadPending} />
           ) : (
             <p className="text-muted">{t("session.loading")}</p>
           )}
