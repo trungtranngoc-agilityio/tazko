@@ -1,0 +1,361 @@
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { MemoryRouter, useLocation, useRoutes } from "react-router";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { apiError, fakeApi } from "@/test/fakeApi";
+import { routes } from "../router";
+
+// Names, emails and audit targets come from Google profiles that anyone can
+// set (M1.md, security review): they must show as text, never as markup.
+const HOSTILE = "<img src=x onerror=alert(1)>";
+
+const ROOT = {
+  id: 1,
+  email: "root@tazko.dev",
+  name: "Root Admin",
+  avatar_url: null,
+  is_super_admin: true,
+};
+const HARBOR = {
+  slug: "harbor",
+  name: "Harbor Studio",
+  status: "active",
+  members: 2,
+  storage_bytes: 512 * 1024 * 1024,
+  storage_limit_bytes: 2 * 1024 * 1024 * 1024,
+  last_activity_at: null,
+};
+const LARK = { ...HARBOR, slug: "lark", name: HOSTILE, status: "suspended", members: 0 };
+const MEMBERS = [
+  {
+    user_id: 2,
+    name: "Ana Tran",
+    email: "ana@harbor.vn",
+    avatar_url: null,
+    account: "workspace",
+    role: "owner",
+    last_seen_at: null,
+  },
+];
+const INVITE = {
+  id: 7,
+  email: "cy@gmail.com",
+  role: "member",
+  account: "personal",
+  invited_by: "Ana Tran",
+  created_at: "2026-11-05T10:00:00.000Z",
+  expires_at: "2026-11-19T10:00:00.000Z",
+};
+const SIGNED_IN = { "GET /api/me": { status: 200, body: ROOT } };
+
+let here = "";
+
+function App() {
+  here = useLocation().pathname;
+  return useRoutes(routes);
+}
+
+function show(path: string) {
+  render(
+    <MemoryRouter initialEntries={[path]}>
+      <App />
+    </MemoryRouter>,
+  );
+}
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+});
+
+describe("console shell", () => {
+  it("links every console page and the way back to the app", async () => {
+    fakeApi({ ...SIGNED_IN, "GET /admin/api/companies": { status: 200, body: [] } });
+
+    show("/admin");
+
+    const nav = await screen.findByRole("navigation", { name: "Admin console" });
+    expect(
+      within(nav)
+        .getAllByRole("link")
+        .map((link) => [link.textContent, link.getAttribute("href")]),
+    ).toEqual([
+      ["Back to app", "/"],
+      ["Companies", "/admin"],
+    ]);
+  });
+
+  it("tells a person who is not a super admin, without calling the console API", async () => {
+    const calls = fakeApi({
+      "GET /api/me": { status: 200, body: { ...ROOT, is_super_admin: false } },
+    });
+
+    show("/admin");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Only super admins");
+    expect(calls.some((c) => c.path.startsWith("/admin/api"))).toBe(false);
+  });
+});
+
+describe("companies", () => {
+  it("lists companies with status, members and storage, names as text", async () => {
+    fakeApi({ ...SIGNED_IN, "GET /admin/api/companies": { status: 200, body: [HARBOR, LARK] } });
+
+    show("/admin");
+
+    const table = await screen.findByRole("table", { name: "Companies" });
+    const harbor = within(table).getByRole("row", { name: /Harbor Studio/ });
+    expect(harbor).toHaveTextContent("Active");
+    expect(harbor).toHaveTextContent("512 MB / 2 GB");
+    expect(within(table).getByText(HOSTILE)).toBeInTheDocument();
+    expect(within(table).getByText("Suspended")).toBeInTheDocument();
+    expect(document.querySelector("img")).toBeNull();
+  });
+
+  it("opens a company from its row", async () => {
+    fakeApi({ ...SIGNED_IN, "GET /admin/api/companies": { status: 200, body: [HARBOR] } });
+    show("/admin");
+
+    fireEvent.click(await screen.findByRole("link", { name: /Harbor Studio/ }));
+
+    await waitFor(() => expect(here).toBe("/admin/companies/harbor"));
+  });
+
+  it("creates a company, invites its first owner and opens it", async () => {
+    const calls = fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/companies": { status: 200, body: [] },
+      "POST /admin/api/companies": { status: 201, body: { ...HARBOR, slug: "acme", name: "Acme" } },
+      "POST /admin/api/companies/acme/invites": {
+        status: 201,
+        body: { ...INVITE, email: "boss@acme.vn", role: "owner" },
+      },
+    });
+    show("/admin");
+
+    fireEvent.click(await screen.findByRole("button", { name: "New company" }));
+    const dialog = screen.getByRole("dialog", { name: "New company" });
+    fireEvent.change(within(dialog).getByLabelText("Company name"), {
+      target: { value: "Acme Studio" },
+    });
+    expect(within(dialog).getByLabelText(/Short name/)).toHaveValue("acme-studio");
+    fireEvent.change(within(dialog).getByLabelText(/Short name/), { target: { value: "acme" } });
+    fireEvent.change(within(dialog).getByLabelText("First owner email"), {
+      target: { value: "boss@acme.vn" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create company" }));
+
+    await waitFor(() => expect(here).toBe("/admin/companies/acme"));
+    const posts = calls.filter((c) => c.method === "POST").map((c) => [c.path, c.body]);
+    expect(posts).toEqual([
+      ["/admin/api/companies", { slug: "acme", name: "Acme Studio" }],
+      ["/admin/api/companies/acme/invites", { email: "boss@acme.vn", role: "owner" }],
+    ]);
+  });
+
+  it("explains a taken short name and keeps the dialog open", async () => {
+    fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/companies": { status: 200, body: [HARBOR] },
+      "POST /admin/api/companies": { status: 409, body: apiError("SLUG_TAKEN") },
+    });
+    show("/admin");
+
+    fireEvent.click(await screen.findByRole("button", { name: "New company" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Company name"), {
+      target: { value: "Harbor" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("First owner email"), {
+      target: { value: "x@harbor.vn" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create company" }));
+
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "That address is already used by another company.",
+    );
+  });
+
+  it("closes the dialog with Escape without creating anything", async () => {
+    const calls = fakeApi({ ...SIGNED_IN, "GET /admin/api/companies": { status: 200, body: [] } });
+    show("/admin");
+
+    fireEvent.click(await screen.findByRole("button", { name: "New company" }));
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+  });
+});
+
+describe("company detail", () => {
+  const DETAIL = {
+    ...SIGNED_IN,
+    "GET /admin/api/companies/harbor": { status: 200, body: HARBOR },
+    "GET /admin/api/companies/harbor/members": { status: 200, body: MEMBERS },
+    "GET /admin/api/companies/harbor/invites": { status: 200, body: [INVITE] },
+  };
+
+  it("shows the company with its members and invites from the console API", async () => {
+    fakeApi(DETAIL);
+
+    show("/admin/companies/harbor");
+
+    expect(await screen.findByRole("heading", { name: "Harbor Studio" })).toBeInTheDocument();
+    expect(screen.getByText(/\/ Harbor Studio/)).toBeInTheDocument(); // breadcrumb
+    const members = await screen.findByRole("table", { name: "Members" });
+    expect(within(members).getByText("ana@harbor.vn")).toBeInTheDocument();
+    const invites = screen.getByRole("table", { name: "Pending invites" });
+    expect(within(invites).getByText("cy@gmail.com")).toBeInTheDocument();
+  });
+
+  it("refuses to remove the last owner and says why", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const calls = fakeApi({
+      ...DETAIL,
+      "DELETE /admin/api/companies/harbor/members/2": { status: 409, body: apiError("LAST_OWNER") },
+    });
+    show("/admin/companies/harbor");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Remove Ana Tran" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "A company needs at least one owner.",
+    );
+    expect(calls.some((c) => c.method === "DELETE")).toBe(true);
+  });
+
+  it("invites through the console API", async () => {
+    const calls = fakeApi({
+      ...DETAIL,
+      "POST /admin/api/companies/harbor/invites": {
+        status: 201,
+        body: { ...INVITE, id: 8, email: "di@harbor.vn" },
+      },
+    });
+    show("/admin/companies/harbor");
+
+    fireEvent.change(await screen.findByRole("textbox", { name: "Email" }), {
+      target: { value: "di@harbor.vn" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+
+    expect(await screen.findByText(/Invited di@harbor.vn/)).toBeInTheDocument();
+    expect(calls.find((c) => c.method === "POST")?.path).toBe(
+      "/admin/api/companies/harbor/invites",
+    );
+  });
+
+  it("says when the company does not exist", async () => {
+    fakeApi(SIGNED_IN);
+
+    show("/admin/companies/gone");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This no longer exists, or you do not have access to it.",
+    );
+  });
+});
+
+describe("states the review asked for", () => {
+  it("says the companies list is empty", async () => {
+    fakeApi({ ...SIGNED_IN, "GET /admin/api/companies": { status: 200, body: [] } });
+
+    show("/admin");
+
+    expect(await screen.findByText("No companies yet")).toBeInTheDocument();
+  });
+
+  it("explains a failed load and loads again on Try again", async () => {
+    let fail = true;
+    fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/companies": () =>
+        fail ? { status: 500, body: apiError("INTERNAL") } : { status: 200, body: [] },
+    });
+    show("/admin");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("Something went wrong on our side.");
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByText("No companies yet")).toBeInTheDocument();
+  });
+
+  it("suggests a short name from a Vietnamese company name", async () => {
+    fakeApi({ ...SIGNED_IN, "GET /admin/api/companies": { status: 200, body: [] } });
+    show("/admin");
+
+    fireEvent.click(await screen.findByRole("button", { name: "New company" }));
+    fireEvent.change(screen.getByLabelText("Company name"), {
+      target: { value: "Đà Nẵng Studio" },
+    });
+
+    expect(screen.getByLabelText(/Short name/)).toHaveValue("da-nang-studio");
+  });
+
+  it("asks for a name instead of sending only spaces", async () => {
+    const calls = fakeApi({ ...SIGNED_IN, "GET /admin/api/companies": { status: 200, body: [] } });
+    show("/admin");
+
+    fireEvent.click(await screen.findByRole("button", { name: "New company" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Company name"), { target: { value: "   " } });
+    fireEvent.change(within(dialog).getByLabelText(/Short name/), { target: { value: "x" } });
+    fireEvent.change(within(dialog).getByLabelText("First owner email"), {
+      target: { value: "a@b.vn" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create company" }));
+
+    expect(within(dialog).getByRole("alert")).toHaveTextContent("Give the company a name.");
+    expect(calls.some((c) => c.method === "POST")).toBe(false);
+  });
+
+  it("opens the new company and says why its first owner was not invited", async () => {
+    fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/companies": { status: 200, body: [] },
+      "POST /admin/api/companies": { status: 201, body: HARBOR },
+      "POST /admin/api/companies/harbor/invites": {
+        status: 409,
+        body: apiError("ALREADY_MEMBER"),
+      },
+      "GET /admin/api/companies/harbor": { status: 200, body: HARBOR },
+      "GET /admin/api/companies/harbor/members": { status: 200, body: MEMBERS },
+      "GET /admin/api/companies/harbor/invites": { status: 200, body: [] },
+    });
+    show("/admin");
+
+    fireEvent.click(await screen.findByRole("button", { name: "New company" }));
+    const dialog = screen.getByRole("dialog");
+    fireEvent.change(within(dialog).getByLabelText("Company name"), {
+      target: { value: "Harbor Studio" },
+    });
+    fireEvent.change(within(dialog).getByLabelText("First owner email"), {
+      target: { value: "ana@harbor.vn" },
+    });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Create company" }));
+
+    expect(await screen.findByRole("heading", { name: "Harbor Studio" })).toBeInTheDocument();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "The company was created, but the first owner was not invited: This person is already a member",
+    );
+  });
+
+  it("shows a suspended company read-only", async () => {
+    fakeApi({
+      ...SIGNED_IN,
+      "GET /admin/api/companies/harbor": { status: 200, body: { ...HARBOR, status: "suspended" } },
+      "GET /admin/api/companies/harbor/members": { status: 200, body: MEMBERS },
+      "GET /admin/api/companies/harbor/invites": { status: 200, body: [INVITE] },
+    });
+
+    show("/admin/companies/harbor");
+
+    await screen.findByRole("table", { name: "Members" });
+    expect(screen.getByText(/This company is suspended/)).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Invite" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Remove Ana Tran" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Revoke cy@gmail.com" })).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Role of Ana Tran" })).toBeDisabled();
+  });
+});

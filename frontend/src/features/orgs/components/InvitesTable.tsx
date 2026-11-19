@@ -10,10 +10,13 @@ export function InvitesTable({
   base,
   invites,
   onChanged,
+  readOnly = false,
 }: {
   base: string;
   invites: Invite[];
   onChanged: () => void;
+  /** A suspended company: listed, not revocable. */
+  readOnly?: boolean;
 }) {
   const [problem, setProblem] = useState<string | null>(null);
 
@@ -71,14 +74,16 @@ export function InvitesTable({
                 <td className="px-3 text-muted">{invite.invited_by ?? ""}</td>
                 <td className="px-3 text-muted">{when(invite.created_at, { dateOnly: true })}</td>
                 <td className="px-3">
-                  <button
-                    type="button"
-                    aria-label={t("invites.revokeOf", { email: invite.email })}
-                    onClick={() => void revoke(invite)}
-                    className="h-8 rounded-md border border-line px-3 hover:bg-sunken"
-                  >
-                    {t("invites.revoke")}
-                  </button>
+                  {!readOnly && (
+                    <button
+                      type="button"
+                      aria-label={t("invites.revokeOf", { email: invite.email })}
+                      onClick={() => void revoke(invite)}
+                      className="h-8 rounded-md border border-line px-3 hover:bg-sunken"
+                    >
+                      {t("invites.revoke")}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}

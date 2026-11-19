@@ -1,6 +1,7 @@
 // Public surface of the orgs feature (companies, members, invites).
 export {
   companyBase,
+  invite,
   invites,
   members,
   myCompanies,
@@ -12,6 +13,7 @@ export {
 } from "./api";
 export { useCompany, type CompanyContext } from "./context";
 export { CompanySwitcher } from "./components/CompanySwitcher";
+export { AccountBadge } from "./components/AccountBadge";
 export { Initials } from "./components/Initials";
 export { InviteForm } from "./components/InviteForm";
 export { InvitesTable } from "./components/InvitesTable";
