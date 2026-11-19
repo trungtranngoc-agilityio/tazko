@@ -9,7 +9,9 @@
   --color-muted: var(--tz-muted);
   --color-line: var(--tz-line);
   --color-accent: var(--tz-accent);
-  --color-accent-soft: var(--tz-accent-soft);
+  /* tokens.css has a placeholder --tz-accent-soft, the same light lavender in
+     both themes; the prototype's tint is --tz-glow below (D33). */
+  --color-accent-soft: var(--tz-glow);
   --color-sunken: var(--tz-sunken);
   --color-danger: var(--tz-danger);
   --color-warning: var(--tz-warning);

@@ -14,6 +14,7 @@ node_modules/
 /frontend/dist/
 /frontend/coverage/
 /test-results/
+/.e2e-data/
 /playwright-report/
 
 # Runtime data and secrets: never commit (repo root or backend/, wherever serve ran)

@@ -22,7 +22,7 @@ from httpx2 import Response
 from jwt.algorithms import RSAAlgorithm
 
 from tazko.db import Database
-from tazko.modules.auth.google import ProviderError
+from tazko.modules.auth.google import ISSUERS, ProviderError
 
 WEB = "https://tazko.example.com"
 API = "https://testserver"
@@ -33,6 +33,8 @@ SAME_ORIGIN = {"origin": WEB}
 class FakeGoogle:
     """Hands out one code per authorization; the code turns into an ID token
     with the nonce the server sent, unless a test overrides claims."""
+
+    issuers = ISSUERS
 
     def __init__(self, key: rsa.RSAPrivateKey) -> None:
         self.key = key

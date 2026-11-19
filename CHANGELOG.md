@@ -20,6 +20,7 @@ What people and API callers can notice, per release. Format: [Keep a Changelog](
 - On an email domain someone has signed in with as a Google Workspace, a personal Google account cannot claim an address of that domain (D26).
 
 ### Changed
+- The soft accent colour (selected sidebar item, Workspace badges) follows the prototype in light and dark; in dark mode it was a pale block with hard-to-read text (D33).
 - Every write (POST, PUT, PATCH, DELETE) from an origin other than `TAZKO_WEB_ORIGIN`, or with no Origin, answers 403 `FORBIDDEN`.
 - The audit log and sessions record the visitor's address from `CF-Connecting-IP`. `TAZKO_HOST` must be a loopback address.
 - Error responses carry a stable `code` and field `details`; validation errors answer 422 and conflicts 409 (D19).

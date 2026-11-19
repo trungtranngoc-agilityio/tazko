@@ -44,7 +44,7 @@ export function CompanyPage() {
   return (
     <>
       <p className="mb-3 text-sm text-muted">
-        <Link to="/admin" className="hover:text-accent">
+        <Link to="/admin" className="underline hover:text-accent">
           {t("admin.companies")}
         </Link>{" "}
         / {org.name}
@@ -62,7 +62,7 @@ export function CompanyPage() {
           {notice}
         </p>
       )}
-      <p className="mb-4 rounded-lg bg-accent-soft px-4 py-3 text-sm">
+      <p className="mb-4 rounded-lg bg-sunken px-4 py-3 text-sm">
         {readOnly ? t("error.COMPANY_NOT_ACTIVE") : t("admin.companyNote")}
       </p>
       {failed ? (
