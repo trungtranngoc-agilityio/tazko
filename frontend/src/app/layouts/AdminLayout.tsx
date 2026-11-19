@@ -14,7 +14,12 @@ export function AdminLayout() {
   );
 }
 
-const PAGES = [{ to: "/admin", label: "admin.companies", end: true }] as const;
+const PAGES = [
+  { to: "/admin", label: "admin.companies", end: true },
+  { to: "/admin/people", label: "admin.people", end: false },
+  { to: "/admin/invites", label: "admin.invites", end: false },
+  { to: "/admin/audit", label: "admin.audit", end: false },
+] as const;
 
 function AdminShell() {
   const me = useMe();
