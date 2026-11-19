@@ -10,6 +10,7 @@ import {
 } from "@/features/admin";
 import { t } from "@/shared/i18n";
 import { useAsync } from "@/shared/lib/useAsync";
+import { Icon } from "@/shared/ui/Icon";
 
 // Console: Companies (prototype admin-companies), with New company.
 export function CompaniesPage() {
@@ -24,9 +25,9 @@ export function CompaniesPage() {
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="h-10 rounded-md bg-accent px-4 font-semibold text-white"
+          className="flex h-10 items-center gap-2 rounded-md bg-accent px-4 font-semibold text-white"
         >
-          <span aria-hidden="true">+ </span>
+          <Icon name="plus" />
           {t("admin.newCompany")}
         </button>
       </PageHead>

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { ApiError } from "@/shared/api";
 import { errorText, t } from "@/shared/i18n";
+import { Icon } from "@/shared/ui/Icon";
 import { signOut } from "../api";
 
 export function SignOutButton() {
@@ -24,7 +25,12 @@ export function SignOutButton() {
           {problem}
         </span>
       )}
-      <button type="button" onClick={onClick} className="text-sm text-muted hover:text-ink">
+      <button
+        type="button"
+        onClick={onClick}
+        className="flex items-center gap-3 px-3 text-sm text-muted hover:text-ink"
+      >
+        <Icon name="out" />
         {t("signin.signOut")}
       </button>
     </span>

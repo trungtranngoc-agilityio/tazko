@@ -50,7 +50,7 @@ export function CompanyPage() {
         / {org.name}
       </p>
       <div className="mb-5 flex flex-wrap items-center gap-4">
-        <Initials name={org.name} size="lg" />
+        <Initials name={org.name} size="xl" />
         <div>
           <h1 className="text-[1.75rem] font-bold">{org.name}</h1>
           <small className="font-mono text-muted">{org.slug}</small>

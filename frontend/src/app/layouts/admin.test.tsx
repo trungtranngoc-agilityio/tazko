@@ -100,6 +100,23 @@ describe("console shell", () => {
     ]);
   });
 
+  it("shows the prototype's icon on each sidebar link and on Sign out", async () => {
+    fakeApi({ ...SIGNED_IN, "GET /admin/api/companies": { status: 200, body: [] } });
+
+    show("/admin");
+
+    const nav = await screen.findByRole("navigation", { name: "Admin console" });
+    expect(
+      within(nav)
+        .getAllByRole("link")
+        .map((link) => link.querySelector("svg")?.getAttribute("data-icon")),
+    ).toEqual(["back", "building", "users", "mail", "log", "server"]);
+    expect(screen.getByRole("button", { name: "Sign out" }).querySelector("svg")).toHaveAttribute(
+      "data-icon",
+      "out",
+    );
+  });
+
   it("tells a person who is not a super admin, without calling the console API", async () => {
     const calls = fakeApi({
       "GET /api/me": { status: 200, body: { ...ROOT, is_super_admin: false } },
@@ -148,7 +165,9 @@ describe("companies", () => {
     });
     show("/admin");
 
-    fireEvent.click(await screen.findByRole("button", { name: "New company" }));
+    const newCompany = await screen.findByRole("button", { name: "New company" });
+    expect(newCompany.querySelector("svg")).toHaveAttribute("data-icon", "plus");
+    fireEvent.click(newCompany);
     const dialog = screen.getByRole("dialog", { name: "New company" });
     fireEvent.change(within(dialog).getByLabelText("Company name"), {
       target: { value: "Acme Studio" },

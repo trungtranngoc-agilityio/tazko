@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 import { ApiError } from "@/shared/api";
 import { errorText, t } from "@/shared/i18n";
+import { Icon } from "@/shared/ui/Icon";
 import { invite, type Invite, type Role } from "../api";
 
 /** "Invite someone": email and role. Email delivery comes with M6, so the
@@ -64,9 +65,9 @@ export function InviteForm({
         <button
           type="submit"
           disabled={busy}
-          className="h-10 rounded-md bg-accent px-4 font-semibold text-white disabled:opacity-60"
+          className="flex h-10 items-center gap-2 rounded-md bg-accent px-4 font-semibold text-white disabled:opacity-60"
         >
-          <span aria-hidden="true">+ </span>
+          <Icon name="plus" />
           {t("invite.submit")}
         </button>
       </form>

@@ -128,6 +128,39 @@ describe("company switcher", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the prototype's icons on the sidebar links", async () => {
+    fakeApi(SIGNED_IN);
+    show("/c/harbor");
+
+    await screen.findByText(/Harbor Studio · you see/);
+
+    expect(screen.getByRole("link", { name: "Projects" }).querySelector("svg")).toHaveAttribute(
+      "data-icon",
+      "grid",
+    );
+    expect(
+      screen.getByRole("link", { name: "Company settings" }).querySelector("svg"),
+    ).toHaveAttribute("data-icon", "gear");
+  });
+
+  it("shows the prototype's icons in the switcher", async () => {
+    fakeApi({
+      ...SIGNED_IN,
+      "GET /api/me": { status: 200, body: { ...ANA, is_super_admin: true } },
+    });
+    show("/c/harbor");
+    const button = await screen.findByRole("button", { name: /Harbor Studio/ });
+    expect(button.querySelector("svg")).toHaveAttribute("data-icon", "chev");
+
+    fireEvent.click(button);
+
+    const current = screen.getByRole("menuitem", { name: /Harbor Studio/ });
+    expect(current.querySelector("svg")).toHaveAttribute("data-icon", "check");
+    expect(
+      screen.getByRole("menuitem", { name: "Admin console" }).querySelector("svg"),
+    ).toHaveAttribute("data-icon", "shield");
+  });
+
   it("shows Company settings to owners only", async () => {
     fakeApi(SIGNED_IN);
     show("/c/north");
@@ -216,6 +249,13 @@ describe("company settings", () => {
 
     const members = await screen.findByRole("table", { name: "Members" });
     expect(within(members).getByText("bo@gmail.com")).toBeInTheDocument();
+    expect(
+      within(members).getByRole("button", { name: "Remove Bo Le" }).querySelector("svg"),
+    ).toHaveAttribute("data-icon", "x");
+    expect(screen.getByRole("button", { name: "Invite" }).querySelector("svg")).toHaveAttribute(
+      "data-icon",
+      "plus",
+    );
     expect(within(members).getByText("Workspace")).toBeInTheDocument();
     expect(within(members).getByText("Personal Gmail")).toBeInTheDocument();
     expect(within(members).getByText("Never")).toBeInTheDocument();

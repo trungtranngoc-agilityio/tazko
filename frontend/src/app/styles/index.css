@@ -39,18 +39,72 @@ body {
   --tz-sunken: #eeeef6;
   --tz-glow: #e9e9fc; /* prototype --accent-soft */
   --tz-shadow: 0 8px 30px rgba(27, 27, 47, 0.12);
+  /* avatar tones (prototype --c0..c4) */
+  --tz-c0-bg: #e1e2fb;
+  --tz-c0-fg: #3a3db0;
+  --tz-c1-bg: #d4f1ea;
+  --tz-c1-fg: #17695a;
+  --tz-c2-bg: #fbe9c9;
+  --tz-c2-fg: #845411;
+  --tz-c3-bg: #fadde3;
+  --tz-c3-fg: #a02e45;
+  --tz-c4-bg: #e4e8d3;
+  --tz-c4-fg: #516025;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --tz-sunken: #151522;
     --tz-glow: #25264a;
     --tz-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+    --tz-c0-bg: #2a2b5e;
+    --tz-c0-fg: #b9bbfa;
+    --tz-c1-bg: #163a33;
+    --tz-c1-fg: #8adbc8;
+    --tz-c2-bg: #443214;
+    --tz-c2-fg: #f0c47a;
+    --tz-c3-bg: #4a2230;
+    --tz-c3-fg: #f4a3b4;
+    --tz-c4-bg: #2e3519;
+    --tz-c4-fg: #c2d27f;
   }
 }
 :root[data-theme="dark"] {
   --tz-sunken: #151522;
   --tz-glow: #25264a;
   --tz-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+  --tz-c0-bg: #2a2b5e;
+  --tz-c0-fg: #b9bbfa;
+  --tz-c1-bg: #163a33;
+  --tz-c1-fg: #8adbc8;
+  --tz-c2-bg: #443214;
+  --tz-c2-fg: #f0c47a;
+  --tz-c3-bg: #4a2230;
+  --tz-c3-fg: #f4a3b4;
+  --tz-c4-bg: #2e3519;
+  --tz-c4-fg: #c2d27f;
+}
+
+/* Avatar tones (Initials): classes, not inline styles, so they hold under the
+   style-src 'self' CSP whatever renders them. */
+.tone-c0 {
+  background: var(--tz-c0-bg);
+  color: var(--tz-c0-fg);
+}
+.tone-c1 {
+  background: var(--tz-c1-bg);
+  color: var(--tz-c1-fg);
+}
+.tone-c2 {
+  background: var(--tz-c2-bg);
+  color: var(--tz-c2-fg);
+}
+.tone-c3 {
+  background: var(--tz-c3-bg);
+  color: var(--tz-c3-fg);
+}
+.tone-c4 {
+  background: var(--tz-c4-bg);
+  color: var(--tz-c4-fg);
 }
 
 /* Sign-in screens: soft accent glow above the page background. */
