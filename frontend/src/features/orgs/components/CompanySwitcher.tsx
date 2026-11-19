@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { Link, useNavigate } from "react-router";
 import { t } from "@/shared/i18n";
+import { Icon } from "@/shared/ui/Icon";
 import type { Company } from "../api";
 import { Initials } from "./Initials";
 
@@ -79,9 +80,7 @@ export function CompanySwitcher({ companies, current, superAdmin }: Props) {
           <span className="block truncate font-semibold">{current.name}</span>
           <span className="block text-xs text-muted">{t(`role.${current.role}`)}</span>
         </span>
-        <span aria-hidden="true" className="text-muted">
-          ▾
-        </span>
+        <Icon name="chev" className="size-4 text-muted" />
       </button>
       {open && (
         <ul
@@ -114,9 +113,7 @@ export function CompanySwitcher({ companies, current, superAdmin }: Props) {
                 <span className="flex-1 truncate">{company.name}</span>
                 {suspended && <span className="text-xs">{t("company.suspended")}</span>}
                 {company.slug === current.slug && (
-                  <span aria-hidden="true" className="text-accent">
-                    ✓
-                  </span>
+                  <Icon name="check" className="size-4 text-accent" />
                 )}
               </li>
             );
@@ -128,8 +125,9 @@ export function CompanySwitcher({ companies, current, superAdmin }: Props) {
                 <Link
                   role="menuitem"
                   to="/admin"
-                  className="block rounded-md px-2 py-1.5 text-sm hover:bg-sunken"
+                  className="flex items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-sunken"
                 >
+                  <Icon name="shield" className="size-4" />
                   {t("nav.admin")}
                 </Link>
               </li>

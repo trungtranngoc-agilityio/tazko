@@ -128,6 +128,21 @@ describe("company switcher", () => {
     ).toBeInTheDocument();
   });
 
+  it("shows the prototype's icons on the sidebar links", async () => {
+    fakeApi(SIGNED_IN);
+    show("/c/harbor");
+
+    await screen.findByText(/Harbor Studio · you see/);
+
+    expect(screen.getByRole("link", { name: "Projects" }).querySelector("svg")).toHaveAttribute(
+      "data-icon",
+      "grid",
+    );
+    expect(
+      screen.getByRole("link", { name: "Company settings" }).querySelector("svg"),
+    ).toHaveAttribute("data-icon", "gear");
+  });
+
   it("shows Company settings to owners only", async () => {
     fakeApi(SIGNED_IN);
     show("/c/north");

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { ApiError } from "@/shared/api";
 import { errorText, t } from "@/shared/i18n";
 import { when } from "@/shared/lib/when";
+import { Icon } from "@/shared/ui/Icon";
 import { changeRole, removeMember, type Member, type Role } from "../api";
 import { AccountBadge } from "./AccountBadge";
 import { Initials } from "./Initials";
@@ -111,9 +112,10 @@ export function MembersTable(props: Props) {
                       type="button"
                       aria-label={t("members.removeOf", { name: label })}
                       onClick={() => remove(member)}
-                      className="text-muted hover:text-danger"
+                      className="flex items-center gap-1.5 text-muted hover:text-danger"
                     >
-                      × {t("members.remove")}
+                      <Icon name="x" className="size-4" />
+                      {t("members.remove")}
                     </button>
                   )}
                 </td>

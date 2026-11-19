@@ -3,6 +3,7 @@ import { RequireSession, SignOutButton, useMe } from "@/features/auth";
 import { CompanySwitcher, Initials, myCompanies, type CompanyContext } from "@/features/orgs";
 import { errorText, t } from "@/shared/i18n";
 import { useAsync } from "@/shared/lib/useAsync";
+import { Icon } from "@/shared/ui/Icon";
 
 // The app shell inside one company (prototype: sidebar with the company card,
 // navigation, and the signed-in person at the bottom). Pages get the current
@@ -46,7 +47,7 @@ function CompanyShell() {
   const company = found;
   const context: CompanyContext = { company, companies: companies.value, reloadCompanies };
   const link = ({ isActive }: { isActive: boolean }) =>
-    `flex h-9 items-center rounded-md px-3 ${isActive ? "bg-accent-soft font-semibold text-accent" : "hover:bg-sunken"}`;
+    `flex h-9 items-center gap-3 rounded-md px-3 ${isActive ? "bg-accent-soft font-semibold text-accent" : "hover:bg-sunken"}`;
 
   return (
     <div className="flex min-h-screen bg-bg text-ink">
@@ -58,10 +59,12 @@ function CompanyShell() {
         />
         <nav className="flex flex-col gap-1 text-sm">
           <NavLink end to={`/c/${company.slug}`} className={link}>
+            <Icon name="grid" />
             {t("nav.projects")}
           </NavLink>
           {company.role === "owner" && (
             <NavLink to={`/c/${company.slug}/settings`} className={link}>
+              <Icon name="gear" />
               {t("nav.settings")}
             </NavLink>
           )}
