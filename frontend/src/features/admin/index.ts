@@ -7,6 +7,8 @@ export {
   company,
   consoleCompanyBase,
   people,
+  server,
+  workspaceDomains,
   type AuditKind,
   type CompanySummary,
 } from "./api";
@@ -16,4 +18,6 @@ export { AuditList } from "./components/AuditList";
 export { CompaniesTable } from "./components/CompaniesTable";
 export { NewCompanyDialog } from "./components/NewCompanyDialog";
 export { PeopleTable } from "./components/PeopleTable";
+export { ServerPanel } from "./components/ServerPanel";
+export { WorkspaceDomains } from "./components/WorkspaceDomains";
 export { LoadFailed, Loading, PageHead, StatusPill } from "./components/parts";
