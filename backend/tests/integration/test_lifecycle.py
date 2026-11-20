@@ -4,6 +4,8 @@ One test per state, through HTTP with real sessions."""
 from __future__ import annotations
 
 import json
+import re
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -12,6 +14,7 @@ from fastapi.testclient import TestClient
 
 from tazko.db import Database
 from tazko.db.tenant import Tenants
+from tazko.modules.audit import service as audit_service
 from tazko.modules.invites import service as invites
 from tazko.modules.orgs import service as orgs
 from tazko.modules.orgs.service import Org
@@ -88,16 +91,54 @@ def test_suspend_blocks_the_members_api_access_at_once(
     as_(client, google, admin)
     suspended = call(client, "POST", "/admin/api/companies/acme/suspend")
 
-    # then the console shows it suspended and Ana's open session reaches nothing in it
+    # then the console shows it suspended and Ana's open session is over
     assert suspended.status_code == 200
     assert suspended.json()["status"] == "suspended"
     client.cookies.clear()
     client.cookies.update(ana_cookies)
-    assert client.get("/api/orgs/acme/members").status_code == 404
-    assert [o["status"] for o in client.get("/api/orgs").json()] == ["suspended"]
+    assert client.get("/api/orgs/acme/members").status_code == 401
+    assert client.get("/api/orgs").status_code == 401
     assert [(r["target"], r["actor_id"]) for r in audit(control, "company.suspended")] == [
         ("acme", admin.id)
     ]
+
+
+def test_suspend_signs_out_members_with_no_other_active_company(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    admin: User,
+    ana: User,
+) -> None:
+    # given Ana (only in Acme) and Bo (also in active Zeta) are signed in
+    bo = users.get_or_create(control, "bo@example.com", name="Bo")
+    orgs.add_member(control, tenants, org=ana_org(control), user=bo, role="member", actor_id=None)
+    zeta = orgs.create_company(control, tenants, slug="zeta", name="Zeta", actor_id=None)
+    orgs.add_member(control, tenants, org=zeta, user=bo, role="member", actor_id=None)
+    as_(client, google, ana)
+    as_(client, google, bo)
+
+    # when a super admin suspends Acme
+    as_(client, google, admin)
+    call(client, "POST", "/admin/api/companies/acme/suspend")
+
+    # then Ana is signed out at once; Bo and the super admin keep their sessions
+    def sessions(user: User) -> int:
+        return int(
+            control.read(
+                lambda c: c.execute(
+                    "SELECT count(*) FROM sessions WHERE user_id = ?", (user.id,)
+                ).fetchone()[0]
+            )
+        )
+
+    assert (sessions(ana), sessions(bo), sessions(admin)) == (0, 1, 1)
+
+
+def ana_org(control: Database) -> Org:
+    found = control.read(lambda c: c.execute("SELECT id FROM orgs WHERE slug = 'acme'").fetchone())
+    return Org(id=found["id"], slug="acme", name="Acme", status="active")
 
 
 def test_a_member_whose_only_company_is_suspended_cannot_sign_in(
@@ -227,7 +268,7 @@ def test_delete_moves_the_folder_to_trash_and_ends_access(
     assert not folder.exists()
     trash = Path(settings.data_dir) / "trash"
     [moved] = list(trash.iterdir())
-    assert moved.name.startswith("acme-")
+    assert re.fullmatch(r"acme-\d{8}T\d{6}Z", moved.name)
     assert (moved / "tazko.db").is_file()
     assert not tenants.is_open("acme")
     # the row stays as deleted, so the console and members no longer see it
@@ -307,3 +348,64 @@ def test_a_refusal_cookie_from_the_previous_release_reads_as_not_invited() -> No
     old = sign({"email": "jo@example.com"}, secret, purpose="refused", max_age=60)
 
     assert auth.refused_email(old, secret) == ("jo@example.com", "not_invited")
+
+
+def test_a_trashed_company_cannot_be_opened_again(
+    control: Database, tenants: Tenants, acme: Org
+) -> None:
+    tenants.get("acme")
+    tenants.trash("acme", "20261120T000000Z")
+
+    assert not tenants.is_open("acme")
+    with pytest.raises(FileNotFoundError):
+        tenants.get("acme")
+
+
+def test_a_failed_delete_puts_the_folder_back_and_keeps_the_company(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    admin: User,
+    acme: Org,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # given the control.db write fails after the folder has moved
+    as_(client, google, admin)
+    real = audit_service.record
+
+    def failing(conn: Any, action: str, **kwargs: Any) -> None:
+        if action == "company.deleted":
+            raise RuntimeError("disk full")
+        real(conn, action, **kwargs)
+
+    monkeypatch.setattr(audit_service, "record", failing)
+
+    with pytest.raises(RuntimeError):
+        orgs.Console(control, tenants, admin.id).delete("acme", confirm="acme")
+
+    # then the folder is back and the company still works
+    assert tenants.exists("acme")
+    assert status(control) == "active"
+    assert not (Path(tenants.root.parent) / "trash").exists() or not any(
+        (Path(tenants.root.parent) / "trash").iterdir()
+    )
+
+
+def test_a_company_whose_folder_is_gone_can_still_be_deleted(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    admin: User,
+    acme: Org,
+) -> None:
+    tenants.evict("acme")
+    shutil.rmtree(tenants.folder("acme"))
+    as_(client, google, admin)
+
+    assert (
+        call(client, "DELETE", "/admin/api/companies/acme", {"confirm": "acme"}).status_code == 204
+    )
+    assert status(control) == "deleted"
+    assert [json.loads(r["detail"]) for r in audit(control, "company.deleted")] == [{"trash": None}]

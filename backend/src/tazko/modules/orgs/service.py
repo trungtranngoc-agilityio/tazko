@@ -392,16 +392,22 @@ class Console:
         return self._set_status(slug, to="active", event="company.resumed")
 
     def delete(self, slug: str, *, confirm: str) -> None:
-        """Move the folder to trash and mark the row deleted in one control.db
-        transaction: a failed move leaves the company as it was. The row keeps
-        its slug, so the folder can be restored by hand (D35)."""
+        """Move the folder to trash and mark the row deleted. The move happens
+        inside the control.db transaction; if that transaction then fails, the
+        folder is moved back, so the company stays as it was. A row whose
+        folder is already gone is still deleted. The row keeps its slug, so the
+        folder can be restored by hand (D35)."""
         if confirm != slug:
             raise Invalid("confirm: type the short name of the company", field="confirm")
+        moved: list[Path] = []
 
         def run(conn: sqlite3.Connection) -> None:
             org = self._live(conn, slug)
-            now = clock.now()
-            moved = self.tenants.trash(slug, now.strftime("%Y%m%dT%H%M%SZ"))
+            now = clock.now()  # UTC (core/clock)
+            if self.tenants.folder(slug).exists():
+                moved.append(self.tenants.trash(slug, now.strftime("%Y%m%dT%H%M%SZ")))
+            else:
+                log.error("company %s has a row but no folder; deleting the row", slug)
             repo.mark_deleted(conn, org.id, now=clock.iso(now))
             audit.record(
                 conn,
@@ -409,10 +415,15 @@ class Console:
                 actor_id=self.actor_id,
                 org_id=org.id,
                 target=slug,
-                detail={"trash": moved.name},
+                detail={"trash": moved[0].name if moved else None},
             )
 
-        self.control.write(run)
+        try:
+            self.control.write(run)
+        except BaseException:
+            if moved:
+                moved[0].rename(self.tenants.folder(slug))  # the row was not deleted
+            raise
 
     def _set_status(self, slug: str, *, to: str, event: str) -> CompanySummary:
         def run(conn: sqlite3.Connection) -> None:
@@ -421,6 +432,10 @@ class Console:
                 code = "COMPANY_SUSPENDED" if to == "suspended" else "COMPANY_ACTIVE"
                 raise Conflict(f"the company is already {org.status}", code=code)
             repo.set_status(conn, org.id, to)
+            if to == "suspended":
+                # Sign-in would refuse them now, so their open sessions end too.
+                for user_id in repo.stranded_members(conn, org.id):
+                    users.end_sessions(conn, user_id)
             audit.record(conn, event, actor_id=self.actor_id, org_id=org.id, target=slug)
 
         self.control.write(run)

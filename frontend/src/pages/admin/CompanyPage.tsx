@@ -130,17 +130,7 @@ export function CompanyPage() {
       {tab === "members" ? (
         <MembersTab org={org} />
       ) : (
-        <section className="rounded-xl border border-danger bg-surface p-5">
-          <h2 className="text-lg font-semibold">{t("admin.deleteTitle")}</h2>
-          <p className="mt-1 mb-4 text-sm text-muted">{t("admin.deleteLead")}</p>
-          <button
-            type="button"
-            onClick={() => setDeleting(true)}
-            className="h-10 rounded-md border border-danger px-4 font-semibold text-danger hover:bg-danger/10"
-          >
-            {t("admin.deleteButton")}
-          </button>
-        </section>
+        <SettingsTab onDelete={() => setDeleting(true)} />
       )}
       {deleting && (
         <DeleteCompanyDialog
@@ -154,6 +144,23 @@ export function CompanyPage() {
         />
       )}
     </>
+  );
+}
+
+/** Settings: Delete company (prototype danger zone). Name and storage limit wait (D35). */
+function SettingsTab({ onDelete }: { onDelete: () => void }) {
+  return (
+    <section className="rounded-xl border border-danger bg-surface p-5">
+      <h2 className="text-lg font-semibold">{t("admin.deleteTitle")}</h2>
+      <p className="mt-1 mb-4 text-sm text-muted">{t("admin.deleteLead")}</p>
+      <button
+        type="button"
+        onClick={onDelete}
+        className="h-10 rounded-md border border-danger px-4 font-semibold text-danger hover:bg-danger/10"
+      >
+        {t("admin.deleteButton")}
+      </button>
+    </section>
   );
 }
 

@@ -131,6 +131,19 @@ def mark_deleted(conn: sqlite3.Connection, org_id: int, *, now: str) -> None:
     conn.execute("UPDATE orgs SET status = 'deleted', deleted_at = ? WHERE id = ?", (now, org_id))
 
 
+def stranded_members(conn: sqlite3.Connection, org_id: int) -> list[int]:
+    """Members of the company who are not super admins and are in no other
+    active company: suspending it leaves them nothing to use."""
+    rows = conn.execute(
+        "SELECT m.user_id FROM org_members m JOIN users u ON u.id = m.user_id"
+        " WHERE m.org_id = ? AND u.is_super_admin = 0 AND NOT EXISTS ("
+        "   SELECT 1 FROM org_members o JOIN orgs g ON g.id = o.org_id"
+        "   WHERE o.user_id = m.user_id AND o.org_id != m.org_id AND g.status = 'active')",
+        (org_id,),
+    ).fetchall()
+    return [int(r["user_id"]) for r in rows]
+
+
 def only_suspended_companies(conn: sqlite3.Connection, user_id: int) -> bool:
     """The person is in at least one company that is not deleted, and none of
     them is active (sign-in refuses them, M1-07)."""

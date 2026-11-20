@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Literal
 
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, Field, model_validator
 
 from tazko.modules.admin import service as admin
 from tazko.modules.invites.schemas import InviteOut
@@ -20,7 +20,7 @@ class CompanyIn(BaseModel):
 class DeleteCompanyIn(BaseModel):
     """The short name typed again, as in the prototype's confirm dialog."""
 
-    confirm: str
+    confirm: str = Field(max_length=40)
 
 
 class CompanySummaryOut(BaseModel):
