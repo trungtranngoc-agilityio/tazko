@@ -331,3 +331,17 @@ def test_rollback_to_a_release_the_data_refuses_comes_back(work: Path) -> None:
     assert "cannot run on this data" in done.stderr
     assert current(work) == "20261120T110000Z-abc1234"
     assert "start tazko-restore.service" not in calls(work)  # never on a manual rollback
+
+
+def test_failed_releases_never_push_out_the_last_healthy_one(work: Path) -> None:
+    # given A runs, four builds fail and roll back, then B goes live
+    release(work, str(bundle(work, "20261120T090000Z")))
+    for hour in (10, 11, 12, 13):
+        release(work, str(bundle(work, f"20261120T{hour}0000Z", marks=("BROKEN",))))
+    release(work, str(bundle(work, "20261120T140000Z")))
+
+    # then the failed ones are gone and A is still there to roll back to
+    kept = sorted(p.name for p in (work / "opt" / "releases").iterdir())
+    assert kept == ["20261120T090000Z-abc1234", "20261120T140000Z-abc1234"]
+    assert release(work, "--rollback").returncode == 0
+    assert current(work) == "20261120T090000Z-abc1234"

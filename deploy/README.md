@@ -16,6 +16,8 @@ session cookie (`HttpOnly; Secure; SameSite=Lax`, host-only on the API host) is 
 `TAZKO_WEB_ORIGIN` and checks `Origin` on every write. The API host is `tazko-api-dev`,
 not `api.tazko-dev`: the free Cloudflare certificate covers one subdomain level.
 
+Target: Ubuntu 24.04 (setup-host.sh installs `python3.12` from its archive).
+
 **The machine is shared.** It already runs another service on `127.0.0.1:8790` and a
 Cloudflare tunnel with a rule for another hostname. Nothing here touches them: Tazko
 adds its own users, folders, units and one tunnel rule.
@@ -111,7 +113,9 @@ Build and copy the bundle as in step 4, then `tazko-release <bundle>`. The scrip
 
 A release that failed can be tried again with the same bundle name (after fixing
 `tazko.env`, say). Only one `tazko-release` runs at a time. The restore unit refuses a
-snapshot older than 30 minutes, so starting it by hand never throws away days of work.
+snapshot older than 30 minutes, so starting it by hand never throws away days of work;
+it still stops `tazko.service` first (the units conflict), so start that again after.
+`build-bundle.sh` and `deploy.sh --production` run only from `main` or a `release/` branch.
 
 Exit 0 released; 1 failed and rolled back (or nothing changed); 3 still unhealthy, look
 at `sudo journalctl -u tazko.service -n 200 --no-pager`.

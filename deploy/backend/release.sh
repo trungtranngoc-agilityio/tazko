@@ -22,6 +22,7 @@
 # resets the environment, so they never reach a production run.
 set -euo pipefail
 umask 022
+cd /   # the caller's folder may not be readable by tazko-deploy
 
 ROOT="${TAZKO_RELEASE_ROOT:-/opt/tazko}"
 INCOMING="${TAZKO_INCOMING:-/var/lib/tazko-incoming}"
@@ -72,14 +73,24 @@ switch_to() {
 }
 
 prune() {
-  local cur ids count i
+  # Failed releases go first, so they never push out a healthy one to roll back
+  # to; then the 5 newest that did not fail stay.
+  local cur id ids healthy count i
   cur="$(current_id)"
   mapfile -t ids < <(list_ids)
-  count="${#ids[@]}"
+  healthy=()
+  for id in "${ids[@]}"; do
+    [[ "$id" =~ $NAME_RE ]] || continue
+    if [ -e "$RELEASES/$id/FAILED" ] && [ "$id" != "$cur" ]; then
+      rm -rf -- "${RELEASES:?}/$id"
+    else
+      healthy+=("$id")
+    fi
+  done
+  count="${#healthy[@]}"
   for ((i = 0; i < count - KEEP; i++)); do
-    [ "${ids[i]}" = "$cur" ] && continue
-    [[ "${ids[i]}" =~ $NAME_RE ]] || continue
-    rm -rf -- "${RELEASES:?}/${ids[i]}"
+    [ "${healthy[i]}" = "$cur" ] && continue
+    rm -rf -- "${RELEASES:?}/${healthy[i]}"
   done
 }
 
@@ -193,6 +204,11 @@ case "${1:-}" in
   --rollback | -*) ;;
   "") die 2 "usage: tazko-release <bundle.tar.gz> | --rollback | --list" ;;
 esac
+
+# Run as root, it would leave root-owned files that tazko-deploy cannot replace.
+if [ -z "$SYSTEMCTL" ] && [ "$(id -un)" != tazko-deploy ]; then
+  die 2 "run as tazko-deploy: sudo -u tazko-deploy tazko-release ..."
+fi
 
 # One release at a time.
 mkdir -p -- "$ROOT"

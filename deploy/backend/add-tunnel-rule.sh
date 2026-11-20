@@ -69,6 +69,10 @@ before=()
 for h in "${others[@]}"; do
   if up "$h"; then before+=("$h"); say "$h answers ($(status "$h"))"; else say "$h does not answer now; not checked"; fi
 done
+if [ "${#before[@]}" -eq 0 ]; then
+  echo "tunnel: WARNING: no other hostname answers from this host, so after the restart only" >&2
+  echo "        'cloudflared is active' is checked. Check the other service in a browser." >&2
+fi
 
 work="$(mktemp -d)"
 trap 'rm -rf -- "$work"' EXIT
@@ -88,12 +92,20 @@ cloudflared tunnel --config "$new" ingress rule "https://$HOST/health" || true
 
 backup="$CONFIG.bak-$(date -u +%Y%m%dT%H%M%SZ)"
 cp -p -- "$CONFIG" "$backup"
-cat -- "$new" > "$CONFIG"   # keeps the file's owner and mode
+# Atomic: a full copy beside the file, with its owner and mode, then a rename.
+put() {
+  cp -- "$1" "$CONFIG.tazko-new"
+  chown --reference="$backup" "$CONFIG.tazko-new"
+  chmod --reference="$backup" "$CONFIG.tazko-new"
+  mv -f -- "$CONFIG.tazko-new" "$CONFIG"
+}
+put "$new"
 say "installed; the old file is $backup"
 
 restore() {
   echo "tunnel: $1; putting $backup back" >&2
-  cat -- "$backup" > "$CONFIG"
+  echo "tunnel: the DNS record for $HOST stays; it shows the tunnel's 404 until the rule is back" >&2
+  put "$backup"
   systemctl restart cloudflared || true
   sleep 5
   if systemctl is-active --quiet cloudflared; then

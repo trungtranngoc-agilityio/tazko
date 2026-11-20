@@ -1,6 +1,9 @@
 [Unit]
 Description=Tazko API
 After=network.target
+# No start limit: tazko-release restarts, stops and starts the service during a
+# rollback, and a refused start would leave it down (RestartSec=2 stays gentle).
+StartLimitIntervalSec=0
 
 [Service]
 User=tazko

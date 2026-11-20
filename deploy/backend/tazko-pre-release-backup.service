@@ -5,7 +5,8 @@ Description=Tazko snapshot taken just before a release (tazko-release starts it)
 Type=oneshot
 User=tazko
 Group=tazko
-EnvironmentFile=/etc/tazko/tazko.env
+# No tazko.env: these commands need no Google settings, only no .env reading (D16).
+Environment=TAZKO_ENV=production
 WorkingDirectory=/var/lib/tazko
 UMask=0077
 Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1

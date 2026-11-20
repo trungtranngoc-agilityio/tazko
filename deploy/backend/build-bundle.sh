@@ -15,6 +15,11 @@ if [ -n "$(git status --porcelain)" ]; then
   echo "build-bundle: commit or stash your changes first; a bundle names one commit" >&2
   exit 1
 fi
+branch="$(git rev-parse --abbrev-ref HEAD)"
+case "$branch" in
+  main | release/*) ;;
+  *) echo "build-bundle: build from main or a release/ branch, not $branch" >&2; exit 1 ;;
+esac
 commit="$(git rev-parse --short=12 HEAD)"
 stamp="$(date -u +%Y%m%dT%H%M%SZ)"
 name="tazko-$stamp-$commit"

@@ -17,7 +17,7 @@ fi
 command -v rclone >/dev/null || { echo "offsite: rclone is not installed" >&2; exit 1; }
 # copy, not sync: an emptied local folder never empties the remote. Expire old
 # snapshots there with a bucket lifecycle rule (40 days, deploy/README.md).
-# The cache goes to the unit's private /tmp; the home folder is read-only.
+# The cache goes to the unit's private /tmp, not into the data folder.
 export RCLONE_CACHE_DIR=/tmp/rclone-cache
 rclone --config "$CONF" copy /var/backups/tazko tazko-offsite:tazko --fast-list
 echo "offsite: copied /var/backups/tazko"

@@ -9,8 +9,8 @@
 # before each switch, so an older one means this was started by hand, and
 # restoring it would throw away everything written since.
 #
-# TAZKO_* variables exist for tests/deploy/test_restore.py only; systemd starts
-# this with a clean environment.
+# TAZKO_* variables exist for tests/deploy/test_restore.py only; the unit sets
+# none of them (it does not load tazko.env).
 set -euo pipefail
 umask 077
 

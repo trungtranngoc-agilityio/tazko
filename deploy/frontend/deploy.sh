@@ -28,6 +28,12 @@ if [ -n "$(git status --porcelain)" ]; then
   echo "deploy: commit or stash your changes first; a deployment names one commit" >&2
   exit 1
 fi
+if [ "$branch" = main ]; then
+  case "$(git rev-parse --abbrev-ref HEAD)" in
+    main | release/*) ;;
+    *) echo "deploy: --production deploys from main or a release/ branch only" >&2; exit 1 ;;
+  esac
+fi
 
 # connect-src must list the API host for https and wss, or every API call fails in
 # the browser (M1.md, security review). Whole tokens of that directive only.
