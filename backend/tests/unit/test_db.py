@@ -182,3 +182,68 @@ def test_closed_database_refuses_work(tmp_path: Path) -> None:
     db.close()
     with pytest.raises(RuntimeError, match="closed"):
         db.write(lambda c: None)
+
+
+# --- rollback after a migration (D21) ------------------------------------------------
+
+V1 = {"0001_a": "CREATE TABLE a (x INTEGER);"}
+
+
+def release(tmp_path: Path, name: str, **more: str) -> Path:
+    """The migrations one release ships: 0001 plus `more`."""
+    return scripts(tmp_path / name, **V1, **more)
+
+
+def test_an_older_release_opens_a_file_after_an_expand_migration(tmp_path: Path) -> None:
+    # given release 2 added a column that release 1 can ignore
+    new = release(tmp_path, "r2", **{"0002_b": "-- readers: 1\nALTER TABLE a ADD COLUMN y TEXT;"})
+    Database(tmp_path / "x.db", "test", migrations=new).close()
+
+    # when release 1 is rolled back to, it opens the file and keeps working
+    db = Database(tmp_path / "x.db", "test", migrations=release(tmp_path, "r1"))
+    try:
+        db.write(lambda c: c.execute("INSERT INTO a (x) VALUES (1)"))
+        assert db.read(count_a) == 1
+        assert db.version == 2
+    finally:
+        db.close()
+    assert version(tmp_path / "x.db") == 2  # never moved back
+    conn = sqlite3.connect(tmp_path / "x.db")
+    try:
+        assert conn.execute("PRAGMA application_id").fetchone()[0] == 1  # oldest allowed release
+    finally:
+        conn.close()
+
+
+def test_an_older_release_refuses_a_file_after_a_contract_migration(tmp_path: Path) -> None:
+    # given release 2 dropped what release 1 still uses (no readers mark)
+    new = release(tmp_path, "r2", **{"0002_b": "DROP TABLE a; CREATE TABLE a2 (x INTEGER);"})
+    Database(tmp_path / "x.db", "test", migrations=new).close()
+
+    with pytest.raises(MigrationError, match="restore the pre-release backup"):
+        Database(tmp_path / "x.db", "test", migrations=release(tmp_path, "r1"))
+
+
+def test_every_newer_migration_must_allow_the_older_release(tmp_path: Path) -> None:
+    # given 0002 is readable by release 1 but 0003 only by release 2
+    new = release(
+        tmp_path,
+        "r3",
+        **{
+            "0002_b": "-- readers: 1\nALTER TABLE a ADD COLUMN y TEXT;",
+            "0003_c": "-- readers: 2\nCREATE TABLE c (z INTEGER);",
+        },
+    )
+    Database(tmp_path / "x.db", "test", migrations=new).close()
+    r2 = release(tmp_path, "r2", **{"0002_b": "-- readers: 1\nALTER TABLE a ADD COLUMN y TEXT;"})
+
+    Database(tmp_path / "x.db", "test", migrations=r2).close()  # release 2: allowed
+    with pytest.raises(MigrationError, match="do not allow this release"):
+        Database(tmp_path / "x.db", "test", migrations=release(tmp_path, "r1"))
+
+
+def test_a_readers_mark_above_the_migration_itself_is_refused(tmp_path: Path) -> None:
+    bad = release(tmp_path, "r2", **{"0002_b": "-- readers: 3\nCREATE TABLE b (y INTEGER);"})
+
+    with pytest.raises(MigrationError, match="readers"):
+        Database(tmp_path / "x.db", "test", migrations=bad)

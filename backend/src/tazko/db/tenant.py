@@ -22,6 +22,7 @@ from pathlib import Path
 from tazko.db.database import Database
 
 SLUG = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?$")
+STAMP = re.compile(r"\d{8}T\d{6}Z")  # UTC, as tazko purge-trash reads it
 
 
 def valid_slug(slug: str) -> bool:
@@ -96,6 +97,8 @@ class Tenants:
     def trash(self, slug: str, stamp: str) -> Path:
         """Close the company's file and move its folder to data/trash/<slug>-<stamp>/.
         Trash older than 30 days is removed by the nightly job (M1-08, D35)."""
+        if not STAMP.fullmatch(stamp):
+            raise ValueError(f"invalid trash stamp: {stamp!r}")
         folder = self.folder(slug)
         with self._lock:
             opening = self._opening.setdefault(slug, threading.Lock())

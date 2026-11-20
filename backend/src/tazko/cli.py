@@ -14,17 +14,27 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from tazko import __version__
+from tazko.core import clock
 from tazko.core.config import ConfigError, Settings, load_settings
 from tazko.core.errors import AppError
 from tazko.core.logging import setup_logging
-from tazko.db import MigrationError
+from tazko.db import MigrationError, snapshot
 
 log = logging.getLogger(__name__)
 
 
-class NotYet(Exception):
-    def __init__(self, command: str, task: str) -> None:
-        super().__init__(f"`tazko {command}` is not implemented yet (task {task})")
+class CheckFailed(Exception):
+    def __init__(self, checked: Path, problems: list[str]) -> None:
+        lines = "".join(f"\n  {p}" for p in problems)
+        super().__init__(f"{checked} failed the check:{lines}")
+
+
+def days(text: str) -> int:
+    """A whole number of days, at least 1: 0 would remove what was just made."""
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError("must be 1 or more days")
+    return value
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -49,12 +59,22 @@ def build_parser() -> argparse.ArgumentParser:
     )
     backup.add_argument("--data", type=Path)
     backup.add_argument("--to", type=Path, required=True)
-    backup.add_argument("--keep-days", type=int, default=30)
+    backup.add_argument("--keep-days", type=days, default=30)
 
     check = commands.add_parser(
         "check", help="Open every database, run integrity_check and verify attachment hashes."
     )
-    check.add_argument("--data", type=Path)
+    check.add_argument(
+        "--data",
+        type=Path,
+        help="A data folder, a snapshot, or a backup folder (checks its newest snapshot).",
+    )
+
+    purge = commands.add_parser(
+        "purge-trash", help="Remove deleted companies kept in data/trash/ longer than the limit."
+    )
+    purge.add_argument("--data", type=Path, help="Data folder; defaults to TAZKO_DATA_DIR.")
+    purge.add_argument("--older-than-days", type=days, default=30)
     return parser
 
 
@@ -110,9 +130,22 @@ def run(args: argparse.Namespace, settings: Settings) -> None:
         case "admin":
             grant_admin(args.data or settings.data_dir, args.email)
         case "backup":
-            raise NotYet("backup", "M1-08")
+            made = snapshot.backup(
+                args.data or settings.data_dir, args.to, keep_days=args.keep_days, now=clock.now()
+            )
+            print(f"backup written to {made}")
         case "check":
-            raise NotYet("check", "M1-08")
+            checked, problems, databases = snapshot.check(args.data or settings.data_dir)
+            if problems:
+                raise CheckFailed(checked, problems)
+            print(f"ok: {databases} databases in {checked}")
+        case "purge-trash":
+            removed = snapshot.purge_trash(
+                args.data or settings.data_dir,
+                older_than_days=args.older_than_days,
+                now=clock.now(),
+            )
+            print(f"removed {len(removed)} folders from trash")
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -125,7 +158,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     except AppError as err:
         print(f"error: {err.message}", file=sys.stderr)
         return 1
-    except (ConfigError, MigrationError, NotYet) as err:
+    except (
+        ConfigError,
+        MigrationError,
+        CheckFailed,
+        snapshot.BackupFailed,
+        ValueError,
+        OSError,
+    ) as err:
         print(f"error: {err}", file=sys.stderr)
         return 1
     return 0

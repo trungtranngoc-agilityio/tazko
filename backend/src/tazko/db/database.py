@@ -32,6 +32,9 @@ from typing import Any
 log = logging.getLogger(__name__)
 
 SCRIPT_NAME = re.compile(r"^(\d{4})_[a-z0-9_]+\.sql$")
+# First line of a migration that an older release can live with (expand-contract, D21):
+# "-- readers: N" means a release that knows migrations up to N can still use the file.
+READERS = re.compile(r"\A--[ \t]*readers:[ \t]*(\d+)[ \t]*$", re.MULTILINE)
 BUSY_TIMEOUT_MS = 5000
 READ_WAIT_SECONDS = 30
 
@@ -67,25 +70,57 @@ def load_scripts(source: Path | Traversable) -> list[tuple[int, str, str]]:
         if match:
             found.append((int(match[1]), entry.name.removesuffix(".sql"), entry.read_text("utf-8")))
     found.sort()
-    for expected, (version, name, _) in enumerate(found, start=1):
+    for expected, (version, name, sql) in enumerate(found, start=1):
         if version != expected:
             raise MigrationError(f"{name}: expected migration {expected:04d} next")
+        if not 1 <= readers_of(version, sql) <= version:
+            raise MigrationError(f"{name}: readers must be between 1 and {version}")
     return found
+
+
+def readers_of(version: int, sql: str) -> int:
+    """The oldest release (named by its newest migration) that can use the file
+    after this migration. Without a mark, only releases that have the migration."""
+    match = READERS.match(sql)
+    return int(match[1]) if match else version
+
+
+def oldest_reader(scripts: list[tuple[int, str, str]]) -> int:
+    """After running `scripts`, the oldest release that can still use the file:
+    every migration newer than that release must allow it. Stored in
+    PRAGMA application_id next to user_version (D36)."""
+    oldest = len(scripts)
+    needed = 0
+    for version, _name, sql in reversed(scripts[1:]):
+        needed = max(needed, readers_of(version, sql))
+        if needed > version - 1:
+            break
+        oldest = version - 1
+    return oldest
 
 
 def migrate(conn: sqlite3.Connection, scripts: list[tuple[int, str, str]], label: str) -> int:
     current: int = conn.execute("PRAGMA user_version").fetchone()[0]
     latest = scripts[-1][0] if scripts else 0
     if current > latest:
-        raise MigrationError(
-            f"{label} is at version {current}, newer than this release ({latest}); "
-            "run the newer release or restore a backup"
-        )
+        oldest: int = conn.execute("PRAGMA application_id").fetchone()[0]
+        if not 1 <= oldest <= latest:
+            raise MigrationError(
+                f"{label} is at version {current}, newer than this release ({latest}), and "
+                "its migrations do not allow this release: run the newer release or "
+                "restore the pre-release backup"
+            )
+        log.warning("%s: version %s is newer than this release (%s)", label, current, latest)
+        return current
     for version, name, sql in scripts[current:]:
+        oldest = oldest_reader(scripts[:version])
         try:
-            # One script, one transaction: the schema and the version move together.
+            # One script, one transaction: the schema, the version and the oldest
+            # release that can still use the file move together. application_id is
+            # SQLite's file-type marker; Tazko stores that release number in it (D36).
             conn.executescript(
-                f"BEGIN IMMEDIATE;\n{sql}\n;PRAGMA user_version = {version};\nCOMMIT;"
+                f"BEGIN IMMEDIATE;\n{sql}\n;PRAGMA user_version = {version};\n"
+                f"PRAGMA application_id = {oldest};\nCOMMIT;"
             )
         except sqlite3.Error as err:
             if conn.in_transaction:
