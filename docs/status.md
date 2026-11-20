@@ -3,25 +3,27 @@
 Where the project stands and what comes next. Read it at the start of a session; update it at the end of every task.
 Task details live in docs/milestones/Mx.md, judgment calls in docs/decisions.md, milestone reports in docs/progress.md.
 
-Updated 2026-11-20 · `dev` at 823f26d (#20) · M1-07 on `feature/company-lifecycle`, not pushed
+Updated 2026-11-20 · `dev` at 60b9bb1 (#57) · M1-08 part 1 on `feature/backup-and-check`, not pushed
 
 ## Now
 
-M1 · Platform (release 0.1.0) · task **M1-07** Company lifecycle: done and ticked on `feature/company-lifecycle` (D35 decided). M1-06 is done (#9 to #20).
+M1 · Platform (release 0.1.0) · task **M1-08** Deploy, part 1 of 2 in progress. M1-07 is done (#57).
 
-- Super admins suspend, resume and delete a company on Company detail; delete moves the folder to `data/trash/`.
-- A member whose companies are all suspended is refused at sign-in and told why.
+| Part | What | State |
+|---|---|---|
+| 1 | `tazko backup`, `check`, `purge-trash`; rollback-safe migrations (D36) | committed on `feature/backup-and-check` |
+| 2 | deploy/: host setup, tunnel rule, bundle, release.sh with pre-release backup and auto rollback, units, Pages deploy, README; deploy-reviewer | **next** |
 
 ## Next
 
-1. Merge `feature/company-lifecycle` (M1-07).
-2. M1-08 deploy: scripts in deploy/, the owner runs them; includes the nightly job that removes trash older than 30 days (D35). This also proves M1-01's last line (web on Pages reaches the API), so tick M1-01 then.
+1. M1-08 part 1: PR and merge.
+2. M1-08 part 2: the deploy scripts; the owner runs them. This also proves M1-01's last line (web on Pages reaches the API), so tick M1-01 then.
 3. Cut `release/0.1.0`.
 
 ## Waiting on the owner
 
 - Q2 (M1.md): list a suspended company in the switcher, greyed. Built that way (D30); still proposed.
-- D23, D25, D27 to D33 are proposed, not decided.
+- D23, D25, D27 to D33 and D36 are proposed, not decided.
 - Real design tokens: design/tokens.css is still the placeholder, so colours and font differ from the prototype (M1.md, Visual check).
 
 ## Housekeeping

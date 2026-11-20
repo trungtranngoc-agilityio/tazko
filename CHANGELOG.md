@@ -5,6 +5,8 @@ What people and API callers can notice, per release. Format: [Keep a Changelog](
 ## [Unreleased]
 
 ### Added
+- `tazko backup` writes a dated snapshot of every database, the company files and the secret while the server runs, keeping 30 days; `tazko check` verifies a data folder or snapshot; `tazko purge-trash` removes deleted companies after 30 days in trash.
+- A migration can mark itself usable by the previous release (`-- readers: N`), so a rollback does not always need a restore.
 - Super admins can suspend, resume and delete a company on Company detail (`POST /admin/api/companies/{slug}/suspend` and `/resume`, `DELETE /admin/api/companies/{slug}` with the short name typed). Suspending blocks its members at once; a member whose companies are all suspended is refused at sign-in and told why. Delete moves the company folder to `data/trash/` for 30 days. `GET /auth/refusal` adds `reason`.
 - `tazko admin --email` creates or promotes the first super admin.
 - Settings are checked at start: production needs the Google client and https URLs (D16).

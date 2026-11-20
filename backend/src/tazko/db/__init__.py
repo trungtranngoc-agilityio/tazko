@@ -4,7 +4,7 @@
   migrations from tazko/migrations/<schema> tracked by PRAGMA user_version.
 - `Tenants` (tenant.py): the cache of open company files under data/orgs/<slug>.
 
-TODO(M1-08): online backup helpers for `tazko backup` and integrity_check for `tazko check`.
+- snapshot.py: `tazko backup`, `tazko check` and `tazko purge-trash` (M1-08).
 """
 
 from tazko.db.database import Database, MigrationError

@@ -56,11 +56,6 @@ def test_admin_needs_no_google_client_in_production(
     assert main(["admin", "--data", str(tmp_path), "--email", "boss@example.com"]) == 0
 
 
-def test_unfinished_commands_fail_with_the_task_id(capsys: pytest.CaptureFixture[str]) -> None:
-    assert main(["check"]) == 1
-    assert "M1-08" in capsys.readouterr().err
-
-
 def test_bad_settings_fail_before_serving(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
