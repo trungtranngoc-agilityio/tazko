@@ -1,0 +1,23 @@
+[Unit]
+Description=Tazko snapshot taken just before a release (tazko-release starts it)
+
+[Service]
+Type=oneshot
+User=tazko
+Group=tazko
+EnvironmentFile=/etc/tazko/tazko.env
+WorkingDirectory=/var/lib/tazko
+UMask=0077
+Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+# Runs with the release that is still current, before the switch.
+ExecStart=/opt/tazko/current/.venv/bin/tazko backup --data /var/lib/tazko/data --to /var/backups/tazko/pre-release --keep-days 7
+ExecStartPost=/opt/tazko/current/.venv/bin/tazko check --data /var/backups/tazko/pre-release
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+ReadWritePaths=/var/backups/tazko
+ReadOnlyPaths=/var/lib/tazko

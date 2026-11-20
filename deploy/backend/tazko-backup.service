@@ -1,5 +1,5 @@
 [Unit]
-Description=Tazko nightly backup
+Description=Tazko nightly backup, check and trash cleanup
 After=tazko.service
 
 [Service]
@@ -7,13 +7,22 @@ Type=oneshot
 User=tazko
 Group=tazko
 EnvironmentFile=/etc/tazko/tazko.env
-# Releases are read-only and byte-compiled at install time.
+WorkingDirectory=/var/lib/tazko
+UMask=0077
 Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+# Deleted companies stay in data/trash/ for 30 days (D35).
+ExecStartPre=/opt/tazko/current/.venv/bin/tazko purge-trash --data /var/lib/tazko/data --older-than-days 30
 ExecStart=/opt/tazko/current/.venv/bin/tazko backup --data /var/lib/tazko/data --to /var/backups/tazko --keep-days 30
-ExecStartPost=/opt/tazko/current/.venv/bin/tazko check --data /var/backups/tazko/latest
+# Checks the newest snapshot it just wrote.
+ExecStartPost=/opt/tazko/current/.venv/bin/tazko check --data /var/backups/tazko
+# Off-machine copy, only when /etc/tazko/rclone.conf exists (deploy/README.md).
+ExecStartPost=/usr/local/lib/tazko/offsite.sh
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadWritePaths=/var/backups/tazko
+PrivateDevices=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+ReadWritePaths=/var/backups/tazko /var/lib/tazko/data/trash
 ReadOnlyPaths=/var/lib/tazko

@@ -1,11 +1,13 @@
 [Unit]
-Description=Tazko
+Description=Tazko API
 After=network.target
 
 [Service]
 User=tazko
 Group=tazko
 EnvironmentFile=/etc/tazko/tazko.env
+WorkingDirectory=/var/lib/tazko
+UMask=0077
 # Releases are read-only and byte-compiled at install time.
 Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 ExecStart=/opt/tazko/current/.venv/bin/tazko serve
@@ -15,6 +17,11 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
 ReadWritePaths=/var/lib/tazko
 CapabilityBoundingSet=
 SystemCallArchitectures=native
