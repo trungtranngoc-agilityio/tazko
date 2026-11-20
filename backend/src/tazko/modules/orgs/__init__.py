@@ -5,5 +5,5 @@ list a person's companies, and `open_company`, the membership check that is
 the only way to reach a company's file (M1-03).
 
 - TODO(M1-06): change role, remove member; last owner cannot be removed (KNOWN-DEVIATIONS #5).
-- TODO(M1-07): suspend, resume, delete to trash/ for 30 days.
+- Suspend, resume and delete to data/trash/ for 30 days (M1-07, D35).
 """

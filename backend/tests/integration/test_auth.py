@@ -167,7 +167,10 @@ def test_account_with_no_person_is_refused_and_logged(
         ("jo.lee@gmail.com", {"reason": "not_invited"})
     ]
     # the refusal page can show which account was refused
-    assert client.get("/auth/refusal").json() == {"email": "jo.lee@gmail.com"}
+    assert client.get("/auth/refusal").json() == {
+        "email": "jo.lee@gmail.com",
+        "reason": "not_invited",
+    }
     assert control.read(lambda c: c.execute("SELECT count(*) FROM users").fetchone()[0]) == 0
 
 

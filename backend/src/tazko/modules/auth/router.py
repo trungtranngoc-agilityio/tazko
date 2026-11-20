@@ -93,10 +93,11 @@ def callback(
 
 @router.get("/auth/refusal")
 def refusal(request: Request, secret: SecretDep) -> RefusalOut:
-    email = service.refused_email(request.cookies.get(service.REFUSAL_COOKIE), secret)
-    if email is None:
+    found = service.refused_email(request.cookies.get(service.REFUSAL_COOKIE), secret)
+    if found is None:
         raise NotFound()
-    return RefusalOut(email=email)
+    email, reason = found
+    return RefusalOut(email=email, reason=reason)
 
 
 @router.post("/auth/signout", status_code=204)  # Origin: checked app-wide

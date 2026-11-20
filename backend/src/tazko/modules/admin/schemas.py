@@ -17,6 +17,12 @@ class CompanyIn(BaseModel):
     name: str
 
 
+class DeleteCompanyIn(BaseModel):
+    """The short name typed again, as in the prototype's confirm dialog."""
+
+    confirm: str
+
+
 class CompanySummaryOut(BaseModel):
     """A row of the Companies page. Boards are counted from M2."""
 

@@ -247,6 +247,7 @@ class Refused:
         "invite_expired",
         "invite_revoked",
         "workspace_required",
+        "company_suspended",
     ]
 
 

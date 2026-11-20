@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -14,6 +16,8 @@ class MeOut(BaseModel):
 
 
 class RefusalOut(BaseModel):
-    """Which Google account was just refused, for the refusal page."""
+    """Which Google account was just refused, for the refusal page. A cookie
+    from the previous release has no reason and reads as not_invited."""
 
     email: str
+    reason: Literal["not_invited", "company_suspended"] = "not_invited"

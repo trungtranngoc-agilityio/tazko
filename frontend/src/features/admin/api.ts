@@ -99,6 +99,22 @@ export function createCompany(slug: string, name: string): Promise<CompanySummar
   });
 }
 
+export function suspendCompany(slug: string): Promise<CompanySummary> {
+  return api<CompanySummary>(`${consoleCompanyBase(slug)}/suspend`, { method: "POST" });
+}
+
+export function resumeCompany(slug: string): Promise<CompanySummary> {
+  return api<CompanySummary>(`${consoleCompanyBase(slug)}/resume`, { method: "POST" });
+}
+
+/** Moves the company to trash for 30 days; `confirm` is the short name typed again. */
+export function deleteCompany(slug: string, confirm: string): Promise<void> {
+  return api<void>(consoleCompanyBase(slug), {
+    method: "DELETE",
+    body: JSON.stringify({ confirm }),
+  });
+}
+
 export function allInvites(): Promise<AnyInvite[]> {
   return api<AnyInvite[]>(`${ROOT}/invites`);
 }
