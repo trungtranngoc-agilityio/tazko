@@ -190,12 +190,13 @@ def test_check_finds_a_missing_control_database(tmp_path: Path) -> None:
 
 
 def test_check_works_on_a_live_data_folder_without_changing_it(data: Path) -> None:
-    before = sorted(p.name for p in data.iterdir())
+    files = [data / "control.db", data / "orgs" / "acme" / "tazko.db"]
+    before = sorted(p.name for p in data.iterdir()), [f.read_bytes() for f in files]
 
     _, problems, databases = snapshot.check(data)
 
     assert (problems, databases) == ([], 3)
-    assert sorted(p.name for p in data.iterdir()) == before
+    assert (sorted(p.name for p in data.iterdir()), [f.read_bytes() for f in files]) == before
 
 
 # --- purge-trash ----------------------------------------------------------------------
@@ -250,3 +251,59 @@ def test_purge_trash_from_the_command_line(data: Path, capsys: pytest.CaptureFix
 
     assert not (data / "trash" / "old-20260101T000000Z").exists()
     assert "removed" in capsys.readouterr().out
+
+
+def test_check_refuses_a_company_slug_that_would_leave_the_folder(
+    data: Path, tmp_path: Path
+) -> None:
+    made = snapshot.backup(data, tmp_path / "backups", keep_days=30, now=NOW)
+    conn = sqlite3.connect(made / "control.db")
+    conn.execute("UPDATE orgs SET slug = '../../outside' WHERE slug = 'zeta'")
+    conn.commit()
+    conn.close()
+
+    _, problems, _ = snapshot.check(made)
+
+    assert problems == ["control.db: invalid company slug '../../outside'"]
+
+
+def test_backup_removes_a_half_written_snapshot_left_by_a_crash(data: Path, tmp_path: Path) -> None:
+    backups = tmp_path / "backups"
+    (backups / ".tmp-20261118T023000Z").mkdir(parents=True)  # killed two days ago
+    (backups / ".tmp-20261120T020000Z").mkdir()  # maybe still running: kept
+
+    snapshot.backup(data, backups, keep_days=30, now=NOW)
+
+    assert sorted(p.name for p in backups.iterdir()) == [
+        ".tmp-20261120T020000Z",
+        "20261120T023000Z",
+    ]
+
+
+def test_a_broken_company_database_fails_the_backup_with_its_name(
+    data: Path, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    broken = tmp_path / "broken"
+    shutil.copytree(data, broken, ignore=shutil.ignore_patterns("*-wal", "*-shm"))
+    (broken / "orgs" / "acme" / "tazko.db").write_bytes(b"garbage" * 1000)
+
+    assert main(["backup", "--data", str(broken), "--to", str(tmp_path / "b")]) == 1
+
+    err = capsys.readouterr().err
+    assert "orgs" in err and "acme" in err
+    assert "Traceback" not in err
+
+
+@pytest.mark.parametrize(
+    "argv",
+    [
+        ["purge-trash", "--older-than-days", "0"],
+        ["purge-trash", "--older-than-days", "-5"],
+        ["backup", "--to", "x", "--keep-days", "0"],
+    ],
+)
+def test_day_counts_below_one_are_wrong_usage(argv: list[str]) -> None:
+    with pytest.raises(SystemExit) as exit_:
+        main(argv)
+
+    assert exit_.value.code == 2

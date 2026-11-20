@@ -34,7 +34,7 @@ log = logging.getLogger(__name__)
 SCRIPT_NAME = re.compile(r"^(\d{4})_[a-z0-9_]+\.sql$")
 # First line of a migration that an older release can live with (expand-contract, D21):
 # "-- readers: N" means a release that knows migrations up to N can still use the file.
-READERS = re.compile(r"\A--\s*readers:\s*(\d+)\s*$", re.MULTILINE)
+READERS = re.compile(r"\A--[ \t]*readers:[ \t]*(\d+)[ \t]*$", re.MULTILINE)
 BUSY_TIMEOUT_MS = 5000
 READ_WAIT_SECONDS = 30
 
@@ -116,7 +116,8 @@ def migrate(conn: sqlite3.Connection, scripts: list[tuple[int, str, str]], label
         oldest = oldest_reader(scripts[:version])
         try:
             # One script, one transaction: the schema, the version and the oldest
-            # release that can still use the file move together.
+            # release that can still use the file move together. application_id is
+            # SQLite's file-type marker; Tazko stores that release number in it (D36).
             conn.executescript(
                 f"BEGIN IMMEDIATE;\n{sql}\n;PRAGMA user_version = {version};\n"
                 f"PRAGMA application_id = {oldest};\nCOMMIT;"

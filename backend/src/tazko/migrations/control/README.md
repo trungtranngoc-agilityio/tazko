@@ -5,4 +5,6 @@ A migration runs inside one transaction when the database is opened (M1-03), tog
 
 A release may run on a file that a newer release migrated only if every newer migration allows it (D21, D36). A migration that leaves the file usable by an older release (it only adds: a table, a nullable column, an index) starts with `-- readers: N`, where N is the newest migration of the oldest release that can still use the file. Without the line, only releases that have the migration can open the file. The runner stores the oldest allowed release in `PRAGMA application_id` with `user_version`; an older release that is not allowed refuses the file, and rolling back then means restoring the backup taken before the release.
 
+A migration with a `readers` line must not need its data steps to cover rows written later: the older release may write rows after it ran, and nothing runs it again. So no one-off backfill (`UPDATE ... SET new = ...`), no `NOT NULL` column without a default, and no trigger the older code would trip. Put those in a migration without the line.
+
 Tables planned here (build plan, Data model): users, orgs, org_members, invites, sessions, audit_log, workspace_domains (D26), user_settings, personal_tokens, device_codes, email_queue.

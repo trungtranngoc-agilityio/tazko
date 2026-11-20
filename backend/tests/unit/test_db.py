@@ -208,6 +208,11 @@ def test_an_older_release_opens_a_file_after_an_expand_migration(tmp_path: Path)
     finally:
         db.close()
     assert version(tmp_path / "x.db") == 2  # never moved back
+    conn = sqlite3.connect(tmp_path / "x.db")
+    try:
+        assert conn.execute("PRAGMA application_id").fetchone()[0] == 1  # oldest allowed release
+    finally:
+        conn.close()
 
 
 def test_an_older_release_refuses_a_file_after_a_contract_migration(tmp_path: Path) -> None:
@@ -233,7 +238,7 @@ def test_every_newer_migration_must_allow_the_older_release(tmp_path: Path) -> N
     r2 = release(tmp_path, "r2", **{"0002_b": "-- readers: 1\nALTER TABLE a ADD COLUMN y TEXT;"})
 
     Database(tmp_path / "x.db", "test", migrations=r2).close()  # release 2: allowed
-    with pytest.raises(MigrationError):
+    with pytest.raises(MigrationError, match="do not allow this release"):
         Database(tmp_path / "x.db", "test", migrations=release(tmp_path, "r1"))
 
 

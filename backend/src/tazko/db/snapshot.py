@@ -5,7 +5,11 @@ while the server does; WAL commits are included. A snapshot is written under
 `.tmp-<stamp>` and renamed when complete, so a half-written one never counts.
 
 `check` opens every database read-only and runs `PRAGMA integrity_check`; it
-never changes what it checks, so it is safe on a live data folder too.
+never changes the data (SQLite may leave -wal/-shm files beside a live
+database), so it is safe on a live data folder too.
+
+Databases are copied one after another, not at one instant: a company created
+or deleted during the backup can make the snapshot fail `check`; run it again.
 
 A data folder: control.db, secret, orgs/<slug>/{tazko.db,files/}, trash/.
 """
@@ -13,6 +17,7 @@ A data folder: control.db, secret, orgs/<slug>/{tazko.db,files/}, trash/.
 from __future__ import annotations
 
 import contextlib
+import logging
 import os
 import re
 import shutil
@@ -20,10 +25,20 @@ import sqlite3
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+from tazko.db.tenant import valid_slug
+
+log = logging.getLogger(__name__)
+
 STAMP = "%Y%m%dT%H%M%SZ"
 SNAPSHOT = re.compile(r"^\d{8}T\d{6}Z$")
 TRASHED = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,38}[a-z0-9])?-(\d{8}T\d{6}Z)$")
 TMP = ".tmp-"
+# A .tmp- snapshot older than this was left by a backup that was killed.
+STALE_TMP = timedelta(days=1)
+
+
+class BackupFailed(Exception):
+    """A database could not be copied; the message names it."""
 
 
 def _open_ro(path: Path) -> sqlite3.Connection:
@@ -35,15 +50,18 @@ def _open_ro(path: Path) -> sqlite3.Connection:
 def _copy_db(source: Path, target: Path) -> None:
     """Online backup: a consistent copy of the last commit, WAL included."""
     os.close(os.open(target, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600))
-    src = _open_ro(source)
     try:
-        dst = sqlite3.connect(target)
+        src = _open_ro(source)
         try:
-            src.backup(dst)
+            dst = sqlite3.connect(target)
+            try:
+                src.backup(dst)
+            finally:
+                dst.close()
         finally:
-            dst.close()
-    finally:
-        src.close()
+            src.close()
+    except sqlite3.Error as err:
+        raise BackupFailed(f"{source}: {err}") from err
 
 
 def _copy_private(source: Path, target: Path) -> None:
@@ -85,20 +103,33 @@ def backup(data: Path, to: Path, *, keep_days: int, now: datetime) -> Path:
             (work / "orgs" / folder.name).mkdir(mode=0o700, parents=True)
             _copy_db(folder / "tazko.db", work / "orgs" / folder.name / "tazko.db")
             if (folder / "files").is_dir():
-                shutil.copytree(folder / "files", work / "orgs" / folder.name / "files")
+                shutil.copytree(
+                    folder / "files", work / "orgs" / folder.name / "files", symlinks=True
+                )
         work.rename(final)
     except BaseException:
         shutil.rmtree(work, ignore_errors=True)
         raise
-    _prune(to, keep=final, before=now - timedelta(days=keep_days))
+    _prune(to, keep=final, before=now - timedelta(days=keep_days), now=now)
     return final
 
 
-def _prune(to: Path, *, keep: Path, before: datetime) -> None:
+def _prune(to: Path, *, keep: Path, before: datetime, now: datetime) -> None:
+    """Remove old snapshots and half-written ones a killed backup left. A
+    failure is logged and skipped: the new snapshot is already good."""
     for entry in to.iterdir():
-        made = _stamp_of(entry.name) if SNAPSHOT.match(entry.name) else None
-        if made is not None and made < before and entry != keep and entry.is_dir():
+        if SNAPSHOT.match(entry.name):
+            made, limit = _stamp_of(entry.name), before
+        elif entry.name.startswith(TMP):
+            made, limit = _stamp_of(entry.name.removeprefix(TMP)), now - STALE_TMP
+        else:
+            continue
+        if made is None or made >= limit or entry == keep or not entry.is_dir():
+            continue
+        try:
             shutil.rmtree(entry)
+        except OSError as err:
+            log.warning("could not remove old backup %s: %s", entry, err)
 
 
 def newest(folder: Path) -> Path | None:
@@ -130,6 +161,9 @@ def check(path: Path) -> tuple[Path, list[str], int]:
         finally:
             conn.close()
     for slug in sorted(live):
+        if not valid_slug(slug):  # a path is only ever built from a checked slug
+            problems.append(f"control.db: invalid company slug {slug!r}")
+            continue
         db = path / "orgs" / slug / "tazko.db"
         name = f"orgs/{slug}/tazko.db"
         if not db.is_file():
@@ -167,4 +201,5 @@ def purge_trash(data: Path, *, older_than_days: int, now: datetime) -> list[Path
             with contextlib.suppress(FileNotFoundError):
                 shutil.rmtree(entry)
                 removed.append(entry)
+                log.info("removed %s from trash for good", entry.name)
     return removed
