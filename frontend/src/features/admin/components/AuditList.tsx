@@ -8,6 +8,9 @@ import { box } from "./parts";
 const ACTIONS: Record<string, MessageKey> = {
   "signin.refused": "audit.signin.refused",
   "company.created": "audit.company.created",
+  "company.suspended": "audit.company.suspended",
+  "company.resumed": "audit.company.resumed",
+  "company.deleted": "audit.company.deleted",
   "member.added": "audit.member.added",
   "member.removed": "audit.member.removed",
   "member.role_changed": "audit.member.role_changed",

@@ -69,6 +69,18 @@ describe("Sign-in refused", () => {
     expect(retry.getAttribute("href")).toMatch(/\/auth\/google\/start$/);
   });
 
+  it("tells a member that their company is suspended", async () => {
+    answer(200, { email: "ana@harbor.vn", reason: "company_suspended" });
+
+    show("/signin/refused");
+
+    expect(
+      await screen.findByRole("heading", { name: "Your company is suspended" }),
+    ).toBeInTheDocument();
+    expect(screen.getByText("ana@harbor.vn")).toBeInTheDocument();
+    expect(screen.getByText(/ask a super admin of Tazko to resume it/)).toBeInTheDocument();
+  });
+
   it("still explains the refusal when the account is no longer known", async () => {
     answer(404, { error: { code: "NOT_FOUND", message: "not found", details: [] } });
 

@@ -24,6 +24,12 @@ export function signOut(): Promise<void> {
 }
 
 /** The Google account the API just refused, kept for 10 minutes in a cookie. */
-export async function refusedEmail(): Promise<string> {
-  return (await api<{ email: string }>("/auth/refusal")).email;
+export interface Refusal {
+  email: string;
+  /** Missing from a server of the previous release: read as not invited. */
+  reason?: "not_invited" | "company_suspended";
+}
+
+export function refusal(): Promise<Refusal> {
+  return api<Refusal>("/auth/refusal");
 }

@@ -291,6 +291,121 @@ describe("company detail", () => {
   });
 });
 
+describe("company lifecycle", () => {
+  const DETAIL = {
+    ...SIGNED_IN,
+    "GET /admin/api/companies/harbor/members": { status: 200, body: MEMBERS },
+    "GET /admin/api/companies/harbor/invites": { status: 200, body: [INVITE] },
+  };
+
+  it("suspends a company and shows it read-only with Resume", async () => {
+    let status = "active";
+    const calls = fakeApi({
+      ...DETAIL,
+      "GET /admin/api/companies/harbor": () => ({ status: 200, body: { ...HARBOR, status } }),
+      "POST /admin/api/companies/harbor/suspend": () => {
+        status = "suspended";
+        return { status: 200, body: { ...HARBOR, status } };
+      },
+    });
+    show("/admin/companies/harbor");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Suspend" }));
+
+    expect(await screen.findByRole("button", { name: "Resume" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Harbor Studio suspended");
+    expect(screen.queryByRole("button", { name: "Invite" })).not.toBeInTheDocument();
+    expect(calls.filter((c) => c.method === "POST").map((c) => c.path)).toEqual([
+      "/admin/api/companies/harbor/suspend",
+    ]);
+  });
+
+  it("resumes a suspended company and gives back the invite form", async () => {
+    let status = "suspended";
+    fakeApi({
+      ...DETAIL,
+      "GET /admin/api/companies/harbor": () => ({ status: 200, body: { ...HARBOR, status } }),
+      "POST /admin/api/companies/harbor/resume": () => {
+        status = "active";
+        return { status: 200, body: { ...HARBOR, status } };
+      },
+    });
+    show("/admin/companies/harbor");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Resume" }));
+
+    expect(await screen.findByRole("button", { name: "Invite" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Suspend" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Harbor Studio resumed");
+  });
+
+  it("says why Suspend failed and keeps the company as it was", async () => {
+    fakeApi({
+      ...DETAIL,
+      "GET /admin/api/companies/harbor": { status: 200, body: HARBOR },
+      "POST /admin/api/companies/harbor/suspend": {
+        status: 409,
+        body: apiError("COMPANY_SUSPENDED"),
+      },
+    });
+    show("/admin/companies/harbor");
+
+    fireEvent.click(await screen.findByRole("button", { name: "Suspend" }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("already suspended");
+    expect(screen.getByRole("button", { name: "Suspend" })).toBeInTheDocument();
+  });
+
+  it("deletes a company only after its short name is typed, then opens Companies", async () => {
+    const calls = fakeApi({
+      ...DETAIL,
+      "GET /admin/api/companies/harbor": { status: 200, body: HARBOR },
+      "DELETE /admin/api/companies/harbor": { status: 204 },
+      "GET /admin/api/companies": { status: 200, body: [] },
+    });
+    show("/admin/companies/harbor");
+
+    fireEvent.click(await screen.findByRole("tab", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete this company" }));
+    const dialog = screen.getByRole("dialog", { name: "Delete Harbor Studio?" });
+    const go = within(dialog).getByRole("button", { name: "Delete company" });
+    expect(go).toBeDisabled();
+    fireEvent.change(within(dialog).getByRole("textbox", { name: /Type harbor to confirm/ }), {
+      target: { value: "harbor" },
+    });
+    fireEvent.click(go);
+
+    await waitFor(() => expect(here).toBe("/admin"));
+    expect(calls.find((c) => c.method === "DELETE")?.body).toEqual({ confirm: "harbor" });
+    expect(await screen.findByRole("status")).toHaveTextContent("Harbor Studio moved to trash");
+  });
+
+  it("closes the delete dialog with Escape without deleting", async () => {
+    const calls = fakeApi({
+      ...DETAIL,
+      "GET /admin/api/companies/harbor": { status: 200, body: HARBOR },
+    });
+    show("/admin/companies/harbor");
+
+    fireEvent.click(await screen.findByRole("tab", { name: "Settings" }));
+    fireEvent.click(screen.getByRole("button", { name: "Delete this company" }));
+    fireEvent.keyDown(screen.getByRole("dialog"), { key: "Escape" });
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(calls.some((c) => c.method === "DELETE")).toBe(false);
+  });
+
+  it("shows members and invites on the first tab", async () => {
+    fakeApi({ ...DETAIL, "GET /admin/api/companies/harbor": { status: 200, body: HARBOR } });
+    show("/admin/companies/harbor");
+
+    const tab = await screen.findByRole("tab", { name: "Members and invites" });
+
+    expect(tab).toHaveAttribute("aria-selected", "true");
+    expect(await screen.findByRole("table", { name: "Members" })).toBeInTheDocument();
+  });
+});
+
 describe("people", () => {
   it("lists people with their companies, names as text", async () => {
     fakeApi({

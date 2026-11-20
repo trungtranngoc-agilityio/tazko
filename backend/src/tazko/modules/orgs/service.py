@@ -5,7 +5,7 @@ so a handler can never touch a company the caller is not in. Unknown,
 suspended and not-a-member all answer NotFound: the caller learns nothing
 about companies they are not in.
 
-TODO(M1-07): suspend, resume, delete to trash/.
+Super admins suspend, resume and delete companies through Console (M1-07).
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal
 
+from tazko.core import clock
 from tazko.core.clock import now_iso
 from tazko.core.errors import AppError, Conflict, Forbidden, Invalid, NotFound
 from tazko.db import Database
@@ -45,6 +46,7 @@ __all__ = [
     "is_active",
     "join",
     "list_members",
+    "only_suspended_companies",
     "open_company",
     "org_by_id",
     "remove_member",
@@ -135,6 +137,10 @@ def add_member(
 
 def is_active(conn: sqlite3.Connection, org_id: int) -> bool:
     return repo.is_active(conn, org_id)
+
+
+def only_suspended_companies(conn: sqlite3.Connection, user_id: int) -> bool:
+    return repo.only_suspended_companies(conn, user_id)
 
 
 def has_member_email(conn: sqlite3.Connection, *, org_id: int, email: str) -> bool:
@@ -376,6 +382,73 @@ class Console:
         return create_company(
             self.control, self.tenants, slug=slug, name=name, actor_id=self.actor_id
         )
+
+    def suspend(self, slug: str) -> CompanySummary:
+        """Members lose access at once: open_company refuses a suspended
+        company and sign-in refuses a person whose companies are all suspended."""
+        return self._set_status(slug, to="suspended", event="company.suspended")
+
+    def resume(self, slug: str) -> CompanySummary:
+        return self._set_status(slug, to="active", event="company.resumed")
+
+    def delete(self, slug: str, *, confirm: str) -> None:
+        """Move the folder to trash and mark the row deleted. The move happens
+        inside the control.db transaction; if that transaction then fails, the
+        folder is moved back, so the company stays as it was. A row whose
+        folder is already gone is still deleted. The row keeps its slug, so the
+        folder can be restored by hand (D35)."""
+        if confirm != slug:
+            raise Invalid("confirm: type the short name of the company", field="confirm")
+        moved: list[Path] = []
+
+        def run(conn: sqlite3.Connection) -> None:
+            org = self._live(conn, slug)
+            now = clock.now()  # UTC (core/clock)
+            if self.tenants.folder(slug).exists():
+                moved.append(self.tenants.trash(slug, now.strftime("%Y%m%dT%H%M%SZ")))
+            else:
+                log.error("company %s has a row but no folder; deleting the row", slug)
+            repo.mark_deleted(conn, org.id, now=clock.iso(now))
+            audit.record(
+                conn,
+                "company.deleted",
+                actor_id=self.actor_id,
+                org_id=org.id,
+                target=slug,
+                detail={"trash": moved[0].name if moved else None},
+            )
+
+        try:
+            self.control.write(run)
+        except BaseException:
+            if moved:
+                moved[0].rename(self.tenants.folder(slug))  # the row was not deleted
+            raise
+
+    def _set_status(self, slug: str, *, to: str, event: str) -> CompanySummary:
+        def run(conn: sqlite3.Connection) -> None:
+            org = self._live(conn, slug)
+            if org.status == to:
+                code = "COMPANY_SUSPENDED" if to == "suspended" else "COMPANY_ACTIVE"
+                raise Conflict(f"the company is already {org.status}", code=code)
+            repo.set_status(conn, org.id, to)
+            if to == "suspended":
+                # Sign-in would refuse them now, so their open sessions end too.
+                for user_id in repo.stranded_members(conn, org.id):
+                    users.end_sessions(conn, user_id)
+            audit.record(conn, event, actor_id=self.actor_id, org_id=org.id, target=slug)
+
+        self.control.write(run)
+        if to == "suspended":
+            self.tenants.evict(slug)  # nothing keeps using its file
+        return self.company(slug)
+
+    def _live(self, conn: sqlite3.Connection, slug: str) -> Org:
+        require_super_admin(conn, self.actor_id)
+        org = repo.by_slug_not_deleted(conn, slug) if valid_slug(slug) else None
+        if org is None:
+            raise NotFound()
+        return org
 
     def open(self, slug: str) -> Company:
         """The company's row only; its file opens when a change writes an event."""

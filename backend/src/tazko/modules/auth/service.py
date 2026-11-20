@@ -34,6 +34,7 @@ from tazko.modules.audit import service as audit
 from tazko.modules.auth import repository as repo
 from tazko.modules.auth.google import IdentityProvider, ProviderError
 from tazko.modules.invites import service as invites
+from tazko.modules.orgs import service as orgs
 from tazko.modules.users import service as users
 from tazko.modules.users.service import GoogleAccount, Refused, User
 
@@ -135,24 +136,32 @@ def finish_sign_in(
         if isinstance(match, Refused) and match.reason == "not_invited":
             match = _join_by_invite(conn, account, ip=ip)
         if isinstance(match, Refused):
-            audit.record(
-                conn,
-                "signin.refused",
-                actor_id=None,
-                target=account.email,
-                detail={"reason": match.reason},
-                ip=ip,
-            )
-            return Refusal(account.email, match.reason)
+            return _refuse(conn, account, match, ip=ip)
         users.remember_workspace(conn, account)
         # A personal account on a Workspace address uses no invites (D26), even
         # one linked by sub before the domain was known.
         if not users.needs_workspace(conn, account, match.email):
             invites.accept_usable(conn, match, ip=ip)
+        if not match.is_super_admin and orgs.only_suspended_companies(conn, match.id):
+            return _refuse(conn, account, Refused("company_suspended"), ip=ip)
         token = _issue_session(conn, match, old_token=old_token, ip=ip, user_agent=user_agent)
         return SignedIn(match, token)
 
     return control.write(run)
+
+
+def _refuse(
+    conn: sqlite3.Connection, account: GoogleAccount, refused: Refused, *, ip: str | None
+) -> Refusal:
+    audit.record(
+        conn,
+        "signin.refused",
+        actor_id=None,
+        target=account.email,
+        detail={"reason": refused.reason},
+        ip=ip,
+    )
+    return Refusal(account.email, refused.reason)
 
 
 def _join_by_invite(
@@ -246,13 +255,21 @@ def _signing_key(provider: IdentityProvider, kid: object) -> jwt.PyJWK:
 
 
 def refusal_cookie(refusal: Refusal, secret: bytes) -> str:
-    return sign({"email": refusal.email}, secret, purpose="refused", max_age=REFUSAL_SECONDS)
+    # Only a suspended company is told apart; every other reason reads as "not
+    # invited", so the page reveals nothing more about the account (D35).
+    shown = "company_suspended" if refusal.reason == "company_suspended" else "not_invited"
+    payload = {"email": refusal.email, "reason": shown}
+    return sign(payload, secret, purpose="refused", max_age=REFUSAL_SECONDS)
 
 
-def refused_email(cookie: str | None, secret: bytes) -> str | None:
+def refused_email(cookie: str | None, secret: bytes) -> tuple[str, str] | None:
+    """The refused email and the reason shown for it, from the refusal cookie."""
     value = unsign(cookie, secret, purpose="refused") if cookie else None
     email = value.get("email") if value else None
-    return email if isinstance(email, str) else None
+    if not isinstance(email, str):
+        return None
+    reason = value.get("reason") if value else None
+    return email, reason if reason == "company_suspended" else "not_invited"
 
 
 def current_user(control: Database, token: str) -> tuple[User, bool] | None:

@@ -93,6 +93,24 @@ class Tenants:
                     self._open[slug] = tenant
             return tenant
 
+    def trash(self, slug: str, stamp: str) -> Path:
+        """Close the company's file and move its folder to data/trash/<slug>-<stamp>/.
+        Trash older than 30 days is removed by the nightly job (M1-08, D35)."""
+        folder = self.folder(slug)
+        with self._lock:
+            opening = self._opening.setdefault(slug, threading.Lock())
+        # Held across close and move: a request racing the delete cannot open
+        # the file again in between; after the move, get() finds no file.
+        with opening:
+            self.evict(slug)
+            bin_dir = self.root.parent / "trash"
+            bin_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+            target = bin_dir / f"{slug}-{stamp}"
+            if target.exists():
+                raise FileExistsError(target)
+            folder.rename(target)  # same file system: data/orgs and data/trash share data/
+        return target
+
     def is_open(self, slug: str) -> bool:
         """Whether the company's file is open in the cache (tests, diagnostics)."""
         return slug in self._open

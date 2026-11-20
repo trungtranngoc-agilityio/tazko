@@ -75,3 +75,37 @@ test("an account nobody invited is refused and told which account it was", async
   ).toBeVisible();
   await expect(page.getByText(stranger)).toBeVisible();
 });
+
+test("a company suspended in the console turns its owner away at sign-in", async ({
+  page,
+  browser,
+}) => {
+  const slug = unique("e2e");
+  const owner = `owner@${slug}.test`;
+  await signIn(page, SUPER_ADMIN, "Root Admin");
+  await page.goto("/admin");
+  await page.getByRole("button", { name: "New company" }).click();
+  const dialog = page.getByRole("dialog", { name: "New company" });
+  await dialog.getByLabel("Company name").fill(`Studio ${slug}`);
+  await dialog.getByLabel(/Short name/).fill(slug);
+  await dialog.getByLabel("First owner email").fill(owner);
+  await dialog.getByRole("button", { name: "Create company" }).click();
+  const other = await browser.newContext();
+  const ownerPage = await other.newPage();
+  await signIn(ownerPage, owner, "Olive Owner");
+  await expect(
+    ownerPage.getByRole("heading", { name: "Projects" }),
+  ).toBeVisible();
+
+  // the super admin suspends the company
+  await page.getByRole("button", { name: "Suspend" }).click();
+  await expect(page.getByRole("button", { name: "Resume" })).toBeVisible();
+
+  // the owner's next sign-in is refused and says why
+  await signIn(ownerPage, owner);
+  await expect(ownerPage).toHaveURL(/\/signin\/refused/);
+  await expect(
+    ownerPage.getByRole("heading", { name: "Your company is suspended" }),
+  ).toBeVisible();
+  await other.close();
+});

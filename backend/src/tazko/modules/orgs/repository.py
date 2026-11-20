@@ -123,6 +123,39 @@ def has_member_email(conn: sqlite3.Connection, *, org_id: int, email: str) -> bo
     )
 
 
+def set_status(conn: sqlite3.Connection, org_id: int, status: str) -> None:
+    conn.execute("UPDATE orgs SET status = ? WHERE id = ?", (status, org_id))
+
+
+def mark_deleted(conn: sqlite3.Connection, org_id: int, *, now: str) -> None:
+    conn.execute("UPDATE orgs SET status = 'deleted', deleted_at = ? WHERE id = ?", (now, org_id))
+
+
+def stranded_members(conn: sqlite3.Connection, org_id: int) -> list[int]:
+    """Members of the company who are not super admins and are in no other
+    active company: suspending it leaves them nothing to use."""
+    rows = conn.execute(
+        "SELECT m.user_id FROM org_members m JOIN users u ON u.id = m.user_id"
+        " WHERE m.org_id = ? AND u.is_super_admin = 0 AND NOT EXISTS ("
+        "   SELECT 1 FROM org_members o JOIN orgs g ON g.id = o.org_id"
+        "   WHERE o.user_id = m.user_id AND o.org_id != m.org_id AND g.status = 'active')",
+        (org_id,),
+    ).fetchall()
+    return [int(r["user_id"]) for r in rows]
+
+
+def only_suspended_companies(conn: sqlite3.Connection, user_id: int) -> bool:
+    """The person is in at least one company that is not deleted, and none of
+    them is active (sign-in refuses them, M1-07)."""
+    row = conn.execute(
+        "SELECT count(*) AS listed, coalesce(sum(o.status = 'active'), 0) AS active"
+        " FROM org_members m JOIN orgs o ON o.id = m.org_id"
+        " WHERE m.user_id = ? AND o.status != 'deleted'",
+        (user_id,),
+    ).fetchone()
+    return bool(row["listed"]) and not row["active"]
+
+
 def by_slug_not_deleted(conn: sqlite3.Connection, slug: str) -> Org | None:
     row = conn.execute(
         "SELECT id, slug, name, status FROM orgs WHERE slug = ? AND status != 'deleted'", (slug,)
@@ -214,7 +247,7 @@ def delete_member(conn: sqlite3.Connection, *, org_id: int, user_id: int) -> Non
 
 def memberships(conn: sqlite3.Connection, user_id: int) -> list[Membership]:
     # Includes suspended companies (status is on Org) so the switcher can show them
-    # as suspended; open_company still refuses them. TODO(M1-07): M1.md Q2.
+    # as suspended; open_company still refuses them (M1.md Q2, D30).
     rows = conn.execute(
         "SELECT o.id, o.slug, o.name, o.status, m.role FROM org_members m"
         " JOIN orgs o ON o.id = m.org_id"

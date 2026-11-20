@@ -194,6 +194,11 @@ def forget_workspace_domain(
     control.write(run)
 
 
+def end_sessions(conn: sqlite3.Connection, user_id: int) -> None:
+    """Sign the person out everywhere, inside the caller's transaction."""
+    repo.end_sessions(conn, user_id)
+
+
 def get(control: Database, user_id: int) -> User | None:
     return control.read(lambda c: repo.by_id(c, user_id))
 
@@ -247,6 +252,7 @@ class Refused:
         "invite_expired",
         "invite_revoked",
         "workspace_required",
+        "company_suspended",
     ]
 
 

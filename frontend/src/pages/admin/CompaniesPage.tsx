@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Navigate, useNavigate } from "react-router";
+import { useEffect, useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router";
 import {
   CompaniesTable,
   LoadFailed,
@@ -17,6 +17,12 @@ export function CompaniesPage() {
   const [list, reload] = useAsync(companies, "admin:companies");
   const [creating, setCreating] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+  // "moved to trash" after Delete company, shown once (out of history on load).
+  const [done] = useState(() => (location.state as { done?: string } | null)?.done ?? null);
+  useEffect(() => {
+    if (location.state) navigate(location.pathname, { replace: true, state: null });
+  }, [location.state, location.pathname, navigate]);
 
   if (list.kind === "failed" && list.status === 401) return <Navigate to="/signin" replace />;
   return (
@@ -31,6 +37,11 @@ export function CompaniesPage() {
           {t("admin.newCompany")}
         </button>
       </PageHead>
+      {done && (
+        <p role="status" className="mb-4 text-success">
+          {done}
+        </p>
+      )}
       {list.kind === "loading" && <Loading />}
       {list.kind === "failed" && <LoadFailed code={list.code} onRetry={reload} />}
       {list.kind === "ready" && <CompaniesTable companies={list.value} />}

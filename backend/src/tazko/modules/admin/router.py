@@ -28,6 +28,7 @@ from tazko.modules.admin.schemas import (
     CompanyIn,
     CompanyRef,
     CompanySummaryOut,
+    DeleteCompanyIn,
     PeoplePage,
     PersonFlagsIn,
     PersonOut,
@@ -66,6 +67,23 @@ def create_company(body: CompanyIn, response: Response, console: ConsoleDep) -> 
 @router.get("/companies/{slug}")
 def company(slug: str, console: ConsoleDep) -> CompanySummaryOut:
     return CompanySummaryOut.from_summary(console.company(slug))
+
+
+@router.post("/companies/{slug}/suspend")
+def suspend_company(slug: str, console: ConsoleDep) -> CompanySummaryOut:
+    return CompanySummaryOut.from_summary(console.suspend(slug))
+
+
+@router.post("/companies/{slug}/resume")
+def resume_company(slug: str, console: ConsoleDep) -> CompanySummaryOut:
+    return CompanySummaryOut.from_summary(console.resume(slug))
+
+
+@router.delete("/companies/{slug}", status_code=204)
+def delete_company(slug: str, body: DeleteCompanyIn, console: ConsoleDep) -> Response:
+    """Moves the folder to data/trash/ for 30 days (D35)."""
+    console.delete(slug, confirm=body.confirm)
+    return Response(status_code=204)
 
 
 # --- company detail: members and invites ---------------------------------------------------

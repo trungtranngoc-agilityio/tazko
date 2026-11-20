@@ -7,7 +7,9 @@ export {
   company,
   consoleCompanyBase,
   people,
+  resumeCompany,
   server,
+  suspendCompany,
   workspaceDomains,
   type AuditKind,
   type CompanySummary,
@@ -16,6 +18,7 @@ export { usePages } from "./hooks/usePages";
 export { AllInvitesTable } from "./components/AllInvitesTable";
 export { AuditList } from "./components/AuditList";
 export { CompaniesTable } from "./components/CompaniesTable";
+export { DeleteCompanyDialog } from "./components/DeleteCompanyDialog";
 export { NewCompanyDialog } from "./components/NewCompanyDialog";
 export { PeopleTable } from "./components/PeopleTable";
 export { ServerPanel } from "./components/ServerPanel";

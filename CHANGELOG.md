@@ -5,6 +5,7 @@ What people and API callers can notice, per release. Format: [Keep a Changelog](
 ## [Unreleased]
 
 ### Added
+- Super admins can suspend, resume and delete a company on Company detail (`POST /admin/api/companies/{slug}/suspend` and `/resume`, `DELETE /admin/api/companies/{slug}` with the short name typed). Suspending blocks its members at once; a member whose companies are all suspended is refused at sign-in and told why. Delete moves the company folder to `data/trash/` for 30 days. `GET /auth/refusal` adds `reason`.
 - `tazko admin --email` creates or promotes the first super admin.
 - Settings are checked at start: production needs the Google client and https URLs (D16).
 - Sign in with Google (Workspace or personal accounts) for people who already exist; others are refused and the refusal is audit-logged. Sessions last 30 days from last use; `POST /auth/signout` ends one. `GET /api/me` returns the signed-in person.
