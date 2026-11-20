@@ -58,7 +58,7 @@ docs/decisions.md overrides the build plan where they differ (D13 replaces "the 
 - Run sudo, systemctl, cloudflared, wrangler or anything on the production host or Cloudflare. Write a script in deploy/ and ask.
 - Read or print secrets (.env, data/secret). Ask the owner to set them.
 - Merge PRs, push --force, or push to main.
-- Add Postgres, Docker, or a library that is not MIT, Apache-2.0, BSD or ISC (Unicode-3.0, Zlib (D12) and PSF-2.0 (D14) are accepted exceptions; tools/check-backend-licenses.py and tools/check-frontend-licenses.mjs hold the lists).
+- Add Postgres, Docker, or a library that is not MIT, Apache-2.0, BSD or ISC (Unicode-3.0, Zlib (D12) and PSF-2.0 (D14) are accepted exceptions, and LGPL-3.0 inside wrangler's tree in deploy/frontend only, a deploy tool never shipped (D37); tools/check-backend-licenses.py and tools/check-frontend-licenses.mjs hold the lists).
 - Name other products in code, text, tests or docs. Copy code, text or icons from other products.
 
 ## UI
