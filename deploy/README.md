@@ -92,7 +92,8 @@ pre-release backup and restore units, and read the last 200 log lines.
 Build and copy the bundle as in step 4, then `tazko-release <bundle>`. The script:
 
 1. takes a snapshot of the data with the running release (`tazko-pre-release-backup.service`);
-2. installs the bundle into its own folder and virtualenv (pinned, hashed wheels only);
+2. installs the bundle into its own folder and virtualenv (pinned, hashed wheels only,
+   downloaded from PyPI: the host needs outbound HTTPS while a release installs);
 3. switches `/opt/tazko/current`, restarts, and waits up to 20 s for `/health`;
 4. if `/health` fails, switches back and restarts the previous release;
 5. if the previous release cannot use the data either (the new release ran a migration
