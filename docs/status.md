@@ -7,7 +7,7 @@ Updated 2026-11-20 · `dev` at 823f26d (#20) · M1-07 on `feature/company-lifecy
 
 ## Now
 
-M1 · Platform (release 0.1.0) · task **M1-07** Company lifecycle: built on `feature/company-lifecycle`; ticked once the owner decides D35. M1-06 is done (#9 to #20).
+M1 · Platform (release 0.1.0) · task **M1-07** Company lifecycle: done and ticked on `feature/company-lifecycle` (D35 decided). M1-06 is done (#9 to #20).
 
 - Super admins suspend, resume and delete a company on Company detail; delete moves the folder to `data/trash/`.
 - A member whose companies are all suspended is refused at sign-in and told why.
@@ -21,7 +21,7 @@ M1 · Platform (release 0.1.0) · task **M1-07** Company lifecycle: built on `fe
 ## Waiting on the owner
 
 - Q2 (M1.md): list a suspended company in the switcher, greyed. Built that way (D30); still proposed.
-- D23, D25, D27 to D33 and D35 are proposed, not decided. D35 decides whether M1-07 can be ticked.
+- D23, D25, D27 to D33 are proposed, not decided.
 - Real design tokens: design/tokens.css is still the placeholder, so colours and font differ from the prototype (M1.md, Visual check).
 
 ## Housekeeping
