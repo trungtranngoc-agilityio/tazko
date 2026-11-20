@@ -307,3 +307,30 @@ def test_day_counts_below_one_are_wrong_usage(argv: list[str]) -> None:
         main(argv)
 
     assert exit_.value.code == 2
+
+
+def set_versions(db: Path, *, user_version: int, oldest: int) -> None:
+    conn = sqlite3.connect(db)
+    try:
+        conn.execute(f"PRAGMA user_version = {user_version}")
+        conn.execute(f"PRAGMA application_id = {oldest}")
+    finally:
+        conn.close()
+
+
+def test_check_finds_a_company_file_this_release_cannot_use(data: Path, tmp_path: Path) -> None:
+    # given a newer release ran a contract migration on one company's file (D36)
+    made = snapshot.backup(data, tmp_path / "backups", keep_days=30, now=NOW)
+    set_versions(made / "orgs" / "acme" / "tazko.db", user_version=99, oldest=99)
+
+    _, problems, _ = snapshot.check(made)
+
+    assert len(problems) == 1
+    assert problems[0].startswith("orgs/acme/tazko.db: version 99 is newer than this release")
+
+
+def test_check_accepts_a_newer_file_its_migrations_allow(data: Path, tmp_path: Path) -> None:
+    made = snapshot.backup(data, tmp_path / "backups", keep_days=30, now=NOW)
+    set_versions(made / "control.db", user_version=99, oldest=1)
+
+    assert snapshot.check(made)[1] == []

@@ -8,6 +8,7 @@ __pycache__/
 .coverage.*
 htmlcov/
 /backend/dist/
+/dist/
 
 # Node
 node_modules/

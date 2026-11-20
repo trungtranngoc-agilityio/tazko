@@ -1,19 +1,31 @@
 [Unit]
-Description=Tazko nightly backup
+Description=Tazko nightly backup, check and trash cleanup
 After=tazko.service
 
 [Service]
 Type=oneshot
 User=tazko
 Group=tazko
-EnvironmentFile=/etc/tazko/tazko.env
-# Releases are read-only and byte-compiled at install time.
+# No tazko.env: these commands need no Google settings, only no .env reading (D16).
+Environment=TAZKO_ENV=production
+WorkingDirectory=/var/lib/tazko
+UMask=0077
 Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
+# Deleted companies stay in data/trash/ for 30 days (D35).
+# The leading - : a failed purge never skips the backup.
+ExecStartPre=-/opt/tazko/current/.venv/bin/tazko purge-trash --data /var/lib/tazko/data --older-than-days 30
 ExecStart=/opt/tazko/current/.venv/bin/tazko backup --data /var/lib/tazko/data --to /var/backups/tazko --keep-days 30
-ExecStartPost=/opt/tazko/current/.venv/bin/tazko check --data /var/backups/tazko/latest
+# Checks the newest snapshot it just wrote.
+ExecStartPost=/opt/tazko/current/.venv/bin/tazko check --data /var/backups/tazko
+# Off-machine copy, only when /etc/tazko/rclone.conf exists (deploy/README.md).
+ExecStartPost=/usr/local/lib/tazko/offsite.sh
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
-ReadWritePaths=/var/backups/tazko
-ReadOnlyPaths=/var/lib/tazko
+PrivateDevices=true
+RestrictSUIDSGID=true
+CapabilityBoundingSet=
+# Writable data: SQLite needs the WAL index (-shm) to read a WAL database, even
+# read-only, and the same tazko user runs the server anyway (D37).
+ReadWritePaths=/var/backups/tazko /var/lib/tazko

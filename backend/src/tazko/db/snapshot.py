@@ -23,8 +23,10 @@ import re
 import shutil
 import sqlite3
 from datetime import UTC, datetime, timedelta
+from importlib.resources import files
 from pathlib import Path
 
+from tazko.db.database import load_scripts
 from tazko.db.tenant import valid_slug
 
 log = logging.getLogger(__name__)
@@ -150,7 +152,7 @@ def check(path: Path) -> tuple[Path, list[str], int]:
     if not control.is_file():
         return path, ["control.db: missing"], 0
     databases = [control]
-    problems += _integrity(control, "control.db")
+    problems += _integrity(control, "control.db", "control")
     live: list[str] = []
     if not problems:
         conn = _open_ro(control)
@@ -170,20 +172,36 @@ def check(path: Path) -> tuple[Path, list[str], int]:
             problems.append(f"{name}: missing for company {slug}")
             continue
         databases.append(db)
-        problems += _integrity(db, name)
+        problems += _integrity(db, name, "tenant")
     return path, problems, len(databases)
 
 
-def _integrity(db: Path, name: str) -> list[str]:
+def _latest(schema: str) -> int:
+    return len(load_scripts(files("tazko") / "migrations" / schema))
+
+
+def _integrity(db: Path, name: str, schema: str) -> list[str]:
+    """integrity_check, then whether this release can use the file: a newer
+    file is fine only if its migrations allow this release (D36). release.sh
+    runs check after a rollback, since /health opens only control.db."""
     try:
         conn = _open_ro(db)
         try:
             result = [r[0] for r in conn.execute("PRAGMA integrity_check").fetchall()]
+            current: int = conn.execute("PRAGMA user_version").fetchone()[0]
+            oldest: int = conn.execute("PRAGMA application_id").fetchone()[0]
         finally:
             conn.close()
     except sqlite3.Error as err:
         return [f"{name}: {err}"]
-    return [] if result == ["ok"] else [f"{name}: {'; '.join(result[:5])}"]
+    if result != ["ok"]:
+        return [f"{name}: {'; '.join(result[:5])}"]
+    latest = _latest(schema)
+    if current > latest and not 1 <= oldest <= latest:
+        return [
+            f"{name}: version {current} is newer than this release ({latest}) and does not allow it"
+        ]
+    return []
 
 
 def purge_trash(data: Path, *, older_than_days: int, now: datetime) -> list[Path]:
