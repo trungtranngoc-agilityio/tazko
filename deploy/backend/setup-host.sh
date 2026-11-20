@@ -12,15 +12,15 @@ umask 022
 [ "$(id -u)" -eq 0 ] || { echo "setup-host: run as root (sudo)" >&2; exit 1; }
 HERE="$(cd "$(dirname "$0")" && pwd)"
 for f in tazko.service tazko-backup.service tazko-backup.timer tazko-pre-release-backup.service \
-  tazko-restore.service release.sh restore-pre-release.sh offsite.sh; do
+  tazko-restore.service tazko-check.service release.sh restore-pre-release.sh offsite.sh; do
   [ -f "$HERE/$f" ] || { echo "setup-host: $HERE/$f is missing" >&2; exit 1; }
 done
 
 step() { echo "== $*"; }
 
 step "packages: Python 3.12 with venv, curl (Ubuntu archive, signed)"
-if ! command -v python3.12 >/dev/null || ! python3.12 -c 'import ensurepip, venv' 2>/dev/null \
-  || ! command -v curl >/dev/null; then
+installed() { dpkg-query -W -f='${Status}' "$1" 2>/dev/null | grep -q 'ok installed'; }
+if ! installed python3.12 || ! installed python3.12-venv || ! installed curl; then
   apt-get update
   apt-get install -y --no-install-recommends python3.12 python3.12-venv curl
 fi
@@ -78,6 +78,7 @@ tazko-deploy ALL=(root) NOPASSWD: /usr/bin/systemctl restart tazko.service, \
   /usr/bin/systemctl start tazko.service, \
   /usr/bin/systemctl start tazko-pre-release-backup.service, \
   /usr/bin/systemctl start tazko-restore.service, \
+  /usr/bin/systemctl start tazko-check.service, \
   /usr/bin/journalctl -u tazko.service -n 200 --no-pager
 EOF
 visudo -cf "$tmp" >/dev/null
@@ -90,12 +91,17 @@ install -o root -g root -m 755 "$HERE/offsite.sh" /usr/local/lib/tazko/offsite.s
 
 step "systemd units"
 for unit in tazko.service tazko-backup.service tazko-backup.timer \
-  tazko-pre-release-backup.service tazko-restore.service; do
+  tazko-pre-release-backup.service tazko-restore.service tazko-check.service; do
   install -o root -g root -m 644 "$HERE/$unit" "/etc/systemd/system/$unit"
 done
 systemctl daemon-reload
-systemctl enable tazko.service >/dev/null       # starts with the first release
+# Enabled now; until the first release, a reboot or the 02:30 run only logs a
+# failed unit (there is no /opt/tazko/current yet).
+systemctl enable tazko.service >/dev/null
 systemctl enable --now tazko-backup.timer >/dev/null
+if systemctl is-active --quiet tazko.service; then
+  echo "   tazko.service is running: changed units apply at its next restart"
+fi
 
 step "checks"
 if ss -Hltn 'sport = :8791' | grep -q . && ! systemctl is-active --quiet tazko.service; then

@@ -1,0 +1,8 @@
+{
+  "name": "tazko-deploy-frontend",
+  "private": true,
+  "description": "Pins the Cloudflare Pages CLI that deploy.sh runs (D8): exact version, hashes in package-lock.json.",
+  "devDependencies": {
+    "wrangler": "4.158.0"
+  }
+}

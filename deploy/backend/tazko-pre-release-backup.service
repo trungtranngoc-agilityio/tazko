@@ -19,5 +19,5 @@ PrivateTmp=true
 PrivateDevices=true
 RestrictSUIDSGID=true
 CapabilityBoundingSet=
-ReadWritePaths=/var/backups/tazko
-ReadOnlyPaths=/var/lib/tazko
+# Writable data: SQLite needs the WAL index (-shm) to read a WAL database (D37).
+ReadWritePaths=/var/backups/tazko /var/lib/tazko

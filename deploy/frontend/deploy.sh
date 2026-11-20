@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# Builds frontend/ and uploads it to Cloudflare Pages (D13). RUN BY THE OWNER (or by
-# a CI job the owner sets up with a Pages-only API token). The agent never runs it.
+# Builds frontend/ and uploads it to Cloudflare Pages (D13, D37). RUN BY THE OWNER
+# (or by a CI job the owner sets up with a Pages-only API token). The agent never runs it.
 #
 #   VITE_API_URL=https://tazko-api-dev.hugepigstudio.com deploy/frontend/deploy.sh [--production]
 #
 # Without --production it uploads a preview deployment. TAZKO_PAGES_PROJECT
-# defaults to tazko-web. wrangler asks for a Cloudflare login (or reads
+# defaults to tazko-web; --production deploys the branch `main`, which must be the
+# Pages project's production branch. wrangler asks for a Cloudflare login (or reads
 # CLOUDFLARE_API_TOKEN from the environment); never put the token in a file here.
+# wrangler is pinned with hashes in deploy/frontend/package-lock.json (D8).
 #
 # Rollback: in the Pages project, Deployments, pick the previous deployment and
 # choose "Rollback to this deployment". The API is released separately
@@ -22,17 +24,24 @@ project="${TAZKO_PAGES_PROJECT:-tazko-web}"
 branch="preview"
 [ "${1:-}" = "--production" ] && branch="main"
 
-# The Content-Security-Policy must allow the API host, or every API call fails
-# in the browser (M1.md, security review).
-csp="$(grep -m1 'Content-Security-Policy:' frontend/public/_headers)"
+if [ -n "$(git status --porcelain)" ]; then
+  echo "deploy: commit or stash your changes first; a deployment names one commit" >&2
+  exit 1
+fi
+
+# connect-src must list the API host for https and wss, or every API call fails in
+# the browser (M1.md, security review). Whole tokens of that directive only.
+csp="$(grep -m1 'Content-Security-Policy:' frontend/public/_headers || true)"
+connect="$(tr ';' '\n' <<<"$csp" | sed -n 's/^[[:space:]]*connect-src[[:space:]]\{1,\}//p')"
 for scheme in https wss; do
-  [[ "$csp" == *"$scheme://$api_host"* ]] || {
-    echo "deploy: frontend/public/_headers connect-src does not allow $scheme://$api_host" >&2
+  tr ' ' '\n' <<<"$connect" | grep -qx "$scheme://$api_host" || {
+    echo "deploy: connect-src in frontend/public/_headers does not list $scheme://$api_host" >&2
     exit 1
   }
 done
 
 npm --prefix frontend ci --no-audit --no-fund
 npm --prefix frontend run build
-# Pinned: wrangler 4.x from npm (npx caches it; the lock file pins the web app only).
-npx --yes wrangler@4.158.0 pages deploy frontend/dist --project-name "$project" --branch "$branch"
+npm --prefix deploy/frontend ci --no-audit --no-fund
+npm --prefix deploy/frontend exec --no -- wrangler pages deploy frontend/dist \
+  --project-name "$project" --branch "$branch" --commit-hash "$(git rev-parse HEAD)"

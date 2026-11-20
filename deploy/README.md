@@ -34,8 +34,13 @@ adds its own users, folders, units and one tunnel rule.
 | `/usr/local/bin/tazko-release` | root, 755 | `release.sh` |
 
 Users: `tazko` runs the service (no login, writes only `/var/lib/tazko`); `tazko-deploy`
-owns the releases and may, through sudo, only restart `tazko.service`, start the
-pre-release backup and restore units, and read the last 200 log lines.
+owns the releases and may, through sudo, only restart, stop and start `tazko.service`,
+start the pre-release backup, check and restore units, and read the last 200 log lines.
+
+Before step 3, check how cloudflared runs: `systemctl cat cloudflared` must show
+`--config /etc/cloudflared/config.yml` (or no `--config`) and no `--token`. A tunnel
+managed with a dashboard token ignores `config.yml`; add the hostname in the dashboard
+instead (the script refuses to run in that case).
 
 ## First time
 
@@ -91,14 +96,22 @@ pre-release backup and restore units, and read the last 200 log lines.
 
 Build and copy the bundle as in step 4, then `tazko-release <bundle>`. The script:
 
-1. takes a snapshot of the data with the running release (`tazko-pre-release-backup.service`);
-2. installs the bundle into its own folder and virtualenv (pinned, hashed wheels only,
-   downloaded from PyPI: the host needs outbound HTTPS while a release installs);
+1. installs the bundle into its own folder and virtualenv (pinned, hashed wheels only,
+   downloaded from PyPI: the host needs outbound HTTPS while a release installs); if that
+   fails, nothing changes;
+2. takes a snapshot of the data with the running release (`tazko-pre-release-backup.service`);
 3. switches `/opt/tazko/current`, restarts, and waits up to 20 s for `/health`;
-4. if `/health` fails, switches back and restarts the previous release;
-5. if the previous release cannot use the data either (the new release ran a migration
-   it does not allow, D36), restores the pre-release snapshot and starts again. The data
-   it replaced is kept as `/var/lib/tazko/data.failed-<time>`.
+4. if `/health` fails, switches back, restarts the previous release, and runs
+   `tazko check` on the data (`tazko-check.service`): `/health` opens only `control.db`,
+   while a company file may hold a migration the previous release refuses;
+5. if the previous release cannot use the data (the new release ran a migration it does
+   not allow, D36), restores the pre-release snapshot and starts again. The data it
+   replaced is kept as `/var/lib/tazko/data.failed-<time>`; remove those folders by hand
+   once you no longer need them.
+
+A release that failed can be tried again with the same bundle name (after fixing
+`tazko.env`, say). Only one `tazko-release` runs at a time. The restore unit refuses a
+snapshot older than 30 minutes, so starting it by hand never throws away days of work.
 
 Exit 0 released; 1 failed and rolled back (or nothing changed); 3 still unhealthy, look
 at `sudo journalctl -u tazko.service -n 200 --no-pager`.
@@ -118,8 +131,10 @@ VITE_API_URL=https://tazko-api-dev.hugepigstudio.com deploy/frontend/deploy.sh  
 VITE_API_URL=https://tazko-api-dev.hugepigstudio.com deploy/frontend/deploy.sh --production
 ```
 
-It refuses to deploy when `frontend/public/_headers` does not allow the API host in
-`connect-src`. Rollback: Pages project, Deployments, the previous one, "Rollback to this
+It refuses to deploy an uncommitted tree, or when `connect-src` in
+`frontend/public/_headers` does not list the API host for https and wss. wrangler is
+pinned with hashes in `deploy/frontend/package-lock.json`; `--production` deploys the
+branch `main`, which must be the Pages project's production branch. Rollback: Pages project, Deployments, the previous one, "Rollback to this
 deployment".
 
 ## Backups
@@ -140,7 +155,9 @@ Snapshots contain `data/secret`, which signs sessions: keep them private (they a
 `/etc/tazko/rclone.conf` (root:tazko, 640) with a remote named `tazko-offsite` pointing at a
 private bucket, ideally an rclone `crypt` remote over it. Use a remote with static keys
 (rclone cannot rewrite the read-only config to refresh a token). The nightly job then runs
-`rclone sync /var/backups/tazko tazko-offsite:tazko`. Without that file it skips.
+`rclone copy /var/backups/tazko tazko-offsite:tazko`: copy, not sync, so a local folder
+emptied by mistake never empties the remote. Give the bucket a lifecycle rule that deletes
+objects after 40 days. Without the config file the step skips.
 
 **Restore by hand** (for example from a nightly snapshot):
 

@@ -11,7 +11,8 @@ WorkingDirectory=/var/lib/tazko
 UMask=0077
 Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
 # Deleted companies stay in data/trash/ for 30 days (D35).
-ExecStartPre=/opt/tazko/current/.venv/bin/tazko purge-trash --data /var/lib/tazko/data --older-than-days 30
+# The leading - : a failed purge never skips the backup.
+ExecStartPre=-/opt/tazko/current/.venv/bin/tazko purge-trash --data /var/lib/tazko/data --older-than-days 30
 ExecStart=/opt/tazko/current/.venv/bin/tazko backup --data /var/lib/tazko/data --to /var/backups/tazko --keep-days 30
 # Checks the newest snapshot it just wrote.
 ExecStartPost=/opt/tazko/current/.venv/bin/tazko check --data /var/backups/tazko
@@ -24,5 +25,6 @@ PrivateTmp=true
 PrivateDevices=true
 RestrictSUIDSGID=true
 CapabilityBoundingSet=
-ReadWritePaths=/var/backups/tazko /var/lib/tazko/data/trash
-ReadOnlyPaths=/var/lib/tazko
+# Writable data: SQLite needs the WAL index (-shm) to read a WAL database, even
+# read-only, and the same tazko user runs the server anyway (D37).
+ReadWritePaths=/var/backups/tazko /var/lib/tazko

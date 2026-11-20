@@ -26,12 +26,14 @@ pytestmark = pytest.mark.skipif(
 )
 
 FAKE_SYSTEMCTL = """#!/usr/bin/env bash
-# records calls; on (re)start of tazko.service decides health from the current release
+# Records calls. Markers in a release: BROKEN (never healthy), CONTRACT (migrates
+# control.db so older releases fail /health), TENANT_CONTRACT (migrates a company
+# file: /health still passes, tazko check fails for older releases).
 echo "$*" >> "$WORK/calls"
 unit="${@: -1}"
+rel="$(readlink "$WORK/opt/current" || true)"
 case "$1 $unit" in
   "restart tazko.service"|"start tazko.service")
-    rel="$(readlink "$WORK/opt/current" || true)"
     rm -f "$WORK/health"
     if [ -n "$rel" ] && [ ! -e "$rel/BROKEN" ]; then
       if [ ! -e "$WORK/contracted" ] || [ -e "$rel/CONTRACT" ]; then
@@ -39,12 +41,18 @@ case "$1 $unit" in
       fi
     fi
     [ -n "$rel" ] && [ -e "$rel/CONTRACT" ] && touch "$WORK/contracted"
+    [ -n "$rel" ] && [ -e "$rel/TENANT_CONTRACT" ] && touch "$WORK/tenant-contracted"
     ;;
   "stop tazko.service") rm -f "$WORK/health" ;;
+  "start tazko-check.service")
+    [ -e "$WORK/tenant-contracted" ] && [ ! -e "$rel/TENANT_CONTRACT" ] && exit 1 ;;
   "start tazko-pre-release-backup.service")
+    echo "backup-with $(basename "$rel")" >> "$WORK/calls"
     [ -e "$WORK/backup-fails" ] && exit 1
     touch "$WORK/backed-up" ;;
-  "start tazko-restore.service") rm -f "$WORK/contracted" ;;
+  "start tazko-restore.service")
+    [ -e "$WORK/restore-fails" ] && exit 1
+    rm -f "$WORK/contracted" "$WORK/tenant-contracted" ;;
 esac
 exit 0
 """
@@ -53,8 +61,14 @@ FAKE_PYTHON = """#!/usr/bin/env bash
 # python3.12 -m venv DIR: a venv whose pip records its arguments
 [ "$1 $2" = "-m venv" ] || exit 9
 mkdir -p "$3/bin"
-printf '#!/usr/bin/env bash\\necho "pip $*" >> "%s/calls"\\n[ -e "%s/pip-fails" ] && exit 1\\nexit 0\\n' \
-  "$WORK" "$WORK" > "$3/bin/pip"
+cat > "$3/bin/pip" <<'EOF'
+#!/usr/bin/env bash
+# pip-fails: every call fails; pip-fails-first: only the requirements install fails
+echo "pip $*" >> "$WORK/calls"
+[ -e "$WORK/pip-fails" ] && exit 1
+[ -e "$WORK/pip-fails-first" ] && [[ " $* " == *" -r "* ]] && exit 1
+exit 0
+EOF
 chmod +x "$3/bin/pip"
 """
 
@@ -128,8 +142,12 @@ def test_a_later_release_backs_up_before_switching(work: Path) -> None:
 
     release(work, str(bundle(work, "20261120T110000Z")))
 
+    # then the snapshot is taken by the release still running, after the install
     log = calls(work)
-    assert log.index("start tazko-pre-release-backup.service") < len(log) - 1
+    assert "backup-with 20261120T100000Z-abc1234" in log
+    assert max(i for i, c in enumerate(log) if c.startswith("pip")) < log.index(
+        "start tazko-pre-release-backup.service"
+    )
     assert current(work) == "20261120T110000Z-abc1234"
 
 
@@ -154,10 +172,11 @@ def test_a_rollback_the_data_refuses_restores_the_pre_release_backup(work: Path)
     # then the old release fails on the data too, so the backup is restored
     assert done.returncode == 1
     log = calls(work)
-    assert log[-3:] == [
+    assert log[-4:] == [
         "stop tazko.service",
         "start tazko-restore.service",
         "start tazko.service",
+        "start tazko-check.service",
     ]
     assert "restored the pre-release backup" in done.stderr
     assert current(work) == "20261120T100000Z-abc1234"
@@ -242,3 +261,73 @@ def test_a_bundle_outside_the_incoming_folder_is_refused(work: Path, tmp_path: P
     made.rename(elsewhere)
 
     assert release(work, str(elsewhere)).returncode == 2
+
+
+def test_a_failed_requirements_install_stops_before_the_switch(work: Path) -> None:
+    # bash ignores set -e inside a function used as a condition: each step must stop it
+    release(work, str(bundle(work, "20261120T100000Z")))
+    (work / "pip-fails-first").touch()
+
+    done = release(work, str(bundle(work, "20261120T110000Z")))
+
+    assert done.returncode == 1
+    assert "nothing changed" in done.stderr
+    assert current(work) == "20261120T100000Z-abc1234"
+    assert calls(work).count("restart tazko.service") == 1  # only the first release
+
+
+def test_a_company_file_the_old_release_refuses_is_restored_too(work: Path) -> None:
+    # given the new release migrates a company file (health still passes) and then fails
+    release(work, str(bundle(work, "20261120T100000Z")))
+
+    done = release(work, str(bundle(work, "20261120T110000Z", marks=("TENANT_CONTRACT", "BROKEN"))))
+
+    # then tazko check refuses the data for the old release, so the backup is restored
+    assert done.returncode == 1
+    assert "restored the pre-release backup" in done.stderr
+    assert "start tazko-restore.service" in calls(work)
+
+
+def test_a_failed_restore_says_the_service_is_stopped(work: Path) -> None:
+    release(work, str(bundle(work, "20261120T100000Z")))
+    (work / "restore-fails").touch()
+
+    done = release(work, str(bundle(work, "20261120T110000Z", marks=("CONTRACT", "BROKEN"))))
+
+    assert done.returncode == 3
+    assert "tazko.service is stopped" in done.stderr
+
+
+def test_a_release_that_failed_can_be_tried_again(work: Path) -> None:
+    release(work, str(bundle(work, "20261120T100000Z")))
+    broken = bundle(work, "20261120T110000Z", marks=("BROKEN",))
+    release(work, str(broken))
+    bundle(work, "20261120T110000Z")  # same name, fixed
+
+    done = release(work, str(broken))
+
+    assert done.returncode == 0, done.stderr
+    assert current(work) == "20261120T110000Z-abc1234"
+    assert not (work / "opt" / "releases" / "20261120T110000Z-abc1234" / "FAILED").exists()
+
+
+def test_a_healthy_release_cannot_be_installed_twice(work: Path) -> None:
+    made = bundle(work, "20261120T100000Z")
+    release(work, str(made))
+
+    done = release(work, str(made))
+
+    assert done.returncode == 1
+    assert "already installed" in done.stderr
+
+
+def test_rollback_to_a_release_the_data_refuses_comes_back(work: Path) -> None:
+    release(work, str(bundle(work, "20261120T100000Z")))
+    release(work, str(bundle(work, "20261120T110000Z", marks=("TENANT_CONTRACT",))))
+
+    done = release(work, "--rollback")
+
+    assert done.returncode == 1
+    assert "cannot run on this data" in done.stderr
+    assert current(work) == "20261120T110000Z-abc1234"
+    assert "start tazko-restore.service" not in calls(work)  # never on a manual rollback

@@ -6,6 +6,7 @@ Conflicts=tazko.service
 Type=oneshot
 User=tazko
 Group=tazko
+EnvironmentFile=/etc/tazko/tazko.env
 WorkingDirectory=/var/lib/tazko
 UMask=0077
 Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
