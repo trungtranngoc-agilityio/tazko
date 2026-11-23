@@ -68,6 +68,13 @@ def company_rows(tenants: Tenants, sql: str, *args: object) -> list[sqlite3.Row]
     return tenants.get("acme").db.read(lambda c: c.execute(sql, args).fetchall())
 
 
+def roles(tenants: Tenants, project: int) -> dict[int, str]:
+    rows = company_rows(
+        tenants, "SELECT person_id, role FROM project_members WHERE project_id = ?", project
+    )
+    return {r[0]: r[1] for r in rows}
+
+
 @pytest.fixture
 def launch(client: TestClient, google: FakeGoogle, boss: User, pia: User) -> int:
     """Project "Launch", made by the company owner with Pia as its owner."""
@@ -90,7 +97,7 @@ def join(
 
 
 def test_a_company_member_who_is_not_an_owner_cannot_create_a_project(
-    client: TestClient, google: FakeGoogle, pia: User
+    client: TestClient, google: FakeGoogle, tenants: Tenants, pia: User
 ) -> None:
     as_(client, google, pia)
 
@@ -98,6 +105,7 @@ def test_a_company_member_who_is_not_an_owner_cannot_create_a_project(
 
     assert response.status_code == 403
     assert response.json()["error"]["code"] == "FORBIDDEN"
+    assert company_rows(tenants, "SELECT count(*) FROM projects")[0][0] == 0
 
 
 def test_a_company_owner_creates_a_project_with_its_first_owner(
@@ -198,7 +206,7 @@ def test_a_company_member_outside_the_project_cannot_see_it(
 
 
 def test_an_observer_cannot_change_anything(
-    client: TestClient, google: FakeGoogle, pia: User, max_: User, launch: int
+    client: TestClient, google: FakeGoogle, tenants: Tenants, pia: User, max_: User, launch: int
 ) -> None:
     join(client, google, launch, max_, "observer", by=pia)
     as_(client, google, max_)
@@ -206,6 +214,8 @@ def test_an_observer_cannot_change_anything(
     assert client.get(f"{BASE}/{launch}").json()["role"] == "observer"
     assert write(client, "PATCH", f"{BASE}/{launch}", {"description": "x"}).status_code == 403
     assert write(client, "DELETE", f"{BASE}/{launch}/members/{pia.id}").status_code == 403
+    assert company_rows(tenants, "SELECT description FROM projects")[0][0] == ""
+    assert roles(tenants, launch) == {pia.id: "owner", max_.id: "observer"}
 
 
 # --- settings and management ---------------------------------------------------------------
@@ -245,12 +255,16 @@ def test_aging_days_are_one_of_the_offered_choices(
 
 
 def test_a_project_owner_cannot_archive_or_delete_the_project(
-    client: TestClient, google: FakeGoogle, pia: User, launch: int
+    client: TestClient, google: FakeGoogle, tenants: Tenants, pia: User, launch: int
 ) -> None:
     as_(client, google, pia)
 
     assert write(client, "PATCH", f"{BASE}/{launch}", {"archived": True}).status_code == 403
     assert write(client, "DELETE", f"{BASE}/{launch}").status_code == 403
+    assert tuple(company_rows(tenants, "SELECT archived_at, deleted_at FROM projects")[0]) == (
+        None,
+        None,
+    )
 
 
 def test_a_company_owner_cannot_change_the_settings_of_a_project_they_are_not_in(
@@ -384,15 +398,28 @@ def test_a_company_owner_adds_themselves_and_it_is_audit_logged(
 
 
 def test_a_company_owner_manages_project_owners_but_not_plain_members(
-    client: TestClient, google: FakeGoogle, boss: User, pia: User, max_: User, launch: int
+    client: TestClient,
+    google: FakeGoogle,
+    tenants: Tenants,
+    boss: User,
+    pia: User,
+    max_: User,
+    launch: int,
 ) -> None:
     as_(client, google, boss)
+    path = f"{BASE}/{launch}/members/{max_.id}"
 
     owner = write(client, "POST", f"{BASE}/{launch}/members", {"user_id": max_.id, "role": "owner"})
-    demote = write(client, "PATCH", f"{BASE}/{launch}/members/{max_.id}", {"role": "member"})
-    then = write(client, "PATCH", f"{BASE}/{launch}/members/{max_.id}", {"role": "observer"})
+    assert owner.status_code == 201
+    assert roles(tenants, launch) == {pia.id: "owner", max_.id: "owner"}
 
-    assert (owner.status_code, demote.status_code, then.status_code) == (201, 200, 403)
+    assert write(client, "PATCH", path, {"role": "member"}).status_code == 200
+    assert roles(tenants, launch)[max_.id] == "member"
+
+    assert write(client, "PATCH", path, {"role": "observer"}).status_code == 403
+    assert roles(tenants, launch)[max_.id] == "member"
+    types = [r[0] for r in company_rows(tenants, "SELECT type FROM events ORDER BY id")]
+    assert types[-2:] == ["project.member_added", "project.role_changed"]
 
 
 def test_the_last_project_owner_is_never_demoted_or_removed(
@@ -482,3 +509,140 @@ def test_changing_someone_who_is_not_in_the_project_is_404(
         == 404
     )
     assert write(client, "DELETE", f"{BASE}/{launch}/members/{max_.id}").status_code == 404
+
+
+# --- review findings (security and reviewer, part 1) ------------------------------------------
+
+
+def joined_without_copy(control: Database, acme: Org, name: str) -> User:
+    """A company member who joined by invite and never opened the company:
+    no copy in the company file yet."""
+    user = users.get_or_create(control, f"{name}@example.com", name=name.title())
+    control.write(lambda c: orgs.join(c, org_id=acme.id, user=user, role="member", ip=None))
+    return user
+
+
+def test_someone_outside_the_project_changes_nothing_when_they_try(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    acme: Org,
+    pia: User,
+    max_: User,
+    launch: int,
+) -> None:
+    new = joined_without_copy(control, acme, "neo")
+    as_(client, google, max_)
+    before = company_rows(tenants, "SELECT count(*) FROM events")[0][0]
+
+    tries = [
+        write(client, "POST", f"{BASE}/{launch}/members", {"user_id": new.id, "role": "observer"}),
+        write(client, "PATCH", f"{BASE}/{launch}/members/{pia.id}", {"role": "member"}),
+        write(client, "DELETE", f"{BASE}/{launch}/members/{pia.id}"),
+        write(client, "DELETE", f"{BASE}/{launch}"),
+    ]
+
+    assert [t.status_code for t in tries] == [404, 404, 404, 404]
+    assert company_rows(tenants, "SELECT count(*) FROM people WHERE id = ?", new.id)[0][0] == 0
+    assert company_rows(tenants, "SELECT count(*) FROM events")[0][0] == before
+    assert roles(tenants, launch) == {pia.id: "owner"}
+    assert company_rows(tenants, "SELECT deleted_at FROM projects")[0][0] is None
+
+
+def test_adding_someone_with_no_copy_in_the_company_file_makes_it_with_an_event(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    acme: Org,
+    pia: User,
+    launch: int,
+) -> None:
+    new = joined_without_copy(control, acme, "neo")
+    as_(client, google, pia)
+
+    added = write(client, "POST", f"{BASE}/{launch}/members", {"user_id": new.id, "role": "member"})
+
+    assert added.status_code == 201
+    assert added.json()["name"] == "Neo"
+    events = company_rows(tenants, "SELECT type FROM events ORDER BY id DESC LIMIT 2")
+    assert [e[0] for e in events] == ["project.member_added", "member.joined"]
+
+
+def test_people_removed_from_the_company_leave_its_projects(
+    client: TestClient,
+    google: FakeGoogle,
+    tenants: Tenants,
+    boss: User,
+    pia: User,
+    max_: User,
+    launch: int,
+) -> None:
+    """D6 also when leaving the company: no stale owner keeps the last-owner
+    check happy, and a later re-invite brings back no project role."""
+    join(client, google, launch, max_, "owner", by=pia)
+    as_(client, google, boss)
+
+    assert write(client, "DELETE", f"/api/orgs/acme/members/{max_.id}").status_code == 204
+
+    assert roles(tenants, launch) == {pia.id: "owner"}
+    as_(client, google, pia)
+    demote = write(client, "PATCH", f"{BASE}/{launch}/members/{pia.id}", {"role": "member"})
+    assert demote.json()["error"]["code"] == "LAST_OWNER"
+    removed = company_rows(
+        tenants, "SELECT payload FROM events WHERE type = 'project.member_removed'"
+    )
+    assert [r[0] for r in removed] == [
+        f'{{"project_id": {launch}, "user_id": {max_.id}, "reason": "left_company"}}'
+    ]
+
+
+def test_a_company_owner_joining_a_project_is_audit_logged_however_they_join(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    acme: Org,
+    boss: User,
+    pia: User,
+    launch: int,
+) -> None:
+    cara = person(control, tenants, acme, "cara", "owner")
+    join(client, google, launch, cara, "member", by=pia)  # a project owner adds a company owner
+    as_(client, google, boss)
+    made = write(
+        client, "POST", BASE, {"name": "Own", "owner_id": boss.id}
+    )  # creates it for themselves
+
+    assert made.status_code == 201
+    assert made.json()["role"] == "owner"
+    joined = audit(control, "project.company_owner_added")
+    assert [(r["actor_id"], r["target"]) for r in joined] == [(pia.id, cara.email)]
+    (own,) = audit(control, "project.self_added")
+    assert (own["actor_id"], own["target"]) == (boss.id, "Own")
+
+
+def test_a_member_can_leave_a_project_but_the_last_owner_cannot(
+    client: TestClient, google: FakeGoogle, tenants: Tenants, pia: User, max_: User, launch: int
+) -> None:
+    join(client, google, launch, max_, "observer", by=pia)
+    as_(client, google, max_)
+
+    assert write(client, "DELETE", f"{BASE}/{launch}/members/{max_.id}").status_code == 204
+    assert roles(tenants, launch) == {pia.id: "owner"}
+    as_(client, google, pia)
+    assert write(client, "DELETE", f"{BASE}/{launch}/members/{pia.id}").status_code == 409
+
+
+def test_archiving_an_archived_project_changes_nothing(
+    client: TestClient, google: FakeGoogle, tenants: Tenants, boss: User, launch: int
+) -> None:
+    as_(client, google, boss)
+    first = write(client, "PATCH", f"{BASE}/{launch}", {"archived": True}).json()["archived_at"]
+    before = company_rows(tenants, "SELECT count(*) FROM events")[0][0]
+
+    again = write(client, "PATCH", f"{BASE}/{launch}", {"archived": True})
+
+    assert again.json()["archived_at"] == first
+    assert company_rows(tenants, "SELECT count(*) FROM events")[0][0] == before

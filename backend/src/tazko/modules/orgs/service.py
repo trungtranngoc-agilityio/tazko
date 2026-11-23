@@ -41,8 +41,9 @@ __all__ = [
     "add_member",
     "change_role",
     "companies_of",
+    "company_member",
+    "copy_person",
     "create_company",
-    "ensure_person",
     "has_member_email",
     "is_active",
     "join",
@@ -258,7 +259,27 @@ def remove_member(
         )
 
     control.write(run)
-    _company_event(company, "member.removed", actor_id, {"user_id": user_id})
+    _left_company(company, actor_id, user_id)
+
+
+def _left_company(company: Company, actor_id: int | None, user_id: int) -> None:
+    """In the company file: the removal's event, and the person leaves every
+    project there (D6), so no stale owner or role outlives the membership."""
+    # Imported here: the boards service imports this module.
+    from tazko.modules.boards import service as boards
+
+    def run(conn: sqlite3.Connection) -> None:
+        payload = json.dumps({"user_id": user_id})
+        repo.add_event(
+            conn, type="member.removed", actor_id=actor_id, payload=payload, now=now_iso()
+        )
+        boards.leave_company(conn, person_id=user_id, actor_id=actor_id)
+
+    try:
+        company.tenant.db.write(run)
+    except Exception:
+        # control.db already took them out, so they can no longer open the company.
+        log.exception("company file not updated after member %s was removed", user_id)
 
 
 def _company_event(
@@ -334,27 +355,33 @@ def _copy_person(
     tenant.db.write(run)
 
 
-def ensure_person(control: Database, company: Company, user_id: int) -> MemberRow | None:
-    """The company member `user_id`, with their copy in the company file made
-    if it is missing (someone who joined by invite and never opened the
-    company has none yet). None when they are not a member of the company."""
-    found = control.read(lambda c: repo.member(c, company.org.id, user_id))
-    if found is None:
-        return None
+def company_member(control: Database, company: Company, user_id: int) -> MemberRow | None:
+    """The company member `user_id` (their company role included), or None. Reads only."""
+    return control.read(lambda c: repo.member(c, company.org.id, user_id))
 
-    def run(conn: sqlite3.Connection) -> None:
-        if not repo.has_person(conn, user_id):
-            repo.upsert_person(
-                conn,
-                user_id=user_id,
-                name=found.name,
-                email=found.email,
-                avatar_url=found.avatar_url,
-                now=now_iso(),
-            )
 
-    company.tenant.db.write(run)
-    return found
+def copy_person(conn: sqlite3.Connection, member: MemberRow) -> None:
+    """Inside the caller's transaction on the company file: make the member's
+    copy if it is missing (someone who joined by invite and never opened the
+    company has none yet), with the same member.joined event open_company writes."""
+    if repo.has_person(conn, member.user_id):
+        return
+    now = now_iso()
+    repo.upsert_person(
+        conn,
+        user_id=member.user_id,
+        name=member.name,
+        email=member.email,
+        avatar_url=member.avatar_url,
+        now=now,
+    )
+    repo.add_event(
+        conn,
+        type="member.joined",
+        actor_id=member.user_id,
+        payload=json.dumps({"user_id": member.user_id, "role": member.role}),
+        now=now,
+    )
 
 
 def org_by_id(conn: sqlite3.Connection, org_id: int) -> Org | None:

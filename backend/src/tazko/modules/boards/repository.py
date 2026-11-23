@@ -138,9 +138,11 @@ def summaries(conn: sqlite3.Connection) -> list[Summary]:
     for project_id, person_id, name in conn.execute(
         "SELECT m.project_id, m.person_id, pe.name FROM project_members m"
         " JOIN people pe ON pe.id = m.person_id"
-        " JOIN projects p ON p.id = m.project_id"
-        " WHERE m.role = 'owner' AND p.deleted_at IS NULL"
-        " ORDER BY pe.name COLLATE NOCASE, pe.id"
+        " WHERE m.role = 'owner' AND m.project_id IN"
+        " (SELECT id FROM projects WHERE deleted_at IS NULL"
+        " ORDER BY name COLLATE NOCASE, id LIMIT ?)"
+        " ORDER BY pe.name COLLATE NOCASE, pe.id",
+        (PROJECTS_CAP,),
     ):
         if project_id in owners:
             owners[project_id].append((person_id, name))
@@ -238,8 +240,14 @@ def remove_member(conn: sqlite3.Connection, *, project_id: int, person_id: int) 
     )
 
 
+def projects_of_any_state(conn: sqlite3.Connection, person_id: int) -> list[int]:
+    """Every project the person is in, archived and in trash included."""
+    rows = conn.execute("SELECT project_id FROM project_members WHERE person_id = ?", (person_id,))
+    return [row[0] for row in rows]
+
+
 def add_event(
-    conn: sqlite3.Connection, *, type: str, actor_id: int, payload: str, now: str
+    conn: sqlite3.Connection, *, type: str, actor_id: int | None, payload: str, now: str
 ) -> None:
     conn.execute(
         "INSERT INTO events (type, actor_id, payload, created_at) VALUES (?, ?, ?, ?)",
