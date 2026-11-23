@@ -4,6 +4,7 @@
   migrations from tazko/migrations/<schema> tracked by PRAGMA user_version.
 - `Tenants` (tenant.py): the cache of open company files under data/orgs/<slug>.
 
+- rank.py: fractional ranks for lists and cards, with rebalance (M2-01).
 - snapshot.py: `tazko backup`, `tazko check` and `tazko purge-trash` (M1-08).
 """
 
