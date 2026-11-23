@@ -218,17 +218,18 @@ def owner_count(conn: sqlite3.Connection, project_id: int) -> int:
 
 
 def remove_member(conn: sqlite3.Connection, *, project_id: int, person_id: int) -> None:
-    """Take the person out, and off the project's restricted boards, card
-    assignees and watchers (D6). Their cards and comments stay."""
+    """Take the person out, and off the project's restricted boards, board
+    stars, card assignees and watchers (D6). Their cards and comments stay."""
     boards = "SELECT id FROM boards WHERE project_id = ?"
     cards = (
         "SELECT c.id FROM cards c JOIN lists l ON l.id = c.list_id"
         " JOIN boards b ON b.id = l.board_id WHERE b.project_id = ?"
     )
-    conn.execute(
-        f"DELETE FROM board_access WHERE person_id = ? AND board_id IN ({boards})",  # noqa: S608 (constant subquery; values are bound)
-        (person_id, project_id),
-    )
+    for table in ("board_access", "board_stars"):
+        conn.execute(
+            f"DELETE FROM {table} WHERE person_id = ? AND board_id IN ({boards})",  # noqa: S608 (fixed table names and subquery; values are bound)
+            (person_id, project_id),
+        )
     for table in ("card_members", "card_watchers"):
         conn.execute(
             f"DELETE FROM {table} WHERE person_id = ? AND card_id IN ({cards})",  # noqa: S608 (fixed table names and subquery; values are bound)
@@ -351,6 +352,18 @@ def starred(conn: sqlite3.Connection, board_id: int, person_id: int) -> bool:
     return row is not None
 
 
+def access_lists(conn: sqlite3.Connection, project_id: int) -> dict[int, list[int]]:
+    """The list of every restricted board of the project, in one query."""
+    lists: dict[int, list[int]] = {}
+    for board_id, person_id in conn.execute(
+        "SELECT a.board_id, a.person_id FROM board_access a JOIN boards b ON b.id = a.board_id"
+        " WHERE b.project_id = ? AND b.restricted = 1 ORDER BY a.board_id, a.person_id",
+        (project_id,),
+    ):
+        lists.setdefault(board_id, []).append(person_id)
+    return lists
+
+
 def access_list(conn: sqlite3.Connection, board_id: int) -> list[int]:
     rows = conn.execute(
         "SELECT person_id FROM board_access WHERE board_id = ? ORDER BY person_id", (board_id,)
@@ -383,6 +396,14 @@ def set_access(
         conn.executemany(
             "INSERT INTO board_access (board_id, person_id) VALUES (?, ?)",
             [(board_id, person_id) for person_id in sorted(set(people))],
+        )
+        # A star never outlives the view: only project owners and the list keep theirs.
+        conn.execute(
+            "DELETE FROM board_stars WHERE board_id = ? AND person_id NOT IN"
+            " (SELECT person_id FROM board_access WHERE board_id = ?"
+            "  UNION SELECT person_id FROM project_members"
+            "  WHERE project_id = (SELECT project_id FROM boards WHERE id = ?) AND role = 'owner')",
+            (board_id, board_id, board_id),
         )
 
 

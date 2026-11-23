@@ -272,7 +272,27 @@ def _audit_company_owner(
     if target.role != "owner":
         return
     itself = target.user_id == actor_id
-    action = "project.self_added" if itself else "project.company_owner_added"
+    _audit(
+        control,
+        company,
+        "project.self_added" if itself else "project.company_owner_added",
+        actor_id,
+        project if itself else target.email,
+        {"role": role} if itself else {"role": role, "project": project},
+        ip,
+    )
+
+
+def _audit(
+    control: Database,
+    company: Company,
+    action: str,
+    actor_id: int,
+    target: str,
+    detail: dict[str, object],
+    ip: str | None,
+) -> None:
+    """After the company file committed: logged, not failed, if it cannot be written (D39)."""
 
     def run(conn: sqlite3.Connection) -> None:
         audit.record(
@@ -280,23 +300,33 @@ def _audit_company_owner(
             action,
             actor_id=actor_id,
             org_id=company.org.id,
-            target=project if itself else target.email,
-            detail={"role": role} if itself else {"role": role, "project": project},
+            target=target,
+            detail=detail,
             ip=ip,
         )
 
     try:
         control.write(run)
     except Exception:
-        # The person is in; the company file's events row has it. Log, do not fail (D39).
         log.exception("audit row %s not written", action)
 
 
 def change_role(
-    company: Company, *, actor_id: int, project_id: int, user_id: int, role: ProjectRole
+    control: Database,
+    company: Company,
+    *,
+    actor_id: int,
+    project_id: int,
+    user_id: int,
+    role: ProjectRole,
+    ip: str | None,
 ) -> Member:
-    def run(conn: sqlite3.Connection) -> Member:
+    """A company owner making themselves a project owner is audit-logged: a
+    project owner sees every restricted board (D40)."""
+
+    def run(conn: sqlite3.Connection) -> tuple[Member, str, bool]:
         found = _target(conn, company, actor_id, project_id, user_id, also=role)
+        promoted = found.role != "owner" and role == "owner"
         if found.role != role:
             _keep_an_owner(conn, project_id, found, role)
             repo.set_role(conn, project_id=project_id, person_id=user_id, role=role)
@@ -312,9 +342,13 @@ def change_role(
         changed = repo.member(conn, project_id, user_id)
         if changed is None:
             raise RuntimeError("row vanished inside its own transaction")
-        return changed
+        project = repo.get(conn, project_id)
+        return changed, project.name if project else "", promoted
 
-    return company.tenant.db.write(run)
+    changed, name, promoted = company.tenant.db.write(run)
+    if promoted and user_id == actor_id and company.role == "owner":
+        _audit(control, company, "project.self_promoted", actor_id, name, {"role": role}, ip)
+    return changed
 
 
 def remove_member(company: Company, *, actor_id: int, project_id: int, user_id: int) -> None:
@@ -419,6 +453,13 @@ def _require_board(
     return seen, board
 
 
+def _reload_board(conn: sqlite3.Connection, project_id: int, board_id: int) -> Board:
+    board = repo.board(conn, project_id, board_id)
+    if board is None:
+        raise RuntimeError("row vanished inside its own transaction")
+    return board
+
+
 def _seen_board(conn: sqlite3.Connection, seen: Seen, board: Board, actor_id: int) -> SeenBoard:
     access = repo.access_list(conn, board.id) if seen.role == "owner" and board.restricted else None
     return SeenBoard(board, repo.starred(conn, board.id, actor_id), access)
@@ -429,8 +470,9 @@ def boards(company: Company, *, actor_id: int, project_id: int) -> list[SeenBoar
         seen = _require(conn, company, actor_id, project_id, "open_boards")
         owner = seen.role == "owner"
         rows = repo.boards_seen(conn, project_id, actor_id, every_restricted=owner)
+        lists = repo.access_lists(conn, project_id) if owner else {}
         return [
-            SeenBoard(b, starred, repo.access_list(conn, b.id) if owner and b.restricted else None)
+            SeenBoard(b, starred, lists.get(b.id, []) if owner and b.restricted else None)
             for b, starred in rows
         ]
 
@@ -455,10 +497,7 @@ def create_board(
             now=now_iso(),
         )
         _event(conn, "board.created", actor_id, board_id=board_id, project_id=project_id)
-        board = repo.board(conn, project_id, board_id)
-        if board is None:
-            raise RuntimeError("row vanished inside its own transaction")
-        return _seen_board(conn, seen, board, actor_id)
+        return _seen_board(conn, seen, _reload_board(conn, project_id, board_id), actor_id)
 
     return company.tenant.db.write(run)
 
@@ -496,10 +535,7 @@ def update_board(
                 actor_id,
                 board_id=board_id,
             )
-        changed = repo.board(conn, project_id, board_id)
-        if changed is None:
-            raise RuntimeError("row vanished inside its own transaction")
-        return _seen_board(conn, seen, changed, actor_id)
+        return _seen_board(conn, seen, _reload_board(conn, project_id, board_id), actor_id)
 
     return company.tenant.db.write(run)
 
@@ -516,29 +552,33 @@ def set_access(
     """Project owners restrict a board to chosen project members, or open it
     to the whole project again (the list is then cleared)."""
 
+    if not restricted and people:
+        raise Invalid("people: an open board has no list", field="people")
+    listed = sorted(set(people))
+
     def run(conn: sqlite3.Connection) -> SeenBoard:
-        seen, _ = _require_board(conn, company, actor_id, project_id, board_id, "restrict_board")
-        outside = [p for p in people if repo.role_of(conn, project_id, p) is None]
-        if restricted and outside:
+        seen, board = _require_board(
+            conn, company, actor_id, project_id, board_id, "restrict_board"
+        )
+        outside = [p for p in listed if repo.role_of(conn, project_id, p) is None]
+        if outside:
             raise Invalid(
                 f"people: not in the project: {outside}",
                 code="NOT_A_PROJECT_MEMBER",
                 field="people",
             )
-        repo.set_access(conn, board_id, restricted=restricted, people=people)
-        listed = sorted(set(people)) if restricted else []
-        _event(
-            conn,
-            "board.access_changed",
-            actor_id,
-            board_id=board_id,
-            restricted=restricted,
-            people=listed,
-        )
-        board = repo.board(conn, project_id, board_id)
-        if board is None:
-            raise RuntimeError("row vanished inside its own transaction")
-        return _seen_board(conn, seen, board, actor_id)
+        unchanged = board.restricted == restricted and repo.access_list(conn, board_id) == listed
+        if not unchanged:
+            repo.set_access(conn, board_id, restricted=restricted, people=listed)
+            _event(
+                conn,
+                "board.access_changed",
+                actor_id,
+                board_id=board_id,
+                restricted=restricted,
+                people=listed,
+            )
+        return _seen_board(conn, seen, _reload_board(conn, project_id, board_id), actor_id)
 
     return company.tenant.db.write(run)
 

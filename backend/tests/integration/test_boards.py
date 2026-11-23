@@ -14,7 +14,7 @@ from tazko.db.tenant import Tenants
 from tazko.modules.orgs.service import Org
 from tazko.modules.users.service import User
 from tests.integration.company import BASE, as_, company_rows, join, person, write
-from tests.integration.oidc import FakeGoogle
+from tests.integration.oidc import FakeGoogle, audit
 
 
 def boards_of(project: int) -> str:
@@ -113,7 +113,12 @@ def test_a_board_needs_a_valid_name(
 
 
 def test_a_company_owner_opens_boards_only_once_added_to_the_project(
-    client: TestClient, google: FakeGoogle, boss: User, pia: User, launch: int
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    boss: User,
+    pia: User,
+    launch: int,
 ) -> None:
     as_(client, google, pia)
     board = make_board(client, launch)
@@ -127,6 +132,8 @@ def test_a_company_owner_opens_boards_only_once_added_to_the_project(
     assert listed.json()["error"]["code"] == "NOT_IN_PROJECT"
     join(client, google, launch, boss, "member", by=boss)
     assert names(client, launch) == ["Sprint"]
+    (row,) = audit(control, "project.self_added")
+    assert (row["actor_id"], row["detail"]) == (boss.id, '{"role":"member"}')
 
 
 def test_a_company_member_outside_the_project_finds_no_boards(
@@ -173,6 +180,7 @@ def test_a_restricted_board_is_hidden_from_project_members_not_on_its_list(
     make_board(client, team, "Open")
     assert restrict(client, team, board, []).status_code == 200
     as_(client, google, max_)
+    events = company_rows(tenants, "SELECT count(*) FROM events")[0][0]
 
     path = f"{boards_of(team)}/{board}"
     assert names(client, team) == ["Open"]
@@ -182,6 +190,8 @@ def test_a_restricted_board_is_hidden_from_project_members_not_on_its_list(
     assert restrict(client, team, board, [max_.id]).status_code == 404
     assert company_rows(tenants, "SELECT name FROM boards WHERE id = ?", board)[0][0] == "Secret"
     assert company_rows(tenants, "SELECT count(*) FROM board_stars")[0][0] == 0
+    assert company_rows(tenants, "SELECT count(*) FROM board_access")[0][0] == 0
+    assert company_rows(tenants, "SELECT count(*) FROM events")[0][0] == events
 
 
 def test_listed_members_and_project_owners_open_a_restricted_board(
@@ -281,21 +291,28 @@ def test_a_member_renames_and_closes_a_board_and_an_observer_cannot(
 
 
 def test_stars_are_personal(
-    client: TestClient, google: FakeGoogle, pia: User, max_: User, team: int
+    client: TestClient, google: FakeGoogle, tenants: Tenants, pia: User, max_: User, team: int
 ) -> None:
     board = make_board(client, team)
+    star = f"{boards_of(team)}/{board}/star"
     as_(client, google, max_)
 
-    assert write(client, "PUT", f"{boards_of(team)}/{board}/star").status_code == 204
-    assert (
-        write(client, "PUT", f"{boards_of(team)}/{board}/star").status_code == 204
-    )  # twice is fine
+    assert write(client, "PUT", star).status_code == 204
+    assert write(client, "PUT", star).status_code == 204  # twice is no change
     assert client.get(boards_of(team)).json()[0]["starred"] is True
     as_(client, google, pia)
     assert client.get(boards_of(team)).json()[0]["starred"] is False
     as_(client, google, max_)
-    assert write(client, "DELETE", f"{boards_of(team)}/{board}/star").status_code == 204
+    assert write(client, "DELETE", star).status_code == 204
+    assert write(client, "DELETE", star).status_code == 204
     assert client.get(boards_of(team)).json()[0]["starred"] is False
+
+    types = [
+        r[0]
+        for r in company_rows(tenants, "SELECT type FROM events WHERE type LIKE 'board.%star%'")
+    ]
+    assert types == ["board.starred", "board.unstarred"]
+    assert company_rows(tenants, "SELECT count(*) FROM board_stars")[0][0] == 0
 
 
 def test_boards_of_an_archived_project_are_read_only(
@@ -312,3 +329,83 @@ def test_boards_of_an_archived_project_are_read_only(
     assert refused.status_code == 409
     assert refused.json()["error"]["code"] == "PROJECT_ARCHIVED"
     assert write(client, "POST", boards_of(launch), {"name": "New"}).status_code == 409
+    assert write(client, "PUT", f"{boards_of(launch)}/{board}/star").status_code == 204  # personal
+
+
+# --- review findings (part 2) -------------------------------------------------------------------
+
+
+def test_a_company_owner_promoting_themselves_is_audit_logged(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    boss: User,
+    pia: User,
+    launch: int,
+) -> None:
+    """A project owner sees every restricted board, so a company owner who
+    makes themselves one gains board access and the audit log says so."""
+    join(client, google, launch, boss, "observer", by=boss)
+
+    promoted = write(client, "PATCH", f"{BASE}/{launch}/members/{boss.id}", {"role": "owner"})
+
+    assert promoted.status_code == 200
+    (row,) = audit(control, "project.self_promoted")
+    assert (row["actor_id"], row["target"]) == (boss.id, "Launch")
+
+
+def test_stars_end_with_access_to_the_board(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    acme: Org,
+    pia: User,
+    max_: User,
+    team: int,
+) -> None:
+    """A star never outlives the person's view of the board: left off a
+    restricted list, or out of the project."""
+    eve = person(control, tenants, acme, "eve", "member")
+    join(client, google, team, eve, "member", by=pia)
+    first, second = make_board(client, team, "A"), make_board(client, team, "B")
+    for who in (max_, eve):
+        as_(client, google, who)
+        write(client, "PUT", f"{boards_of(team)}/{first}/star")
+        write(client, "PUT", f"{boards_of(team)}/{second}/star")
+    as_(client, google, pia)
+
+    restrict(client, team, first, [eve.id])
+    write(client, "DELETE", f"{BASE}/{team}/members/{eve.id}")
+
+    stars = company_rows(tenants, "SELECT person_id, board_id FROM board_stars ORDER BY board_id")
+    assert [tuple(r) for r in stars] == [(max_.id, second)]
+
+
+def test_an_open_board_takes_no_list_and_an_unchanged_one_writes_no_event(
+    client: TestClient, google: FakeGoogle, tenants: Tenants, pia: User, max_: User, team: int
+) -> None:
+    board = make_board(client, team)
+    access = f"{boards_of(team)}/{board}/access"
+
+    refused = write(client, "PUT", access, {"restricted": False, "people": [max_.id]})
+    before = company_rows(tenants, "SELECT count(*) FROM events")[0][0]
+    same = write(client, "PUT", access, {"restricted": False, "people": []})
+
+    assert refused.status_code == 422
+    assert same.status_code == 200
+    assert company_rows(tenants, "SELECT count(*) FROM events")[0][0] == before
+
+
+def test_project_owners_get_every_restricted_list_in_one_listing(
+    client: TestClient, google: FakeGoogle, pia: User, max_: User, team: int
+) -> None:
+    secret, open_, hidden = (make_board(client, team, n) for n in ("A", "B", "C"))
+    restrict(client, team, secret, [max_.id])
+    restrict(client, team, hidden, [])
+
+    listed = {b["name"]: b["access"] for b in client.get(boards_of(team)).json()}
+
+    assert listed == {"A": [max_.id], "B": None, "C": []}
+    assert open_

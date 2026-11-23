@@ -122,10 +122,22 @@ def add_member(
 
 @router.patch("/{project_id}/members/{user_id}")
 def change_role(
-    project_id: ProjectId, user_id: UserId, body: RoleIn, company: CompanyDep, user: CurrentUser
+    project_id: ProjectId,
+    user_id: UserId,
+    body: RoleIn,
+    company: CompanyDep,
+    user: CurrentUser,
+    control: ControlDep,
+    ip: ClientIp,
 ) -> ProjectMemberOut:
     changed = service.change_role(
-        company, actor_id=user.id, project_id=project_id, user_id=user_id, role=body.role
+        control,
+        company,
+        actor_id=user.id,
+        project_id=project_id,
+        user_id=user_id,
+        role=body.role,
+        ip=ip,
     )
     return ProjectMemberOut.of(changed)
 
