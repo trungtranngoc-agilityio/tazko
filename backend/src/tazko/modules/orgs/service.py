@@ -42,6 +42,7 @@ __all__ = [
     "change_role",
     "companies_of",
     "create_company",
+    "ensure_person",
     "has_member_email",
     "is_active",
     "join",
@@ -331,6 +332,29 @@ def _copy_person(
         )
 
     tenant.db.write(run)
+
+
+def ensure_person(control: Database, company: Company, user_id: int) -> MemberRow | None:
+    """The company member `user_id`, with their copy in the company file made
+    if it is missing (someone who joined by invite and never opened the
+    company has none yet). None when they are not a member of the company."""
+    found = control.read(lambda c: repo.member(c, company.org.id, user_id))
+    if found is None:
+        return None
+
+    def run(conn: sqlite3.Connection) -> None:
+        if not repo.has_person(conn, user_id):
+            repo.upsert_person(
+                conn,
+                user_id=user_id,
+                name=found.name,
+                email=found.email,
+                avatar_url=found.avatar_url,
+                now=now_iso(),
+            )
+
+    company.tenant.db.write(run)
+    return found
 
 
 def org_by_id(conn: sqlite3.Connection, org_id: int) -> Org | None:
