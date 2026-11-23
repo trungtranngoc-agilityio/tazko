@@ -9,7 +9,8 @@ does that and is the only way handlers reach a Tenant.
 
 Ordered rows (lists, cards) take their ranks from tazko.db.rank (M2-01).
 
-TODO(M2-05): every change writes an events row in the same transaction.
+Every service change writes an events row in the same transaction, from M2-02 (D38);
+M2-05 adds the activity log that reads them.
 TODO(M3-01): after commit, the event is published to the realtime hub.
 """
 

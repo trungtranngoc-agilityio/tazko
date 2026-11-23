@@ -14,7 +14,7 @@ M2 · Core boards (release 0.2.0) · task **M2-01** Tenant schema and ranks, on 
 ## Next
 
 1. M2-01: PR into `dev` and merge.
-2. Owner: run deploy/README.md "First time" on the host; that proves M1-08's last lines and M1-01's (web on Pages reaches the API); tick both, then cut `release/0.1.0`.
+2. Owner: run deploy/README.md "First time" on the host; that proves M1-08's last lines and M1-01's (web on Pages reaches the API); tick both, then cut `release/0.1.0`. To ship 0.1.0 without the board tables, cut it from 36ea062 (the `dev` commit before M2-01); either way the release before tenant 0002 runs on a migrated file (D21).
 3. M2-02: projects and server-side permissions, with the full permission matrix and the security agent after.
 
 ## Waiting on the owner

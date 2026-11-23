@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import shutil
 import sqlite3
+from collections.abc import Callable
 from importlib.resources import as_file, files
 from pathlib import Path
 
 import pytest
 
 from tazko.db import Database
-from tests.unit.tenant_rows import AT, add_board, add_card, add_list, add_person
+from tests.unit.tenant_rows import AT, add_board, add_card, add_label, add_list, add_person
 
 BOARD_TABLES = {
     "projects",
@@ -78,12 +79,7 @@ def test_a_label_belongs_to_the_board_of_its_card(company: Database) -> None:
     def insert(conn: sqlite3.Connection) -> None:
         add_person(conn)
         card = add_card(conn, add_list(conn, add_board(conn)))
-        other = add_board(conn)
-        label = conn.execute(
-            "INSERT INTO labels (board_id, name, color, created_at)"
-            " VALUES (?, 'Bug', 'red', ?) RETURNING id",
-            (other, AT),
-        ).fetchone()[0]
+        label = add_label(conn, add_board(conn))
         conn.execute("INSERT INTO card_labels (card_id, label_id) VALUES (?, ?)", (card, label))
 
     with pytest.raises(sqlite3.IntegrityError, match="another board"):
@@ -95,12 +91,7 @@ def test_deleting_a_project_removes_everything_on_its_boards(company: Database) 
         add_person(conn)
         board = add_board(conn)
         card = add_card(conn, add_list(conn, board))
-        label = conn.execute(
-            "INSERT INTO labels (board_id, name, color, created_at)"
-            " VALUES (?, 'Bug', 'red', ?) RETURNING id",
-            (board, AT),
-        ).fetchone()[0]
-        conn.execute("INSERT INTO card_labels VALUES (?, ?)", (card, label))
+        conn.execute("INSERT INTO card_labels VALUES (?, ?)", (card, add_label(conn, board)))
         conn.execute("INSERT INTO card_members VALUES (?, 1)", (card,))
         conn.execute("INSERT INTO card_watchers VALUES (?, 1)", (card,))
         conn.execute("INSERT INTO board_stars VALUES (1, ?, ?)", (board, AT))
@@ -133,7 +124,18 @@ def test_the_release_before_the_board_tables_still_opens_the_file(tmp_path: Path
     db = Database(path, "tenant", migrations=older)
     try:
         assert db.version >= 2
-        assert db.write(lambda c: c.execute("SELECT count(*) FROM people").fetchone()[0]) == 0
+
+        # What that release writes to a company file: the copy of a person (orgs.repository).
+        def upsert(name: str) -> Callable[[sqlite3.Connection], object]:
+            return lambda c: c.execute(
+                "INSERT INTO people (id, name, email, updated_at) VALUES (7, ?, 'a@x.io', ?)"
+                " ON CONFLICT (id) DO UPDATE SET name = excluded.name",
+                (name, AT),
+            )
+
+        db.write(upsert("Ann"))
+        db.write(upsert("Ann B."))
+        assert db.read(lambda c: c.execute("SELECT name FROM people").fetchone()[0]) == "Ann B."
     finally:
         db.close()
 
@@ -143,11 +145,7 @@ def board_card_and_label(conn: sqlite3.Connection) -> tuple[int, int, int]:
     add_person(conn)
     board = add_board(conn)
     card = add_card(conn, add_list(conn, board))
-    label: int = conn.execute(
-        "INSERT INTO labels (board_id, name, color, created_at)"
-        " VALUES (?, 'Bug', 'red', ?) RETURNING id",
-        (board, AT),
-    ).fetchone()[0]
+    label = add_label(conn, board)
     conn.execute("INSERT INTO card_labels VALUES (?, ?)", (card, label))
     return board, card, label
 
@@ -155,11 +153,7 @@ def board_card_and_label(conn: sqlite3.Connection) -> tuple[int, int, int]:
 def test_a_card_label_cannot_be_changed_to_a_label_of_another_board(company: Database) -> None:
     def change(conn: sqlite3.Connection) -> None:
         _, card, _ = board_card_and_label(conn)
-        other = conn.execute(
-            "INSERT INTO labels (board_id, name, color, created_at)"
-            " VALUES (?, 'Other', 'blue', ?) RETURNING id",
-            (add_board(conn), AT),
-        ).fetchone()[0]
+        other = add_label(conn, add_board(conn), "Other")
         conn.execute("UPDATE card_labels SET label_id = ? WHERE card_id = ?", (other, card))
 
     with pytest.raises(sqlite3.IntegrityError, match="another board"):
@@ -218,15 +212,46 @@ def test_a_blank_name_is_refused(company: Database, sql: str) -> None:
         company.write(blank)
 
 
-def test_the_id_of_a_deleted_card_is_never_given_again(company: Database) -> None:
-    """Events and share links name cards by id; a new card must not inherit them."""
+NEW_ROW: dict[str, Callable[[sqlite3.Connection, int], int]] = {
+    "projects": lambda conn, board: conn.execute(
+        "INSERT INTO projects (name, created_at) VALUES ('P', ?) RETURNING id", (AT,)
+    ).fetchone()[0],
+    "boards": lambda conn, board: add_board(conn),
+    "lists": lambda conn, board: add_list(conn, board),
+    "cards": lambda conn, board: add_card(conn, add_list(conn, board)),
+    "labels": lambda conn, board: add_label(conn, board),
+}
+
+
+@pytest.mark.parametrize("table", sorted(NEW_ROW))
+def test_the_id_of_a_deleted_row_is_never_given_again(company: Database, table: str) -> None:
+    """Events and share links name rows by id; a new row must not inherit them."""
 
     def replace(conn: sqlite3.Connection) -> tuple[int, int]:
         add_person(conn)
-        list_id = add_list(conn, add_board(conn))
-        old = add_card(conn, list_id)
-        conn.execute("DELETE FROM cards WHERE id = ?", (old,))
-        return old, add_card(conn, list_id)
+        board = add_board(conn)
+        old = NEW_ROW[table](conn, board)
+        conn.execute(f"DELETE FROM {table} WHERE id = ?", (old,))  # noqa: S608 (fixed names)
+        return old, NEW_ROW[table](conn, board)
 
     old, new = company.write(replace)
     assert new > old
+
+
+def test_a_label_cannot_move_to_another_board(company: Database) -> None:
+    def move_label(conn: sqlite3.Connection) -> None:
+        _, _, label = board_card_and_label(conn)
+        conn.execute("UPDATE labels SET board_id = ? WHERE id = ?", (add_board(conn), label))
+
+    with pytest.raises(sqlite3.IntegrityError, match="stays on its board"):
+        company.write(move_label)
+
+
+def test_a_card_label_that_does_not_exist_is_a_foreign_key_error(company: Database) -> None:
+    def insert(conn: sqlite3.Connection) -> None:
+        add_person(conn)
+        card = add_card(conn, add_list(conn, add_board(conn)))
+        conn.execute("INSERT INTO card_labels VALUES (?, 999)", (card,))
+
+    with pytest.raises(sqlite3.IntegrityError, match="FOREIGN KEY"):
+        company.write(insert)

@@ -1,7 +1,7 @@
 -- readers: 1
 -- Projects, boards, lists and cards (M2-01). Only adds tables, indexes and
--- triggers on new tables, so release 0.1.0 (migration 0001) still runs on
--- the file after it (D21).
+-- triggers on new tables, so the release before it (tenant migration 0001
+-- only) still runs on the file after it (D21).
 --
 -- Ordered rows carry a fractional rank (tazko.db.rank): digits 0-9A-Za-z,
 -- compared as text (BINARY), never ending in "0" so a key always fits below.
@@ -115,10 +115,13 @@ CREATE TABLE card_labels (
 CREATE INDEX card_labels_by_label ON card_labels (label_id);
 
 -- A card only wears labels of its own board: a label of another board is
--- refused, and moving a card or a list to another board drops those labels.
+-- refused, a label never moves to another board, and moving a card or a list
+-- to another board drops its old labels. A missing card or label is left to
+-- the foreign keys, so the error says so.
 CREATE TRIGGER card_labels_same_board
 BEFORE INSERT ON card_labels
-WHEN (SELECT board_id FROM labels WHERE id = NEW.label_id)
+WHEN NEW.label_id IN (SELECT id FROM labels) AND NEW.card_id IN (SELECT id FROM cards)
+ AND (SELECT board_id FROM labels WHERE id = NEW.label_id)
      IS NOT (SELECT l.board_id FROM cards c JOIN lists l ON l.id = c.list_id WHERE c.id = NEW.card_id)
 BEGIN
     SELECT RAISE(ABORT, 'label belongs to another board');
@@ -126,10 +129,18 @@ END;
 
 CREATE TRIGGER card_labels_same_board_on_change
 BEFORE UPDATE OF card_id, label_id ON card_labels
-WHEN (SELECT board_id FROM labels WHERE id = NEW.label_id)
+WHEN NEW.label_id IN (SELECT id FROM labels) AND NEW.card_id IN (SELECT id FROM cards)
+ AND (SELECT board_id FROM labels WHERE id = NEW.label_id)
      IS NOT (SELECT l.board_id FROM cards c JOIN lists l ON l.id = c.list_id WHERE c.id = NEW.card_id)
 BEGIN
     SELECT RAISE(ABORT, 'label belongs to another board');
+END;
+
+CREATE TRIGGER labels_stay_on_their_board
+BEFORE UPDATE OF board_id ON labels
+WHEN NEW.board_id IS NOT OLD.board_id
+BEGIN
+    SELECT RAISE(ABORT, 'a label stays on its board');
 END;
 
 CREATE TRIGGER cards_moved_drop_labels

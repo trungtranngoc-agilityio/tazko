@@ -57,6 +57,14 @@ def add_card(conn: sqlite3.Connection, list_id: int, title: str = "Card") -> int
     return card_id
 
 
+def add_label(conn: sqlite3.Connection, board_id: int, name: str = "Bug") -> int:
+    label_id: int = conn.execute(
+        "INSERT INTO labels (board_id, name, color, created_at) VALUES (?, ?, 'red', ?) RETURNING id",
+        (board_id, name, AT),
+    ).fetchone()[0]
+    return label_id
+
+
 def card_order(conn: sqlite3.Connection, list_id: int) -> list[int]:
     rows = conn.execute(
         "SELECT id FROM cards WHERE list_id = ? ORDER BY rank, id", (list_id,)
