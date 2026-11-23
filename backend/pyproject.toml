@@ -44,6 +44,7 @@ ignore = ["E501"]  # the formatter owns line length; long docstring lines are fi
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106"]  # asserts and fake secrets are fine in tests
+"src/tazko/db/rank.py" = ["S608"]  # table and column names come only from the constant SCOPES; values are bound
 
 [tool.mypy]
 python_version = "3.12"

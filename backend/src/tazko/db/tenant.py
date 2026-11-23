@@ -7,8 +7,10 @@ outside data/orgs.
 Membership is not checked here; tazko.modules.orgs.service.open_company
 does that and is the only way handlers reach a Tenant.
 
-TODO(M2-01): every change writes an events row in the same transaction; after
-commit it is published to the realtime hub. Fractional ranks with rebalance.
+Ordered rows (lists, cards) take their ranks from tazko.db.rank (M2-01).
+
+TODO(M2-05): every change writes an events row in the same transaction.
+TODO(M3-01): after commit, the event is published to the realtime hub.
 """
 
 from __future__ import annotations
