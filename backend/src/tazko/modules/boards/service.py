@@ -16,12 +16,12 @@ from tazko.core.errors import Conflict, Forbidden, Invalid, NotFound
 from tazko.db import Database
 from tazko.modules.audit import service as audit
 from tazko.modules.boards import repository as repo
-from tazko.modules.boards.access import Action, Decision, ProjectRole, Standing, decide
-from tazko.modules.boards.repository import Member, Project, Summary
+from tazko.modules.boards.access import Action, Decision, ProjectRole, Standing, decide, sees_board
+from tazko.modules.boards.repository import Board, Member, Project, Summary
 from tazko.modules.orgs import service as orgs
 from tazko.modules.orgs.service import Company, MemberRow
 
-__all__ = ["Member", "Project", "Summary"]
+__all__ = ["Board", "Member", "Project", "Summary"]
 
 log = logging.getLogger(__name__)
 
@@ -58,6 +58,9 @@ def _require(
     seen, verdict = _judge(conn, company, actor_id, project_id, action)
     if seen is None or verdict == "hide":
         raise NotFound()
+    if verdict == "forbid" and action == "open_boards" and seen.role is None:
+        # A company owner who manages the project but is not in it (build plan, Projects).
+        raise Forbidden("add yourself to the project to open its boards", code="NOT_IN_PROJECT")
     if verdict == "forbid":
         raise Forbidden("your role in this project does not allow this")
     if verdict == "archived":
@@ -65,8 +68,22 @@ def _require(
     return seen
 
 
-def _event(conn: sqlite3.Connection, kind: str, actor_id: int, **payload: object) -> None:
-    repo.add_event(conn, type=kind, actor_id=actor_id, payload=json.dumps(payload), now=now_iso())
+def _event(
+    conn: sqlite3.Connection,
+    kind: str,
+    actor_id: int,
+    *,
+    board_id: int | None = None,
+    **payload: object,
+) -> None:
+    repo.add_event(
+        conn,
+        type=kind,
+        actor_id=actor_id,
+        board_id=board_id,
+        payload=json.dumps(payload),
+        now=now_iso(),
+    )
 
 
 def _company_member(control: Database, company: Company, user_id: int, field: str) -> MemberRow:
@@ -206,6 +223,7 @@ def add_member(
 ) -> Member:
     """Add a company member. A company owner joining is audit-logged."""
     target = _company_member(control, company, user_id, "user_id")
+    joining_owner = user_id == actor_id and company.role == "owner"
 
     def run(conn: sqlite3.Connection) -> tuple[Member, str]:
         seen = _require(
@@ -213,7 +231,8 @@ def add_member(
             company,
             actor_id,
             project_id,
-            "manage_owners" if role == "owner" else "add_member",
+            # A company owner may join with any role: they could join as owner anyway.
+            "manage_owners" if role == "owner" or joining_owner else "add_member",
         )
         if repo.role_of(conn, project_id, user_id) is not None:
             raise Conflict("already in the project", code="ALREADY_PROJECT_MEMBER")
@@ -364,3 +383,173 @@ def leave_company(conn: sqlite3.Connection, *, person_id: int, actor_id: int | N
             ),
             now=now_iso(),
         )
+
+
+# --- boards (M2-02 part 2) ----------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class SeenBoard:
+    """A board as one person sees it. `access` (the restricted list) is shown
+    to project owners only, who manage it."""
+
+    board: Board
+    starred: bool
+    access: list[int] | None
+
+
+def _require_board(
+    conn: sqlite3.Connection,
+    company: Company,
+    actor_id: int,
+    project_id: int,
+    board_id: int,
+    action: Action,
+) -> tuple[Seen, Board]:
+    """In this order, so a hidden board answers 404 to everything (KNOWN-DEVIATIONS #1):
+    may open the project's boards, then may see this one, then may do `action`."""
+    seen = _require(conn, company, actor_id, project_id, "open_boards")
+    board = repo.board(conn, project_id, board_id)
+    if board is None or not sees_board(
+        seen.role, restricted=board.restricted, listed=repo.listed(conn, board_id, actor_id)
+    ):
+        raise NotFound()
+    if action != "open_boards":
+        _require(conn, company, actor_id, project_id, action)
+    return seen, board
+
+
+def _seen_board(conn: sqlite3.Connection, seen: Seen, board: Board, actor_id: int) -> SeenBoard:
+    access = repo.access_list(conn, board.id) if seen.role == "owner" and board.restricted else None
+    return SeenBoard(board, repo.starred(conn, board.id, actor_id), access)
+
+
+def boards(company: Company, *, actor_id: int, project_id: int) -> list[SeenBoard]:
+    def run(conn: sqlite3.Connection) -> list[SeenBoard]:
+        seen = _require(conn, company, actor_id, project_id, "open_boards")
+        owner = seen.role == "owner"
+        rows = repo.boards_seen(conn, project_id, actor_id, every_restricted=owner)
+        return [
+            SeenBoard(b, starred, repo.access_list(conn, b.id) if owner and b.restricted else None)
+            for b, starred in rows
+        ]
+
+    return company.tenant.db.read(run)
+
+
+def create_board(
+    company: Company, *, actor_id: int, project_id: int, name: str, background: str | None
+) -> SeenBoard:
+    """A new board is open to the whole project and takes the project's
+    default background unless given one."""
+
+    def run(conn: sqlite3.Connection) -> SeenBoard:
+        _require(conn, company, actor_id, project_id, "open_boards")
+        seen = _require(conn, company, actor_id, project_id, "create_board")
+        board_id = repo.insert_board(
+            conn,
+            project_id=project_id,
+            name=name,
+            background=background or seen.project.default_background,
+            created_by=actor_id,
+            now=now_iso(),
+        )
+        _event(conn, "board.created", actor_id, board_id=board_id, project_id=project_id)
+        board = repo.board(conn, project_id, board_id)
+        if board is None:
+            raise RuntimeError("row vanished inside its own transaction")
+        return _seen_board(conn, seen, board, actor_id)
+
+    return company.tenant.db.write(run)
+
+
+def get_board(company: Company, *, actor_id: int, project_id: int, board_id: int) -> SeenBoard:
+    def run(conn: sqlite3.Connection) -> SeenBoard:
+        seen, board = _require_board(conn, company, actor_id, project_id, board_id, "open_boards")
+        return _seen_board(conn, seen, board, actor_id)
+
+    return company.tenant.db.read(run)
+
+
+def update_board(
+    company: Company,
+    *,
+    actor_id: int,
+    project_id: int,
+    board_id: int,
+    changes: dict[str, object],
+    archived: bool | None,
+) -> SeenBoard:
+    """Rename, change the background, close ("archive") or reopen: project
+    owners and members."""
+
+    def run(conn: sqlite3.Connection) -> SeenBoard:
+        seen, board = _require_board(conn, company, actor_id, project_id, board_id, "edit_board")
+        if changes:
+            repo.update_board(conn, board_id, changes)
+            _event(conn, "board.updated", actor_id, board_id=board_id, fields=sorted(changes))
+        if archived is not None and archived != (board.archived_at is not None):
+            repo.set_board_archived(conn, board_id, now_iso() if archived else None)
+            _event(
+                conn,
+                "board.archived" if archived else "board.restored",
+                actor_id,
+                board_id=board_id,
+            )
+        changed = repo.board(conn, project_id, board_id)
+        if changed is None:
+            raise RuntimeError("row vanished inside its own transaction")
+        return _seen_board(conn, seen, changed, actor_id)
+
+    return company.tenant.db.write(run)
+
+
+def set_access(
+    company: Company,
+    *,
+    actor_id: int,
+    project_id: int,
+    board_id: int,
+    restricted: bool,
+    people: list[int],
+) -> SeenBoard:
+    """Project owners restrict a board to chosen project members, or open it
+    to the whole project again (the list is then cleared)."""
+
+    def run(conn: sqlite3.Connection) -> SeenBoard:
+        seen, _ = _require_board(conn, company, actor_id, project_id, board_id, "restrict_board")
+        outside = [p for p in people if repo.role_of(conn, project_id, p) is None]
+        if restricted and outside:
+            raise Invalid(
+                f"people: not in the project: {outside}",
+                code="NOT_A_PROJECT_MEMBER",
+                field="people",
+            )
+        repo.set_access(conn, board_id, restricted=restricted, people=people)
+        listed = sorted(set(people)) if restricted else []
+        _event(
+            conn,
+            "board.access_changed",
+            actor_id,
+            board_id=board_id,
+            restricted=restricted,
+            people=listed,
+        )
+        board = repo.board(conn, project_id, board_id)
+        if board is None:
+            raise RuntimeError("row vanished inside its own transaction")
+        return _seen_board(conn, seen, board, actor_id)
+
+    return company.tenant.db.write(run)
+
+
+def star(company: Company, *, actor_id: int, project_id: int, board_id: int, on: bool) -> None:
+    """Personal: anyone who may open the board, observers too, also on an
+    archived project. Starring twice changes nothing."""
+
+    def run(conn: sqlite3.Connection) -> None:
+        _require_board(conn, company, actor_id, project_id, board_id, "open_boards")
+        if repo.set_star(conn, board_id, actor_id, on=on, now=now_iso()):
+            _event(conn, "board.starred" if on else "board.unstarred", actor_id, board_id=board_id)
+
+    company.tenant.db.write(run)

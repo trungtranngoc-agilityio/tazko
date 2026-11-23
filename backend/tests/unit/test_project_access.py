@@ -7,9 +7,11 @@ for them), "forbid" 403, "archived" 409 PROJECT_ARCHIVED.
 
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
-from tazko.modules.boards.access import ACTIONS, Action, Standing, decide
+from tazko.modules.boards.access import ACTIONS, Action, ProjectRole, Standing, decide, sees_board
 
 # (company role, project role) -> the standings the matrix covers.
 OWNER_OUTSIDE = Standing("owner", None)
@@ -113,6 +115,24 @@ MATRIX: dict[Action, dict[str, str]] = {
         "company owner, project member": "allow",
         "company owner, observer": "forbid",
     },
+    "edit_board": {  # rename, background, close and reopen a board
+        "company owner, not in project": "forbid",
+        "company member, not in project": "hide",
+        "project owner": "allow",
+        "project member": "allow",
+        "observer": "forbid",
+        "company owner, project member": "allow",
+        "company owner, observer": "forbid",
+    },
+    "restrict_board": {  # restrict a board and choose who may open it
+        "company owner, not in project": "forbid",
+        "company member, not in project": "hide",
+        "project owner": "allow",
+        "project member": "forbid",
+        "observer": "forbid",
+        "company owner, project member": "forbid",
+        "company owner, observer": "forbid",
+    },
 }
 
 CELLS = [(action, who) for action, row in MATRIX.items() for who in row]
@@ -148,3 +168,20 @@ def test_an_archived_project_allows_only_reads_and_its_management(action: Action
     if expected == "allow" and action not in READS | {"manage"}:
         expected = "archived"
     assert decide(WHO[who], action, archived=True) == expected
+
+
+@pytest.mark.parametrize(
+    ("role", "restricted", "listed", "sees"),
+    [
+        ("owner", False, False, True),
+        ("owner", True, False, True),  # project owners manage restricted boards
+        ("member", False, False, True),
+        ("member", True, False, False),  # KNOWN-DEVIATIONS #1
+        ("member", True, True, True),
+        ("observer", True, False, False),
+        ("observer", True, True, True),
+        (None, False, False, False),  # not in the project: no board at all
+    ],
+)
+def test_who_sees_a_board(role: str | None, restricted: bool, listed: bool, sees: bool) -> None:
+    assert sees_board(cast(ProjectRole | None, role), restricted=restricted, listed=listed) is sees

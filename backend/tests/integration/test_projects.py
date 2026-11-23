@@ -1,5 +1,6 @@
 """Projects and project members over HTTP (M2-02 part 1, D39). Every route
-runs with a real session; rows are checked in the company file."""
+runs with a real session; rows are checked in the company file. Fixtures:
+conftest.py (acme, boss, pia, max_, launch); helpers: company.py."""
 
 from __future__ import annotations
 
@@ -15,83 +16,8 @@ from tazko.modules.orgs import service as orgs
 from tazko.modules.orgs.service import Org
 from tazko.modules.users import service as users
 from tazko.modules.users.service import User
-from tests.integration.oidc import SAME_ORIGIN, FakeGoogle, audit, sign_in
-
-BASE = "/api/orgs/acme/projects"
-
-
-@pytest.fixture
-def tenants(client: TestClient) -> Tenants:
-    found: Tenants = client.app.state.tenants  # type: ignore[attr-defined]  # TestClient.app is typed as ASGIApp
-    return found
-
-
-@pytest.fixture
-def acme(control: Database, tenants: Tenants) -> Org:
-    return orgs.create_company(control, tenants, slug="acme", name="Acme", actor_id=None)
-
-
-def person(control: Database, tenants: Tenants, org: Org, name: str, role: str) -> User:
-    user = users.get_or_create(control, f"{name}@example.com", name=name.title())
-    orgs.add_member(control, tenants, org=org, user=user, role=role, actor_id=None)  # type: ignore[arg-type]  # role is owner or member here
-    return user
-
-
-@pytest.fixture
-def boss(control: Database, tenants: Tenants, acme: Org) -> User:
-    """A company owner."""
-    return person(control, tenants, acme, "boss", "owner")
-
-
-@pytest.fixture
-def pia(control: Database, tenants: Tenants, acme: Org) -> User:
-    """A company member who becomes the project's owner."""
-    return person(control, tenants, acme, "pia", "member")
-
-
-@pytest.fixture
-def max_(control: Database, tenants: Tenants, acme: Org) -> User:
-    """Another company member."""
-    return person(control, tenants, acme, "max", "member")
-
-
-def as_(client: TestClient, google: FakeGoogle, user: User) -> None:
-    client.cookies.clear()
-    sign_in(client, google, sub=f"sub-{user.id}", email=user.email, name=user.name)
-
-
-def write(client: TestClient, method: str, path: str, body: Any = None) -> Any:
-    return client.request(method, path, json=body, headers=SAME_ORIGIN)
-
-
-def company_rows(tenants: Tenants, sql: str, *args: object) -> list[sqlite3.Row]:
-    return tenants.get("acme").db.read(lambda c: c.execute(sql, args).fetchall())
-
-
-def roles(tenants: Tenants, project: int) -> dict[int, str]:
-    rows = company_rows(
-        tenants, "SELECT person_id, role FROM project_members WHERE project_id = ?", project
-    )
-    return {r[0]: r[1] for r in rows}
-
-
-@pytest.fixture
-def launch(client: TestClient, google: FakeGoogle, boss: User, pia: User) -> int:
-    """Project "Launch", made by the company owner with Pia as its owner."""
-    as_(client, google, boss)
-    made = write(client, "POST", BASE, {"name": "Launch", "owner_id": pia.id})
-    assert made.status_code == 201, made.text
-    project_id: int = made.json()["id"]
-    return project_id
-
-
-def join(
-    client: TestClient, google: FakeGoogle, project: int, user: User, role: str, by: User
-) -> None:
-    as_(client, google, by)
-    added = write(client, "POST", f"{BASE}/{project}/members", {"user_id": user.id, "role": role})
-    assert added.status_code == 201, added.text
-
+from tests.integration.company import BASE, as_, company_rows, join, person, roles, write
+from tests.integration.oidc import FakeGoogle, audit
 
 # --- creating and listing --------------------------------------------------------------
 

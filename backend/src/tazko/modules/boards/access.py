@@ -10,6 +10,8 @@ is tested in tests/unit/test_project_access.py and every service asks it.
   boards and may create boards and add people when the project's switches
   say so. Observers only read (D5).
 - An archived project is read-only until a company owner restores it.
+- Boards: members edit them; only project owners restrict them; a
+  restricted board is seen by project owners and its list (sees_board).
 """
 
 from __future__ import annotations
@@ -30,6 +32,8 @@ Action = Literal[
     "manage_members",  # change or remove members and observers
     "add_member",  # add a member or observer
     "create_board",
+    "edit_board",  # rename, background, close and reopen a board
+    "restrict_board",  # restrict a board and choose who may open it
 ]
 ACTIONS: tuple[Action, ...] = (
     "view",
@@ -41,6 +45,8 @@ ACTIONS: tuple[Action, ...] = (
     "manage_members",
     "add_member",
     "create_board",
+    "edit_board",
+    "restrict_board",
 )
 # Still allowed on an archived project.
 READS: frozenset[Action] = frozenset({"view", "list_members", "open_boards", "manage"})
@@ -95,8 +101,18 @@ def _allowed(
     if role == "owner":
         return True
     if role == "member":
-        return (action == "open_boards") or (
+        return action in ("open_boards", "edit_board") or (
             (action == "add_member" and members_can_invite)
             or (action == "create_board" and members_can_create_boards)
         )
     return action == "open_boards" and role == "observer"
+
+
+def sees_board(role: ProjectRole | None, *, restricted: bool, listed: bool) -> bool:
+    """Whether someone with project role `role` may see a board at all. A
+    restricted board shows only to the project's owners (who manage it) and
+    the people on its list; to anyone else it does not exist (404,
+    KNOWN-DEVIATIONS #1). Company owners outside the project see no board."""
+    if role is None:
+        return False
+    return role == "owner" or not restricted or listed
