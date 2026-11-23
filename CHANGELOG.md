@@ -5,6 +5,8 @@ What people and API callers can notice, per release. Format: [Keep a Changelog](
 ## [Unreleased]
 
 ### Added
+- Boards in a project under `/api/orgs/{slug}/projects/{id}/boards`: create, rename, change background, close and reopen; project owners restrict a board to chosen project members, and a restricted board is hidden (404) from everyone else; personal stars (`PUT`/`DELETE .../star`). A company owner opens a project's boards only once in the project (403 `NOT_IN_PROJECT`).
+- Projects API under `/api/orgs/{slug}/projects`: company owners create, rename, archive, restore and delete projects and manage their owners (`?view=manage` lists every project); project owners change settings and members; members and observers read; people see only their projects. The last project owner is kept (409 `LAST_OWNER`); removing someone takes them off assignees, watchers and restricted boards.
 - Deploy scripts (deploy/): host setup, tunnel rule, release bundle, `tazko-release` with a pre-release snapshot, health check and automatic rollback (restoring the snapshot when the older release cannot use migrated data), nightly backup with trash cleanup and an optional off-machine copy, and the Pages deploy.
 - `tazko backup` writes a dated snapshot of every database, the company files and the secret while the server runs, keeping 30 days; `tazko check` verifies a data folder or snapshot; `tazko purge-trash` removes deleted companies after 30 days in trash.
 - A migration can mark itself usable by the previous release (`-- readers: N`), so a rollback does not always need a restore.

@@ -25,6 +25,7 @@ from tazko.db.tenant import Tenants
 from tazko.modules import auth, health
 from tazko.modules.admin import router as admin_router
 from tazko.modules.auth.google import GoogleProvider
+from tazko.modules.boards import router as boards_router
 from tazko.modules.invites import router as invites_router
 from tazko.modules.orgs import router as orgs_router
 
@@ -94,6 +95,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(orgs_router.router)  # /api/orgs, members
     app.include_router(invites_router.router)  # /api/orgs/{slug}/invites
     app.include_router(admin_router.router)  # /admin/api
+    app.include_router(boards_router.router)  # /api/orgs/{slug}/projects
     # Module routers are included here as milestones land:
     # app.include_router(realtime.router, prefix="/ws")            M3-01
     # app.include_router(public_api.router, prefix="/api/v1")      M6-01
