@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Adds the Tazko API hostname to the EXISTING Cloudflare tunnel (build plan
-# "Deployment" step 1, D13, D37). RUN BY THE OWNER as root, after reading it:
+# "Deployment" step 1). RUN BY THE OWNER as root, after reading it:
 #
 #   sudo bash deploy/backend/add-tunnel-rule.sh [hostname]   # default tazko-api-dev.hugepigstudio.com
 #

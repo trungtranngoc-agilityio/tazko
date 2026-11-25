@@ -6,12 +6,12 @@ After=tazko.service
 Type=oneshot
 User=tazko
 Group=tazko
-# No tazko.env: these commands need no Google settings, only no .env reading (D16).
+# No tazko.env: these commands need no Google settings, only no .env reading.
 Environment=TAZKO_ENV=production
 WorkingDirectory=/var/lib/tazko
 UMask=0077
 Environment=PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1
-# Deleted companies stay in data/trash/ for 30 days (D35).
+# Deleted companies stay in data/trash/ for 30 days.
 # The leading - : a failed purge never skips the backup.
 ExecStartPre=-/opt/tazko/current/.venv/bin/tazko purge-trash --data /var/lib/tazko/data --older-than-days 30
 ExecStart=/opt/tazko/current/.venv/bin/tazko backup --data /var/lib/tazko/data --to /var/backups/tazko --keep-days 30
@@ -27,5 +27,5 @@ PrivateDevices=true
 RestrictSUIDSGID=true
 CapabilityBoundingSet=
 # Writable data: SQLite needs the WAL index (-shm) to read a WAL database, even
-# read-only, and the same tazko user runs the server anyway (D37).
+# read-only, and the same tazko user runs the server anyway.
 ReadWritePaths=/var/backups/tazko /var/lib/tazko

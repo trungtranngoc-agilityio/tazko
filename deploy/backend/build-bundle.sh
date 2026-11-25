@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Builds the API server release bundle on a build machine or in CI, never on the
-# server (D8). Needs git and uv. Run from anywhere in a clean checkout:
+# server. Needs git and uv. Run from anywhere in a clean checkout:
 #
 #   deploy/backend/build-bundle.sh            -> dist/tazko-<UTC time>-<commit>.tar.gz
 #

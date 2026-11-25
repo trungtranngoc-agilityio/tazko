@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds frontend/ and uploads it to Cloudflare Pages (D13, D37). RUN BY THE OWNER
+# Builds frontend/ and uploads it to Cloudflare Pages. RUN BY THE OWNER
 # (or by a CI job the owner sets up with a Pages-only API token). The agent never runs it.
 #
 #   VITE_API_URL=https://tazko-api-dev.hugepigstudio.com deploy/frontend/deploy.sh [--production]
@@ -8,7 +8,7 @@
 # defaults to tazko-web; --production deploys the branch `main`, which must be the
 # Pages project's production branch. wrangler asks for a Cloudflare login (or reads
 # CLOUDFLARE_API_TOKEN from the environment); never put the token in a file here.
-# wrangler is pinned with hashes in deploy/frontend/package-lock.json (D8).
+# wrangler is pinned with hashes in deploy/frontend/package-lock.json.
 #
 # Rollback: in the Pages project, Deployments, pick the previous deployment and
 # choose "Rollback to this deployment". The API is released separately
@@ -36,7 +36,7 @@ if [ "$branch" = main ]; then
 fi
 
 # connect-src must list the API host for https and wss, or every API call fails in
-# the browser (M1.md, security review). Whole tokens of that directive only.
+# the browser (security review). Whole tokens of that directive only.
 csp="$(grep -m1 'Content-Security-Policy:' frontend/public/_headers || true)"
 connect="$(tr ';' '\n' <<<"$csp" | sed -n 's/^[[:space:]]*connect-src[[:space:]]\{1,\}//p')"
 for scheme in https wss; do

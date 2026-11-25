@@ -6,7 +6,7 @@ Conflicts=tazko.service
 Type=oneshot
 User=tazko
 Group=tazko
-# No tazko.env: these commands need no Google settings, only no .env reading (D16).
+# No tazko.env: these commands need no Google settings, only no .env reading.
 Environment=TAZKO_ENV=production
 WorkingDirectory=/var/lib/tazko
 UMask=0077

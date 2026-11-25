@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Installs a release bundle of the API server, health-checks it, and rolls back
-# by itself (build plan "Releases", D36, D37). Installed by setup-host.sh as
+# by itself (build plan "Releases"). Installed by setup-host.sh as
 # /usr/local/bin/tazko-release (root-owned) and run by the owner as tazko-deploy:
 #
 #   sudo -u tazko-deploy tazko-release /var/lib/tazko-incoming/tazko-<time>-<commit>.tar.gz
@@ -8,11 +8,11 @@
 #   sudo -u tazko-deploy tazko-release --list
 #
 # Steps: install the bundle into /opt/tazko/releases/<time>-<commit>/ with its own
-# virtualenv (pinned, hashed wheels only, D8); snapshot the data with the release
+# virtualenv (pinned, hashed wheels only); snapshot the data with the release
 # that is still running; switch the link; restart; wait up to 20 s for /health.
 # If that fails, the previous release comes back, and `tazko check` (as the tazko
 # user) must accept every database for it. If the data no longer suits it (a
-# contract migration, D36), the snapshot is restored. Data and
+# contract migration), the snapshot is restored. Data and
 # /etc/tazko/tazko.env are never touched here. The last 5 releases are kept.
 #
 # Exit: 0 released, 1 failed and rolled back (or nothing changed), 2 wrong usage,
@@ -159,7 +159,7 @@ install_bundle() {
   ctl restart tazko.service || true
   usable && die 1 "$id failed its health check; rolled back to $prev"
 
-  # The data no longer suits the previous release (D36): restore the snapshot
+  # The data no longer suits the previous release: restore the snapshot
   # taken just before the switch. Writes since then are kept in
   # /var/lib/tazko/data.failed-<time> for the owner.
   ctl stop tazko.service || die 3 "could not stop tazko.service to restore the backup"
@@ -185,7 +185,7 @@ rollback() {
   switch_to "$cur"
   ctl restart tazko.service || true
   healthy || die 3 "$target cannot run on this data, and $cur did not come back"
-  die 1 "$target cannot run on this data (a newer migration, D36); back on $cur. Restoring a backup by hand: deploy/README.md"
+  die 1 "$target cannot run on this data (a newer migration); back on $cur. Restoring a backup by hand: deploy/README.md"
 }
 
 list_releases() {

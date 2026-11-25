@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restores the newest pre-release snapshot over /var/lib/tazko/data (D36, D37).
+# Restores the newest pre-release snapshot over /var/lib/tazko/data.
 # Installed as /usr/local/lib/tazko/restore-pre-release.sh (root-owned) and run
 # only by tazko-restore.service, as the tazko user, with tazko.service stopped
 # (tazko-release stops it first; the unit also conflicts with it). The data it
