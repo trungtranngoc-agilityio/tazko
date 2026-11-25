@@ -5,6 +5,7 @@ import { CompanyLayout } from "@/app/layouts/CompanyLayout";
 import { CompanyHomePage } from "@/pages/company/CompanyHomePage";
 import { ManageProjectsPage } from "@/pages/company/ManageProjectsPage";
 import { ProjectMembersPage } from "@/pages/project/ProjectMembersPage";
+import { ProjectSettingsPage } from "@/pages/project/ProjectSettingsPage";
 import { apiError, fakeApi, type Reply } from "@/test/fakeApi";
 
 const ANA = {
@@ -73,6 +74,7 @@ function show(path: string) {
           <Route index element={<CompanyHomePage />} />
           <Route path="manage" element={<ManageProjectsPage />} />
           <Route path="p/:projectId/members" element={<ProjectMembersPage />} />
+          <Route path="p/:projectId/settings" element={<ProjectSettingsPage />} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -333,5 +335,71 @@ describe("project members", () => {
     show("/c/harbor/p/5/members");
 
     expect(await screen.findByRole("alert")).toHaveTextContent("This no longer exists");
+  });
+});
+
+describe("project settings", () => {
+  const settings = (
+    p: ReturnType<typeof project>,
+    more: Record<string, Reply | ((body: unknown) => Reply)> = {},
+  ) =>
+    signedIn(HARBOR, {
+      [`GET ${P}/5`]: { status: 200, body: p },
+      [`GET ${P}/5/members`]: { status: 200, body: PEOPLE },
+      [`GET ${P}/5/invites`]: { status: 200, body: [] },
+      ...more,
+    });
+
+  it("sends only the fields that changed when saved", async () => {
+    const calls = settings(project(), {
+      [`PATCH ${P}/5`]: (body) => ({ status: 200, body: project(body as Record<string, unknown>) }),
+    });
+    show("/c/harbor/p/5/settings");
+
+    fireEvent.change(await screen.findByLabelText("Description"), {
+      target: { value: "New text" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Color c2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+
+    expect(await screen.findByText("Saved")).toBeInTheDocument();
+    expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({
+      description: "New text",
+      color: "c2",
+    });
+  });
+
+  it("saves a switch as soon as it changes", async () => {
+    const calls = settings(project(), {
+      [`PATCH ${P}/5`]: (body) => ({ status: 200, body: project(body as Record<string, unknown>) }),
+    });
+    show("/c/harbor/p/5/settings");
+
+    fireEvent.click(await screen.findByRole("switch", { name: "Members can invite people" }));
+
+    await waitFor(() =>
+      expect(calls.find((c) => c.method === "PATCH")?.body).toEqual({ members_can_invite: true }),
+    );
+    expect(screen.getByRole("switch", { name: "Members can invite people" })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+  });
+
+  it("shows an archived project read-only", async () => {
+    settings(project({ archived_at: "2026-11-20T10:00:00.000Z" }));
+    show("/c/harbor/p/5/settings");
+
+    expect(await screen.findByLabelText("Project name")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(screen.getByRole("switch", { name: "Members can create boards" })).toBeDisabled();
+    expect(screen.getByRole("note")).toHaveTextContent("archived");
+  });
+
+  it("sends someone who is not a project owner to the members page", async () => {
+    settings(project({ role: "member" }));
+    show("/c/harbor/p/5/settings");
+
+    expect(await screen.findByRole("heading", { name: "Members (2)" })).toBeInTheDocument();
   });
 });

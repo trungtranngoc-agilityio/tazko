@@ -21,3 +21,4 @@ export { ProjectHeader } from "./components/ProjectHeader";
 export { ProjectInviteForm } from "./components/ProjectInviteForm";
 export { ProjectInvitesTable } from "./components/ProjectInvitesTable";
 export { ProjectMembersTable } from "./components/ProjectMembersTable";
+export { ProjectSettings } from "./components/ProjectSettings";
