@@ -1,4 +1,4 @@
-import { createBrowserRouter, type RouteObject } from "react-router";
+import { createBrowserRouter, Navigate, type RouteObject } from "react-router";
 import { AuditPage } from "@/pages/admin/AuditPage";
 import { CompaniesPage } from "@/pages/admin/CompaniesPage";
 import { CompanyPage } from "@/pages/admin/CompanyPage";
@@ -10,6 +10,7 @@ import { CompanySettingsPage } from "@/pages/company/CompanySettingsPage";
 import { ManageProjectsPage } from "@/pages/company/ManageProjectsPage";
 import { HomePage } from "@/pages/home/HomePage";
 import { NotFoundPage } from "@/pages/not-found/NotFoundPage";
+import { ProjectMembersPage } from "@/pages/project/ProjectMembersPage";
 import { RefusedPage } from "@/pages/signin/RefusedPage";
 import { SignInPage } from "@/pages/signin/SignInPage";
 import { AdminLayout } from "./layouts/AdminLayout";
@@ -35,6 +36,9 @@ export const routes: RouteObject[] = [
       { index: true, element: <CompanyHomePage /> },
       { path: "settings", element: <CompanySettingsPage /> },
       { path: "manage", element: <ManageProjectsPage /> },
+      // A project opens on its members until the board screens arrive.
+      { path: "p/:projectId", element: <Navigate to="members" replace /> },
+      { path: "p/:projectId/members", element: <ProjectMembersPage /> },
     ],
   },
   {
