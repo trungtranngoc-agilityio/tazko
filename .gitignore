@@ -33,4 +33,5 @@ Thumbs.db
 
 # Claude Code personal overrides: never commit
 .claude/settings.local.json
+.claude/launch.json
 CLAUDE.local.md
