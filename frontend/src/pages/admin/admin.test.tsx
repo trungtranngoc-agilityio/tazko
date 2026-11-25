@@ -5,7 +5,7 @@ import { apiError, fakeApi } from "@/test/fakeApi";
 import { routes } from "@/app/router";
 
 // Names, emails and audit targets come from Google profiles that anyone can
-// set (M1.md, security review): they must show as text, never as markup.
+// set (security review): they must show as text, never as markup.
 const HOSTILE = "<img src=x onerror=alert(1)>";
 
 const ROOT = {

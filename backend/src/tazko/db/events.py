@@ -1,4 +1,5 @@
-"""The company file's events table: every change writes one row in its own transaction."""
+"""The company file's events table. `add` writes one row in the caller's
+transaction; call it only inside `Database.write`, with the change it records."""
 
 from __future__ import annotations
 

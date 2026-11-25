@@ -1,5 +1,5 @@
 """Company invites: made for one email, valid 14 days, used once, accepted at
-sign-in (M1-05). Sign-in runs against the fake Google in oidc.py."""
+sign-in. Sign-in runs against the fake Google in oidc.py."""
 
 from __future__ import annotations
 
@@ -426,7 +426,7 @@ def test_refusal_lookup_uses_the_unused_invites_index(control: Database) -> None
     assert any("invites_unused_by_email" in step for step in control.read(plan))
 
 
-# --- Workspace domains (D26) ------------------------------------------------------------
+# --- Workspace domains ------------------------------------------------------------
 
 CORP = "corp.example"
 

@@ -57,7 +57,7 @@ def server_info(
     control: Database, settings: Settings, *, actor_id: int, started: float
 ) -> ServerInfo:
     """Version, uptime, data size and email status. The SMTP user and password
-    never leave the settings file. Last backup arrives with M1-08."""
+    never leave the settings file."""
     control.read(lambda conn: users.require_super_admin(conn, actor_id))
     on = settings.email_enabled
     return ServerInfo(

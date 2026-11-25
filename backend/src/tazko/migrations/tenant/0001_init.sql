@@ -1,4 +1,4 @@
--- One company's file. Projects, boards and cards arrive in M2-01.
+-- One company's file: people and events. Projects and boards are in 0002.
 
 -- A copy of the control.db person (id is users.id there), so names and
 -- avatars render without reaching into control.db.

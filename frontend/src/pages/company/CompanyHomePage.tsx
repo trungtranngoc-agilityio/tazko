@@ -1,8 +1,7 @@
 import { useCompany } from "@/features/orgs";
 import { t } from "@/shared/i18n";
 
-// Company home (M1): the Projects heading and its empty state. Projects,
-// starred boards and Manage projects arrive with M2.
+// Company home: the Projects heading and its empty state.
 export function CompanyHomePage() {
   const { company } = useCompany();
   return (

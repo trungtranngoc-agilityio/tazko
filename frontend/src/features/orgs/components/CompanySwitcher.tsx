@@ -14,7 +14,7 @@ interface Props {
 /**
  * The company card at the top of the sidebar and its menu (prototype rail):
  * the person's own companies with a check on the current one, a suspended one
- * shown but not openable (M1.md Q2), and Admin console below a line for super
+ * shown but not openable, and Admin console below a line for super
  * admins. Escape and a click outside close it; focus moves in and back.
  */
 export function CompanySwitcher({ companies, current, superAdmin }: Props) {

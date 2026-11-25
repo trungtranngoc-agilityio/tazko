@@ -1,4 +1,4 @@
-"""Super admin console API under /admin/api (M1-06).
+"""Super admin console API under /admin/api.
 
 Every route depends on `get_console`, which answers 401 without a session and
 403 for anyone who is not a super admin. Members and invites go through the
@@ -81,7 +81,7 @@ def resume_company(slug: str, console: ConsoleDep) -> CompanySummaryOut:
 
 @router.delete("/companies/{slug}", status_code=204)
 def delete_company(slug: str, body: DeleteCompanyIn, console: ConsoleDep) -> Response:
-    """Moves the folder to data/trash/ for 30 days (D35)."""
+    """Moves the folder to data/trash/ for 30 days."""
     console.delete(slug, confirm=body.confirm)
     return Response(status_code=204)
 
@@ -244,7 +244,7 @@ def server(
     return ServerOut.from_info(info)
 
 
-# --- workspace domains (D26) -------------------------------------------------------------
+# --- workspace domains -------------------------------------------------------------
 
 
 @router.get("/workspace-domains")

@@ -1,4 +1,4 @@
-"""Google sign-in, sessions and sign-out, against a fake Google (M1-04).
+"""Google sign-in, sessions and sign-out, against a fake Google.
 
 The fake signs real RS256 ID tokens with a test key and checks the PKCE
 verifier, so the server's own checks (signature, audience, issuer, expiry,

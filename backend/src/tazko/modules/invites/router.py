@@ -50,7 +50,7 @@ def revoke(
     return Response(status_code=204)
 
 
-# --- invites to one project (D41) ---------------------------------------------------------
+# --- invites to one project ---------------------------------------------------------
 
 PROJECT_INVITES = "/api/orgs/{slug}/projects/{project_id}/invites"
 ProjectId = Annotated[int, Path(ge=1, le=2**63 - 1)]

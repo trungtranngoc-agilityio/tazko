@@ -1,4 +1,4 @@
-"""Every write must come from TAZKO_WEB_ORIGIN (M1-05). SameSite=Lax still lets
+"""Every write must come from TAZKO_WEB_ORIGIN. SameSite=Lax still lets
 sibling sites under the same domain send the cookie, so the server checks Origin
 itself, on every route, not only the ones that remember to ask."""
 

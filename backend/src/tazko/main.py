@@ -1,6 +1,6 @@
 """App factory: middleware, error handlers and the module routers.
 
-API only: the web app is deployed separately (D13) and calls this server
+API only: the web app is deployed separately and calls this server
 cross-origin with credentials. Listens on loopback only; TLS and the public
 hostname belong to the tunnel.
 """
@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 def create_app(settings: Settings | None = None) -> FastAPI:
     settings = settings or load_settings()
     # The internal API is not published: no docs pages and no /openapi.json.
-    # The public document arrives with /api/v1 (M6-01).
+    # The public document arrives with /api/v1.
     app = FastAPI(
         title="Tazko",
         version=__version__,
@@ -61,7 +61,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=None,
         openapi_url=None,
         lifespan=lifespan,
-        # Every write route checks Origin, including routes added later (M1-05).
+        # Every write route checks Origin, including routes added later.
         dependencies=[Depends(require_same_origin)],
     )
     app.state.settings = settings
@@ -75,7 +75,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         settings.google_client_secret.get_secret_value(),
         base_url=settings.google_url,
     )
-    # TODO(M3-01): realtime hub.
 
     # CORS for exactly one origin, with cookies. Other origins get no CORS
     # headers at all. CORS only tells browsers what they may read; the server
@@ -98,7 +97,4 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(admin_router.router)  # /admin/api
     app.include_router(projects_router.router)  # /api/orgs/{slug}/projects
     app.include_router(boards_router.router)  # .../projects/{id}/boards
-    # Module routers are included here as milestones land:
-    # app.include_router(realtime.router, prefix="/ws")            M3-01
-    # app.include_router(public_api.router, prefix="/api/v1")      M6-01
     return app

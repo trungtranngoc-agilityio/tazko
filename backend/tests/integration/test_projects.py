@@ -1,4 +1,4 @@
-"""Projects and project members over HTTP (M2-02 part 1, D39). Every route
+"""Projects and project members over HTTP. Every route
 runs with a real session; rows are checked in the company file. Fixtures:
 conftest.py (acme, boss, pia, max_, launch); helpers: company.py."""
 
@@ -365,7 +365,7 @@ def test_the_last_project_owner_is_never_demoted_or_removed(
 def test_removing_a_member_unassigns_them_and_ends_their_board_access(
     client: TestClient, google: FakeGoogle, tenants: Tenants, pia: User, max_: User, launch: int
 ) -> None:
-    """D6: their cards stay; they come off assignees, watchers and restricted boards."""
+    """Their cards stay; they come off assignees, watchers and restricted boards."""
     join(client, google, launch, max_, "member", by=pia)
 
     def seed(conn: sqlite3.Connection) -> None:
@@ -505,7 +505,7 @@ def test_people_removed_from_the_company_leave_its_projects(
     max_: User,
     launch: int,
 ) -> None:
-    """D6 also when leaving the company: no stale owner keeps the last-owner
+    """Also when leaving the company: no stale owner keeps the last-owner
     check happy, and a later re-invite brings back no project role."""
     join(client, google, launch, max_, "owner", by=pia)
     as_(client, google, boss)

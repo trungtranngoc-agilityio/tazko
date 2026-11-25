@@ -16,7 +16,7 @@ class Invite:
     expires_at: str
     accepted_at: str | None
     revoked_at: str | None
-    # A project invite (D41): the project's id in the company file, and the role there.
+    # A project invite: the project's id in the company file, and the role there.
     project_id: int | None = None
     project_role: str | None = None
     created_by: int | None = None
@@ -190,7 +190,7 @@ def pending_by_id(conn: sqlite3.Connection, invite_id: int) -> PendingInvite:
 def usable(conn: sqlite3.Connection, email: str, *, now: str) -> list[Invite]:
     """Invites this email can use now: not used, not revoked, not expired, for
     an active company. Owner invites first, so someone invited to a company as
-    an owner and to one of its projects (a plain member, D41) joins as an
+    an owner and to one of its projects (always a plain member) joins as an
     owner. Uses the partial index invites_pending_by_email."""
     rows = conn.execute(
         INVITE_SELECT + " FROM invites i JOIN orgs o ON o.id = i.org_id"

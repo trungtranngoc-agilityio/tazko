@@ -1,4 +1,4 @@
-"""Project invites over HTTP (M2-02 part 3, D41). An invite names one email,
+"""Project invites over HTTP. An invite names one email,
 one project and a project role. Someone not yet in the company joins it as a
 plain member at sign-in and sees only that project; the project part is used
 the first time they open the company. Fixtures: conftest.py (acme, boss, pia,
@@ -496,7 +496,7 @@ def test_a_company_owner_joining_by_invite_is_audit_logged(
     ]
 
 
-# --- checked again when used (D41) -------------------------------------------------------------
+# --- checked again when used -------------------------------------------------------------
 
 
 def test_an_invite_dies_when_its_maker_may_no_longer_make_it(
@@ -562,7 +562,7 @@ def test_a_personal_account_on_a_workspace_address_uses_no_project_invite(
     launch: int,
 ) -> None:
     # given Bo linked a personal account on bo@corp.example, and corp.example
-    # became known as a Workspace after that (D26)
+    # became known as a Workspace after that
     bo = person(control, tenants, acme, "bo", "member")
     control.write(
         lambda c: c.execute("UPDATE users SET email = 'bo@corp.example' WHERE id = ?", (bo.id,))

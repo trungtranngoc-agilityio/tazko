@@ -55,7 +55,7 @@ def _counts(row: sqlite3.Row) -> OrgCounts:
 COUNTS_SELECT = (
     "SELECT o.id, o.slug, o.name, o.status, o.storage_limit_bytes,"
     " (SELECT count(*) FROM org_members m WHERE m.org_id = o.id) AS members,"
-    # Newest audit row of the company (index audit_log_by_org); M2 adds board activity.
+    # Newest audit row of the company (index audit_log_by_org).
     " (SELECT max(a.at) FROM audit_log a WHERE a.org_id = o.id) AS last_activity_at"
     " FROM orgs o"
 )
@@ -155,7 +155,7 @@ def stranded_members(conn: sqlite3.Connection, org_id: int) -> list[int]:
 
 def only_suspended_companies(conn: sqlite3.Connection, user_id: int) -> bool:
     """The person is in at least one company that is not deleted, and none of
-    them is active (sign-in refuses them, M1-07)."""
+    them is active (sign-in refuses them)."""
     row = conn.execute(
         "SELECT count(*) AS listed, coalesce(sum(o.status = 'active'), 0) AS active"
         " FROM org_members m JOIN orgs o ON o.id = m.org_id"
@@ -256,7 +256,7 @@ def delete_member(conn: sqlite3.Connection, *, org_id: int, user_id: int) -> Non
 
 def memberships(conn: sqlite3.Connection, user_id: int) -> list[Membership]:
     # Includes suspended companies (status is on Org) so the switcher can show them
-    # as suspended; open_company still refuses them (M1.md Q2, D30).
+    # as suspended; open_company still refuses them.
     rows = conn.execute(
         "SELECT o.id, o.slug, o.name, o.status, m.role FROM org_members m"
         " JOIN orgs o ON o.id = m.org_id"

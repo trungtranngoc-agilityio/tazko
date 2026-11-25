@@ -1,4 +1,4 @@
-"""The project permission matrix (M2-02, D39): who may do what in a project.
+"""The project permission matrix: who may do what in a project.
 
 Every cell is written out, not computed, so a change to the rules has to
 change this table on purpose. "hide" answers 404 (the project does not exist
@@ -176,7 +176,7 @@ def test_an_archived_project_allows_only_reads_and_its_management(action: Action
         ("owner", False, False, True),
         ("owner", True, False, True),  # project owners manage restricted boards
         ("member", False, False, True),
-        ("member", True, False, False),  # KNOWN-DEVIATIONS #1
+        ("member", True, False, False),  # restricted boards hide from unlisted members
         ("member", True, True, True),
         ("observer", True, False, False),
         ("observer", True, True, True),

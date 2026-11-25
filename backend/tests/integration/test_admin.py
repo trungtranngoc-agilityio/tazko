@@ -1,4 +1,4 @@
-"""Super admin console API under /admin/api (M1-06): the gate, companies,
+"""Super admin console API under /admin/api: the gate, companies,
 company detail and invites across companies. Through HTTP with real sessions."""
 
 from __future__ import annotations

@@ -21,7 +21,7 @@ BoardId = Annotated[int, Path(ge=1, le=2**63 - 1)]
 @router.get("/{project_id}/boards")
 def boards(project_id: ProjectId, company: CompanyDep, user: CurrentUser) -> list[BoardOut]:
     """The boards you may see, closed ones included; at most 500, by name.
-    A restricted board you are not on does not appear (KNOWN-DEVIATIONS #1)."""
+    A restricted board you are not on does not appear."""
     rows = service.boards(company, actor_id=user.id, project_id=project_id)
     return [BoardOut.of(row) for row in rows]
 

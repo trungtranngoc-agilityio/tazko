@@ -1,4 +1,4 @@
-// Public surface of the admin feature (super admin console, M1-06).
+// Public surface of the admin feature (super admin console).
 export {
   AUDIT_KINDS,
   allInvites,

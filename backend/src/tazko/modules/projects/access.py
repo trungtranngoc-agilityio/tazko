@@ -1,17 +1,11 @@
-"""Who may do what in a project (D39). One pure function, so the whole matrix
-is tested in tests/unit/test_project_access.py and every service asks it.
+"""Who may do what in a project: one pure function, so the whole matrix is
+tested in one place (tests/unit/test_project_access.py) and every service asks it.
 
-- A person who is in neither the project nor the company's owners never
-  learns the project exists: "hide" (404).
-- Company owners manage every project (rename, archive, restore, delete, and
-  its owners) but open its boards and change its settings only once they are
-  in it with that role; adding themselves is audit-logged by the service.
-- Project owners run the project: settings, members, boards. Members edit
-  boards and may create boards and add people when the project's switches
-  say so. Observers only read (D5).
-- An archived project is read-only until a company owner restores it.
-- Boards: members edit them; only project owners restrict them; a
-  restricted board is seen by project owners and its list (sees_board).
+Outside the project and not a company owner: "hide" (404), so the project's
+existence never leaks. Company owners manage every project (and its owners)
+but open its boards and change its settings only once in it. Members create
+boards and add people only when the project's switches allow it; observers
+only read. An archived project is read-only until a company owner restores it.
 """
 
 from __future__ import annotations
@@ -112,7 +106,7 @@ def sees_board(role: ProjectRole | None, *, restricted: bool, listed: bool) -> b
     """Whether someone with project role `role` may see a board at all. A
     restricted board shows only to the project's owners (who manage it) and
     the people on its list; to anyone else it does not exist (404,
-    KNOWN-DEVIATIONS #1). Company owners outside the project see no board."""
+    the prototype leaked it). Company owners outside the project see no board."""
     if role is None:
         return False
     return role == "owner" or not restricted or listed

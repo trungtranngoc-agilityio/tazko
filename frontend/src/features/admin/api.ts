@@ -1,7 +1,7 @@
 import type { Account, Invite, Role } from "@/features/orgs";
 import { api } from "@/shared/api";
 
-// The super admin console API (/admin/api, M1-06). Members and invites of one
+// The super admin console API (/admin/api). Members and invites of one
 // company use the orgs feature's calls with consoleCompanyBase(slug).
 
 export interface CompanySummary {

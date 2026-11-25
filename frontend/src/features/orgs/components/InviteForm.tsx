@@ -4,8 +4,8 @@ import { errorText, t } from "@/shared/i18n";
 import { Icon } from "@/shared/ui/Icon";
 import { invite, type Invite, type Role } from "../api";
 
-/** "Invite someone": email and role. Email delivery comes with M6, so the
- * owner is told to share the site address themselves. */
+/** "Invite someone": email and role. No email is sent, so the owner is told
+ * to share the site address themselves. */
 export function InviteForm({
   base,
   onInvited,

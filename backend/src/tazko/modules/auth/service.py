@@ -1,18 +1,8 @@
-"""Google sign-in (OIDC authorization code flow with PKCE) and sessions.
+"""Google sign-in (OIDC code flow with PKCE) and sessions.
 
-1. `start_sign_in` makes a fresh state, nonce and PKCE verifier, kept in a
-   signed cookie for 10 minutes, and the Google URL to send the browser to.
-2. `finish_sign_in` checks the state against that cookie, exchanges the code
-   (with the verifier), verifies the ID token's signature against Google's
-   keys plus audience, issuer, expiry and nonce, and requires a verified email.
-3. The account is matched to a person (users.service.match_google_account).
-   No person but a usable invite for the email: the person is created. No
-   person and no usable invite, or a disabled person: refused and audit-logged.
-4. Every usable invite for the person's email is accepted (invites.service),
-   then a new random session token is issued and any session the browser had
-   is deleted. All of it is one control.db transaction.
-
-Sessions last 30 days from last use. The token is never stored, only its SHA-256.
+The whole callback (match the person, use their invites, issue the session)
+is one control.db transaction. Only a token's SHA-256 is stored; sessions
+last 30 days from last use.
 """
 
 from __future__ import annotations
@@ -138,7 +128,7 @@ def finish_sign_in(
         if isinstance(match, Refused):
             return _refuse(conn, account, match, ip=ip)
         users.remember_workspace(conn, account)
-        # A personal account on a Workspace address uses no invites (D26), even
+        # A personal account on a Workspace address uses no invites, even
         # one linked by sub before the domain was known.
         if not users.needs_workspace(conn, account, match.email):
             invites.accept_usable(conn, match, ip=ip)
@@ -256,7 +246,7 @@ def _signing_key(provider: IdentityProvider, kid: object) -> jwt.PyJWK:
 
 def refusal_cookie(refusal: Refusal, secret: bytes) -> str:
     # Only a suspended company is told apart; every other reason reads as "not
-    # invited", so the page reveals nothing more about the account (D35).
+    # invited", so the page reveals nothing more about the account.
     shown = "company_suspended" if refusal.reason == "company_suspended" else "not_invited"
     payload = {"email": refusal.email, "reason": shown}
     return sign(payload, secret, purpose="refused", max_age=REFUSAL_SECONDS)

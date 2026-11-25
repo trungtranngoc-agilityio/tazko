@@ -1,17 +1,8 @@
 """One SQLite file: a single writer thread, a small read pool, migrations.
 
-Every write runs on the file's own writer thread inside `BEGIN IMMEDIATE`, so
-writes to one company never interleave and a busy company never blocks
-another. Reads use separate `query_only` connections; with WAL they see the
-last committed state and do not wait for the writer.
-
-Callers pass a function that receives the connection:
-
-    db.write(lambda c: c.execute("INSERT ..."))
-    rows = db.read(lambda c: c.execute("SELECT ...").fetchall())
-
-Both block the calling thread, so FastAPI routes that use them are plain
-`def` routes (run in the thread pool), never `async def`.
+Writes run on the file's own thread inside `BEGIN IMMEDIATE`, so one company's
+writes never interleave and never block another company. Both `read` and
+`write` block, so routes that use them are plain `def`, never `async def`.
 """
 
 from __future__ import annotations
@@ -32,7 +23,7 @@ from typing import Any
 log = logging.getLogger(__name__)
 
 SCRIPT_NAME = re.compile(r"^(\d{4})_[a-z0-9_]+\.sql$")
-# First line of a migration that an older release can live with (expand-contract, D21):
+# First line of a migration that an older release can live with (expand-contract):
 # "-- readers: N" means a release that knows migrations up to N can still use the file.
 READERS = re.compile(r"\A--[ \t]*readers:[ \t]*(\d+)[ \t]*$", re.MULTILINE)
 BUSY_TIMEOUT_MS = 5000
@@ -88,7 +79,7 @@ def readers_of(version: int, sql: str) -> int:
 def oldest_reader(scripts: list[tuple[int, str, str]]) -> int:
     """After running `scripts`, the oldest release that can still use the file:
     every migration newer than that release must allow it. Stored in
-    PRAGMA application_id next to user_version (D36)."""
+    PRAGMA application_id next to user_version."""
     oldest = len(scripts)
     needed = 0
     for version, _name, sql in reversed(scripts[1:]):
@@ -117,7 +108,7 @@ def migrate(conn: sqlite3.Connection, scripts: list[tuple[int, str, str]], label
         try:
             # One script, one transaction: the schema, the version and the oldest
             # release that can still use the file move together. application_id is
-            # SQLite's file-type marker; Tazko stores that release number in it (D36).
+            # SQLite's file-type marker; Tazko stores that release number in it.
             conn.executescript(
                 f"BEGIN IMMEDIATE;\n{sql}\n;PRAGMA user_version = {version};\n"
                 f"PRAGMA application_id = {oldest};\nCOMMIT;"

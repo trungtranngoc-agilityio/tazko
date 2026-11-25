@@ -21,8 +21,7 @@ const field = "mt-1 h-10 w-full rounded-md border border-line bg-surface px-3";
 
 /**
  * New company (prototype dNewCo): name, short name, first owner. Creates the
- * company, then invites the owner. The storage limit field waits for M1-07,
- * which brings company settings. Escape or Cancel closes it.
+ * company, then invites the owner. Escape or Cancel closes it.
  */
 export function NewCompanyDialog({
   onClose,

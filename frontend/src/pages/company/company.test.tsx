@@ -401,7 +401,7 @@ describe("company settings", () => {
   });
 
   it("asks before removing someone and does nothing on Cancel", async () => {
-    // KNOWN-DEVIATIONS #5: the prototype removes at once.
+    // The prototype removes at once; this asks first.
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const calls = fakeApi(SETTINGS);
     show("/c/harbor/settings");

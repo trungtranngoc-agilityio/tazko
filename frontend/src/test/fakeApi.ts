@@ -29,7 +29,7 @@ export function fakeApi(routes: Record<string, Route>): Call[] {
   return calls;
 }
 
-/** An error body as the API sends it (D19). */
+/** An error body as the API sends it. */
 export function apiError(code: string) {
   return { error: { code, message: code.toLowerCase(), details: [] } };
 }

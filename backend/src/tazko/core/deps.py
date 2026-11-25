@@ -52,10 +52,7 @@ def require_same_origin(request: Request, settings: SettingsDep) -> None:
 
     main.py installs this on the whole app, so every write route is checked
     without asking. Reads pass: CORS decides what another site may read.
-    TODO(M3-01): the WebSocket handshake checks Origin too. App dependencies
-    also attach to WebSocket routes, so take an HTTPConnection then. Never
-    `app.mount` an API that writes: mounted apps skip app dependencies.
-    TODO(M6-01): /api/v1 bearer-token calls carry no cookie and skip it.
+    Never `app.mount` an API that writes: mounted apps skip app dependencies.
     """
     if request.method in WRITE_METHODS and request.headers.get("origin") != settings.web_origin:
         raise Forbidden("request from another origin")
@@ -106,9 +103,7 @@ def get_company(slug: str, user: CurrentUser, request: Request, control: Control
     for the company cache itself; tests/unit/test_architecture.py guards this.
     """
     company = orgs.open_company(control, request.app.state.tenants, user_id=user.id, slug=slug)
-    project_invites.use_project_invites(
-        control, company, user
-    )  # D41: their pending project invites
+    project_invites.use_project_invites(control, company, user)  # their pending project invites
     return company
 
 

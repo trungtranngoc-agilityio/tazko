@@ -19,7 +19,7 @@ interface Props {
   readOnly?: boolean;
 }
 
-/** Members with role and Remove. Every removal is confirmed (KNOWN-DEVIATIONS #5),
+/** Members with role and Remove. Every removal is confirmed,
  * and so is making yourself a member; the server refuses to drop the last owner
  * and the reason is shown. */
 export function MembersTable(props: Props) {

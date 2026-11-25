@@ -184,7 +184,7 @@ def test_closed_database_refuses_work(tmp_path: Path) -> None:
         db.write(lambda c: None)
 
 
-# --- rollback after a migration (D21) ------------------------------------------------
+# --- rollback after a migration ------------------------------------------------
 
 V1 = {"0001_a": "CREATE TABLE a (x INTEGER);"}
 

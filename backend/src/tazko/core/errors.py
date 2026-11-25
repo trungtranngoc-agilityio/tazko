@@ -1,16 +1,6 @@
-"""One error type for handlers. Internal details are logged, never returned.
-
-Every error body is (D19, .claude/rules/api-design.md):
-
-    {"error": {"code": "SLUG_TAKEN", "message": "slug: already taken",
-               "details": [{"field": "slug", "message": "already taken"}]}}
-
-`code` is stable and the web app translates it (frontend/src/shared/i18n,
-`error.<CODE>`); `message` is English for logs and fallbacks. Never change a
-shipped code.
-
-Note: a board the caller may not see answers `NotFound`, not `Forbidden`,
-so restricted boards do not leak their existence (KNOWN-DEVIATIONS #1).
+"""Errors for handlers, answered in the shape of .claude/rules/api-design.md.
+Internal details are logged, never returned. Never change a shipped `code`:
+the web app translates it.
 """
 
 from __future__ import annotations

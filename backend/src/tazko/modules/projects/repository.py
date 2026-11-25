@@ -6,7 +6,7 @@ from __future__ import annotations
 import sqlite3
 from dataclasses import dataclass
 
-# Fixed caps instead of paging (api-design.md): a company has a few hundred
+# Fixed caps instead of paging: a company has a few hundred
 # projects at most, and a project a few hundred members.
 PROJECTS_CAP = 500
 MEMBERS_CAP = 500
@@ -219,7 +219,7 @@ def owner_count(conn: sqlite3.Connection, project_id: int) -> int:
 
 def remove_member(conn: sqlite3.Connection, *, project_id: int, person_id: int) -> None:
     """Take the person out, and off the project's restricted boards, board
-    stars, card assignees and watchers (D6). Their cards and comments stay."""
+    stars, card assignees and watchers. Their cards and comments stay."""
     boards = "SELECT id FROM boards WHERE project_id = ?"
     cards = (
         "SELECT c.id FROM cards c JOIN lists l ON l.id = c.list_id"

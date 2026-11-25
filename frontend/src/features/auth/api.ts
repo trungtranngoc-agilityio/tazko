@@ -10,7 +10,7 @@ export interface Me {
 }
 
 // Sign-in starts on the API host; after the Google callback the API sets the
-// session cookie and redirects back to the web origin (D13).
+// session cookie and redirects back to the web origin.
 export function googleSignInUrl(): string {
   return apiUrl("/auth/google/start");
 }

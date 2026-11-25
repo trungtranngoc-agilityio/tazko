@@ -11,7 +11,7 @@ import { t } from "@/shared/i18n";
 
 // Sign-in refused (design: 02-refused). The API keeps the refused address in a
 // short-lived cookie, so it never travels in the URL. A member whose companies
-// are all suspended is told so (M1-07); every other reason reads as not invited.
+// are all suspended is told so; every other reason reads as not invited.
 export function RefusedPage() {
   const [found, setFound] = useState<Refusal | null | undefined>(undefined);
 

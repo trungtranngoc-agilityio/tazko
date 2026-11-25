@@ -28,7 +28,7 @@ def preflight(client: TestClient, origin: str) -> Response:
 
 
 def test_openapi_schema_is_not_served(client: TestClient) -> None:
-    # The internal API is not published; /api/v1 gets its own document in M6-01.
+    # The internal API is not published.
     assert client.get("/openapi.json").status_code == 404
 
 
@@ -82,7 +82,7 @@ def app_with_routes(settings: Settings) -> Iterator[TestClient]:
     def crash() -> None:
         raise RuntimeError("secret path /var/lib/tazko/data")
 
-    # Writes must come from the web origin (M1-05).
+    # Writes must come from the web origin.
     with TestClient(
         app, raise_server_exceptions=False, headers={"origin": settings.web_origin}
     ) as test_client:

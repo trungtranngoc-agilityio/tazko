@@ -65,7 +65,7 @@ branch = true
 source = ["tazko"]
 
 [tool.coverage.report]
-# The floor (D20): just under the current level, only ever raised. scripts/ci.sh enforces it,
+# The floor: just under the current level, only ever raised. scripts/ci.sh enforces it,
 # so running one test file while working does not fail on coverage.
 fail_under = 92
 skip_covered = true

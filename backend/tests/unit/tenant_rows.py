@@ -1,7 +1,7 @@
 """Rows for tests on a company file: a person, a project, a board, lists and cards.
 
 Plain SQL on purpose: the services that create these rows arrive with the
-screens (M2-02, M2-03); these tests prove the schema and the ranks under them.
+screens; these tests prove the schema and the ranks under them.
 """
 
 from __future__ import annotations

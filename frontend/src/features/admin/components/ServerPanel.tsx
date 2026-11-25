@@ -19,8 +19,8 @@ function Stat({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-/** Server page stats and email (prototype admin-server). Backups arrive with
- * M1-08, so Last backup says it is not set up and the Backups table waits. */
+/** Server page stats and email (prototype admin-server). The API does not
+ * report backups yet, so Last backup says it is not set up. */
 export function ServerPanel({ info }: { info: ServerInfo }) {
   const { email } = info;
   return (

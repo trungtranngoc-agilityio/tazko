@@ -59,8 +59,7 @@ def set_disabled(conn: sqlite3.Connection, user_id: int, at: str | None) -> None
 
 def end_sessions(conn: sqlite3.Connection, user_id: int) -> None:
     """Sign a person out everywhere. The sessions table belongs to auth, but a
-    disabled person's sessions must go in the same transaction that disables them.
-    TODO(M3-01): also close that person's open WebSockets."""
+    disabled person's sessions must go in the same transaction that disables them."""
     conn.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
 
 

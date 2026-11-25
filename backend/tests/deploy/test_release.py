@@ -1,10 +1,10 @@
-"""deploy/backend/release.sh as a dry run (M1-08): a temp folder stands in for
+"""deploy/backend/release.sh as a dry run: a temp folder stands in for
 /opt/tazko, fake `systemctl` and `python3.12` record what they are asked, and
 the health check reads a file that the fake systemctl writes on restart.
 
 A release is healthy unless its bundle holds a file named BROKEN. When the
 data is "migrated" by a release that holds CONTRACT, older releases are
-unhealthy until the fake restore unit runs (D36 path 2)."""
+unhealthy until the fake restore unit runs (the restore path)."""
 
 from __future__ import annotations
 

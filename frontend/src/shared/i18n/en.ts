@@ -191,7 +191,7 @@ export const en = {
   "refused.another": "Try another Google account",
   notFound: "Page not found",
 
-  // API error codes (D19). Show with errorText(error.code); add a key for each
+  // API error codes. Show with errorText(error.code); add a key for each
   // code the UI must explain. Unknown codes fall back to error.UNKNOWN.
   "error.UNKNOWN": "Something went wrong. Try again.",
   "error.BAD_REQUEST": "The request could not be read. Reload the page and try again.",

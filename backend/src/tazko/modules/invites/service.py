@@ -1,8 +1,8 @@
-"""Company invites (M1-05). An invite lets one email into one company, is valid
+"""Company invites. An invite lets one email into one company, is valid
 for 14 days, and works once. It is accepted when that email signs in.
 
 Making and revoking check the actor here, in the service (a super admin or an
-owner of the company; None is the command line), so the M1-06 routes cannot
+owner of the company; None is the command line), so the routes cannot
 forget it.
 """
 
@@ -100,7 +100,7 @@ def create_invite(
 
 def account_kind(invite: PendingInvite) -> AccountKind | None:
     """What kind of Google account the address will sign in with, when we can
-    tell: a known Workspace domain (D26), or a consumer Gmail domain."""
+    tell: a known Workspace domain, or a consumer Gmail domain."""
     if invite.workspace:
         return "workspace"
     if invite.email.rpartition("@")[2] in PERSONAL_DOMAINS:
@@ -156,7 +156,7 @@ def revoke_invite(
     def run(conn: sqlite3.Connection) -> None:
         orgs.require_manager(conn, org_id=org.id, actor_id=actor_id)
         invite = repo.by_id(conn, invite_id)
-        # A project invite is revoked under its project, with the project's check (D41).
+        # A project invite is revoked under its project, with the project's check.
         if invite is None or invite.org_id != org.id or invite.project_id is not None:
             raise NotFound()
         if invite.accepted_at:

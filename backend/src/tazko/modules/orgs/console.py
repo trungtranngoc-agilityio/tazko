@@ -24,7 +24,7 @@ log = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class CompanySummary:
-    """A company as the console's Companies page shows it. Boards come in M2."""
+    """A company as the console's Companies page shows it."""
 
     org: Org
     members: int
@@ -81,7 +81,7 @@ class Console:
         inside the control.db transaction; if that transaction then fails, the
         folder is moved back, so the company stays as it was. A row whose
         folder is already gone is still deleted. The row keeps its slug, so the
-        folder can be restored by hand (D35)."""
+        folder can be restored by hand."""
         if confirm != slug:
             raise Invalid("confirm: type the short name of the company", field="confirm")
         moved: list[Path] = []

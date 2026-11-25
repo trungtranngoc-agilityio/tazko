@@ -1,9 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 import { SUPER_ADMIN } from "./tests/e2e/accounts";
 
-// e2e runs the real API and the web app (D13): the browser talks to the Vite
+// e2e runs the real API and the web app: the browser talks to the Vite
 // server, which proxies API paths to the Python server. Sign-in goes through a
-// stand-in Google (tests/e2e/fake-google.mjs, D32) that the API reaches through
+// stand-in Google (tests/e2e/fake-google.mjs) that the API reaches through
 // TAZKO_GOOGLE_URL; Google's address is the callback's, so cookies land on the
 // web origin as they do behind the tunnel.
 // Test values shared with fake-google.mjs. Not secrets.
