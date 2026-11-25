@@ -1,0 +1,117 @@
+import { expect, test, type Browser, type Page } from "@playwright/test";
+import { SUPER_ADMIN, signIn, unique } from "./accounts";
+
+// Projects through the browser: Manage projects, a project's members and
+// invites, its settings, and what a new person invited to one project sees.
+
+/** A fresh company whose first owner is signed in on the returned page. */
+async function companyOwner(browser: Browser, page: Page) {
+  const slug = unique("proj");
+  const owner = `owner@${slug}.test`;
+  await signIn(page, SUPER_ADMIN, "Root Admin");
+  await page.goto("/admin");
+  await page.getByRole("button", { name: "New company" }).click();
+  const dialog = page.getByRole("dialog", { name: "New company" });
+  await dialog.getByLabel("Company name").fill(`Studio ${slug}`);
+  await dialog.getByLabel(/Short name/).fill(slug);
+  await dialog.getByLabel("First owner email").fill(owner);
+  await dialog.getByRole("button", { name: "Create company" }).click();
+  await expect(page).toHaveURL(`/admin/companies/${slug}`);
+
+  const context = await browser.newContext();
+  const ownerPage = await context.newPage();
+  await signIn(ownerPage, owner, "Olive Owner");
+  return { slug, ownerPage, context };
+}
+
+test("an owner creates a project, invites a new email, and that person sees only it", async ({
+  page,
+  browser,
+}) => {
+  const { slug, ownerPage, context } = await companyOwner(browser, page);
+  const newcomer = `${unique("new")}@gmail.com`;
+
+  // Manage projects: a project with the owner as its first owner opens on its members
+  await ownerPage.getByRole("link", { name: "Manage projects" }).first().click();
+  await ownerPage.getByRole("button", { name: "New project" }).click();
+  const dialog = ownerPage.getByRole("dialog", { name: "New project" });
+  await dialog.getByLabel("Project name").fill("Website relaunch");
+  await dialog.getByRole("button", { name: "Create project" }).click();
+  await expect(ownerPage).toHaveURL(new RegExp(`/c/${slug}/p/\\d+/members$`));
+  await expect(
+    ownerPage.getByRole("heading", { name: /Website relaunch/ }),
+  ).toBeVisible();
+
+  // invite someone new as a member
+  await ownerPage.getByPlaceholder("name@example.com").fill(newcomer);
+  await ownerPage.getByRole("button", { name: "Invite" }).click();
+  await expect(
+    ownerPage.getByRole("table", { name: "Pending invites" }),
+  ).toContainText(newcomer);
+
+  // the newcomer signs in and sees exactly that project, as a member
+  const other = await browser.newContext();
+  const newPage = await other.newPage();
+  await signIn(newPage, newcomer, "Nia New");
+  await newPage.goto(`/c/${slug}`);
+  const card = newPage.getByRole("link", { name: /Website relaunch/ });
+  await expect(card).toBeVisible();
+  await expect(card).toContainText("member");
+  await expect(newPage.getByRole("link", { name: "Manage projects" })).toHaveCount(0);
+  await other.close();
+
+  // the invite is used: the owner sees a member and no pending invite
+  await ownerPage.reload();
+  await expect(ownerPage.getByText("Nia New")).toBeVisible();
+  await expect(ownerPage.getByText("No pending invites.")).toBeVisible();
+  await context.close();
+});
+
+test("project settings keep their changes, and an observer only reads", async ({
+  page,
+  browser,
+}) => {
+  const { slug, ownerPage, context } = await companyOwner(browser, page);
+  const watcher = `${unique("obs")}@gmail.com`;
+  await ownerPage.goto(`/c/${slug}/manage`);
+  await ownerPage.getByRole("button", { name: "New project" }).click();
+  const dialog = ownerPage.getByRole("dialog", { name: "New project" });
+  await dialog.getByLabel("Project name").fill("Mobile app");
+  await dialog.getByRole("button", { name: "Create project" }).click();
+  await expect(ownerPage).toHaveURL(/\/members$/);
+
+  // settings: a switch and the description stay after a reload
+  await ownerPage.getByRole("link", { name: "Settings", exact: true }).click();
+  await ownerPage.getByRole("switch", { name: "Members can invite people" }).click();
+  await ownerPage.getByLabel("Description").fill("Native app releases.");
+  await ownerPage.getByRole("button", { name: "Save changes" }).click();
+  await expect(ownerPage.getByText("Saved")).toBeVisible();
+  await ownerPage.reload();
+  await expect(
+    ownerPage.getByRole("switch", { name: "Members can invite people" }),
+  ).toHaveAttribute("aria-checked", "true");
+  await expect(ownerPage.getByLabel("Description")).toHaveValue("Native app releases.");
+
+  // an observer joins through an invite and can only read
+  await ownerPage.getByRole("link", { name: /Members/ }).click();
+  await ownerPage.getByPlaceholder("name@example.com").fill(watcher);
+  await ownerPage.getByRole("combobox", { name: "Role", exact: true }).selectOption("observer");
+  await ownerPage.getByRole("button", { name: "Invite" }).click();
+  await expect(
+    ownerPage.getByRole("table", { name: "Pending invites" }),
+  ).toContainText(watcher);
+
+  const other = await browser.newContext();
+  const watcherPage = await other.newPage();
+  await signIn(watcherPage, watcher, "Oscar Observer");
+  await watcherPage.goto(`/c/${slug}`);
+  await watcherPage.getByRole("link", { name: /Mobile app/ }).click();
+  await expect(
+    watcherPage.getByText("Only project owners can invite people."),
+  ).toBeVisible();
+  await expect(watcherPage.getByRole("combobox")).toHaveCount(0);
+  await expect(watcherPage.getByRole("button", { name: /Remove/ })).toHaveCount(0);
+  await expect(watcherPage.getByRole("link", { name: "Settings", exact: true })).toHaveCount(0);
+  await other.close();
+  await context.close();
+});

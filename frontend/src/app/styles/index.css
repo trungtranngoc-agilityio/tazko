@@ -112,3 +112,39 @@ body {
   background:
     radial-gradient(900px 420px at 50% -10%, var(--tz-glow), transparent 70%), var(--tz-bg);
 }
+
+/* Board backgrounds (prototype BG): the keys a project's default background
+   and a board's background take. Classes, so they hold under the CSP. */
+.board-bg-dusk {
+  background: linear-gradient(135deg, #4b4fd8, #8b5cf6 60%, #c084fc);
+}
+.board-bg-sea {
+  background: linear-gradient(135deg, #0ea5a4, #2563eb);
+}
+.board-bg-sand {
+  background: linear-gradient(135deg, #f59e0b, #ef7a5a);
+}
+.board-bg-meadow {
+  background: linear-gradient(135deg, #16a34a, #84cc16);
+}
+.board-bg-rose {
+  background: linear-gradient(135deg, #e11d74, #f97316);
+}
+.board-bg-slate {
+  background: linear-gradient(135deg, #334155, #64748b);
+}
+.board-bg-mist {
+  background: linear-gradient(135deg, #8a94e8, #c4a8ee);
+}
+.board-bg-ink {
+  background: #1f2547;
+}
+.board-bg-leaf {
+  background: #2f855a;
+}
+.board-bg-coral {
+  background: #d9534f;
+}
+.board-bg-ocean {
+  background: #1e6fb8;
+}

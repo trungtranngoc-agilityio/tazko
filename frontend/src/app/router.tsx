@@ -11,6 +11,7 @@ import { ManageProjectsPage } from "@/pages/company/ManageProjectsPage";
 import { HomePage } from "@/pages/home/HomePage";
 import { NotFoundPage } from "@/pages/not-found/NotFoundPage";
 import { ProjectMembersPage } from "@/pages/project/ProjectMembersPage";
+import { ProjectSettingsPage } from "@/pages/project/ProjectSettingsPage";
 import { RefusedPage } from "@/pages/signin/RefusedPage";
 import { SignInPage } from "@/pages/signin/SignInPage";
 import { AdminLayout } from "./layouts/AdminLayout";
@@ -39,6 +40,7 @@ export const routes: RouteObject[] = [
       // A project opens on its members until the board screens arrive.
       { path: "p/:projectId", element: <Navigate to="members" replace /> },
       { path: "p/:projectId/members", element: <ProjectMembersPage /> },
+      { path: "p/:projectId/settings", element: <ProjectSettingsPage /> },
     ],
   },
   {
