@@ -13,4 +13,6 @@ export {
   type ProjectRole,
   type ProjectSummary,
 } from "./api";
+export { ManageProjectsTable } from "./components/ManageProjectsTable";
+export { NewProjectDialog } from "./components/NewProjectDialog";
 export { ProjectCard } from "./components/ProjectCard";

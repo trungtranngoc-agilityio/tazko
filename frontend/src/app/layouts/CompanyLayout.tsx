@@ -63,6 +63,12 @@ function CompanyShell() {
             {t("nav.projects")}
           </NavLink>
           {company.role === "owner" && (
+            <NavLink to={`/c/${company.slug}/manage`} className={link}>
+              <Icon name="building" />
+              {t("nav.manage")}
+            </NavLink>
+          )}
+          {company.role === "owner" && (
             <NavLink to={`/c/${company.slug}/settings`} className={link}>
               <Icon name="gear" />
               {t("nav.settings")}
