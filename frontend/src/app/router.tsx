@@ -7,6 +7,7 @@ import { PeoplePage } from "@/pages/admin/PeoplePage";
 import { ServerPage } from "@/pages/admin/ServerPage";
 import { CompanyHomePage } from "@/pages/company/CompanyHomePage";
 import { CompanySettingsPage } from "@/pages/company/CompanySettingsPage";
+import { ManageProjectsPage } from "@/pages/company/ManageProjectsPage";
 import { HomePage } from "@/pages/home/HomePage";
 import { NotFoundPage } from "@/pages/not-found/NotFoundPage";
 import { RefusedPage } from "@/pages/signin/RefusedPage";
@@ -33,6 +34,7 @@ export const routes: RouteObject[] = [
     children: [
       { index: true, element: <CompanyHomePage /> },
       { path: "settings", element: <CompanySettingsPage /> },
+      { path: "manage", element: <ManageProjectsPage /> },
     ],
   },
   {
