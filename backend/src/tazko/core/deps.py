@@ -103,7 +103,12 @@ def get_company(slug: str, user: CurrentUser, request: Request, control: Control
     The only route to a company's file. There is deliberately no dependency
     for the company cache itself; tests/unit/test_architecture.py guards this.
     """
-    return orgs.open_company(control, request.app.state.tenants, user_id=user.id, slug=slug)
+    # Imported here: the invites module's router imports this file.
+    from tazko.modules.invites import service as invites
+
+    company = orgs.open_company(control, request.app.state.tenants, user_id=user.id, slug=slug)
+    invites.use_project_invites(control, company, user)  # D41: their pending project invites
+    return company
 
 
 CompanyDep = Annotated[Company, Depends(get_company)]
