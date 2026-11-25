@@ -5,7 +5,7 @@
 -- not cover.
 CREATE INDEX invites_unused_by_email ON invites (email, id) WHERE accepted_at IS NULL;
 
--- Email domains known to be a Google Workspace (D26): every sign-in with an hd
+-- Email domains known to be a Google Workspace: every sign-in with an hd
 -- records the hd and the address's own domain (alias domains report the main
 -- one as hd). Kept apart from users, so removing people never forgets a domain.
 CREATE TABLE workspace_domains (

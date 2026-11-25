@@ -173,7 +173,7 @@ def forget_workspace_domain(
     control: Database, *, domain: str, actor_id: int, ip: str | None
 ) -> None:
     """For a company that left Google Workspace: personal accounts on its
-    addresses can link and use invites again (D26). Unknown domain: NotFound."""
+    addresses can link and use invites again. Unknown domain: NotFound."""
     name = domain.lower()
 
     def run(conn: sqlite3.Connection) -> None:
@@ -275,7 +275,7 @@ def remember_workspace(conn: sqlite3.Connection, account: GoogleAccount) -> None
 
 def needs_workspace(conn: sqlite3.Connection, account: GoogleAccount, address: str) -> bool:
     """A personal Google account (no `hd`) on an address of a known Workspace
-    domain may not claim that address (D26). A former employee can keep such
+    domain may not claim that address. A former employee can keep such
     an account on their old work address, and Google still calls it verified.
 
     A domain is known once someone signed in from it with a Workspace account
@@ -354,7 +354,7 @@ def create_from_google(conn: sqlite3.Connection, account: GoogleAccount, *, ip: 
 def _new_email(conn: sqlite3.Connection, user: User, account: GoogleAccount) -> str:
     """Follow an email change at Google, unless the new address is unusable,
     another person already has it, or it is a Workspace address and this is a
-    personal account (D26); then keep the stored one."""
+    personal account; then keep the stored one."""
     try:
         address = normalize_email(account.email)
     except Invalid:

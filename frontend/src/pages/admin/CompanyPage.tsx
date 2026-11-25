@@ -27,8 +27,7 @@ import { useAsync } from "@/shared/lib/useAsync";
 type Tab = "members" | "settings";
 
 // Console: Company detail (prototype admin-company). Suspend or Resume in the
-// header; tabs Members and invites, and Settings with Delete company (M1-07).
-// The Projects tab comes with M2; name and storage limit editing wait (D35).
+// header; tabs Members and invites, and Settings with Delete company.
 export function CompanyPage() {
   const { slug = "" } = useParams();
   const location = useLocation();
@@ -147,7 +146,7 @@ export function CompanyPage() {
   );
 }
 
-/** Settings: Delete company (prototype danger zone). Name and storage limit wait (D35). */
+/** Settings: Delete company (prototype danger zone). Name and storage limit wait. */
 function SettingsTab({ onDelete }: { onDelete: () => void }) {
   return (
     <section className="rounded-xl border border-danger bg-surface p-5">

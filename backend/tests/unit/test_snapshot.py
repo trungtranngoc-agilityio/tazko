@@ -1,4 +1,4 @@
-"""tazko backup, check and purge-trash (M1-08) on a real data folder."""
+"""tazko backup, check and purge-trash on a real data folder."""
 
 from __future__ import annotations
 
@@ -319,7 +319,7 @@ def set_versions(db: Path, *, user_version: int, oldest: int) -> None:
 
 
 def test_check_finds_a_company_file_this_release_cannot_use(data: Path, tmp_path: Path) -> None:
-    # given a newer release ran a contract migration on one company's file (D36)
+    # given a newer release ran a contract migration on one company's file
     made = snapshot.backup(data, tmp_path / "backups", keep_days=30, now=NOW)
     set_versions(made / "orgs" / "acme" / "tazko.db", user_version=99, oldest=99)
 

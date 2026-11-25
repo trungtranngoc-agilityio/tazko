@@ -5,7 +5,7 @@ group) and fails on any license outside the allow-list. Run it from the server
 environment:  uv run --project backend python tools/check-backend-licenses.py
 
 Allowed: MIT, Apache-2.0, BSD-2/3-Clause, ISC; accepted exceptions Unicode-3.0,
-Zlib (D12) and PSF-2.0 (D14).
+Zlib and PSF-2.0.
 """
 
 from __future__ import annotations

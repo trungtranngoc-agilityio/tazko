@@ -38,7 +38,7 @@ def _require_board(
     board_id: int,
     action: Action,
 ) -> tuple[Seen, Board]:
-    """In this order, so a hidden board answers 404 to everything (KNOWN-DEVIATIONS #1):
+    """In this order, so a hidden board answers 404 to everything:
     may open the project's boards, then may see this one, then may do `action`."""
     seen = projects.require(conn, company, actor_id, project_id, "open_boards")
     board = repo.board(conn, project_id, board_id)

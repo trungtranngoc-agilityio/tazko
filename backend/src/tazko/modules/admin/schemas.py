@@ -24,7 +24,7 @@ class DeleteCompanyIn(BaseModel):
 
 
 class CompanySummaryOut(BaseModel):
-    """A row of the Companies page. Boards are counted from M2."""
+    """A row of the Companies page."""
 
     slug: str
     name: str
@@ -165,7 +165,8 @@ class EmailOut(BaseModel):
 
 
 class ServerOut(BaseModel):
-    """The Server page. `last_backup` arrives with the backup command (M1-08)."""
+    """The Server page. `last_backup` is always null: the server does not read
+    the backup folder yet."""
 
     version: str
     public_url: str

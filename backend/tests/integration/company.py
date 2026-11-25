@@ -1,4 +1,4 @@
-"""People, sessions and rows for the project and board API tests (M2-02).
+"""People, sessions and rows for the project and board API tests.
 Fixtures that use these live in conftest.py."""
 
 from __future__ import annotations

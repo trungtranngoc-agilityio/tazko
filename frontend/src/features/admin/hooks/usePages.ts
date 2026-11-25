@@ -23,7 +23,7 @@ function moreFailed<T>(now: Held<T>, asked: string, error: unknown): Held<T> {
 }
 
 /**
- * A keyset-paged list (D19): the first page once per `key` (a new search or
+ * A keyset-paged list: the first page once per `key` (a new search or
  * filter starts over), then `showMore()` appends the page after `next`. A page
  * that arrives after the key changed is dropped. `more` holds the error code
  * of a failed Show more, so the list already shown stays.

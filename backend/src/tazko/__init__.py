@@ -1,6 +1,5 @@
-"""Tazko backend: one Python service that is the JSON/WebSocket API, the super
-admin API and (from M6) the command-line client. The web app lives in
-`frontend/` and is deployed on its own (docs/decisions.md D13, D14, D15).
+"""Tazko backend: the JSON API, the super admin API and the command line.
+The web app lives in `frontend/` and is deployed on its own.
 
 Layers, each importing only from the ones above it:
 
@@ -11,7 +10,7 @@ Layers, each importing only from the ones above it:
 | `migrations`       | `control/` and `tenant/` SQL files (shipped inside the wheel)    |
 | `modules/<name>`   | One feature each: router, schemas, service, repository           |
 | `main`             | App factory: middleware, error handlers, module routers          |
-| `cli`              | `serve`, `admin`, `backup`, `check`; later the client verbs      |
+| `cli`              | `serve`, `admin`, `backup`, `check`, `purge-trash`               |
 
 The module list and their shape are in `tazko/modules/__init__.py`.
 """

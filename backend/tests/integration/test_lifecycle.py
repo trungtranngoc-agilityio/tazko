@@ -1,4 +1,4 @@
-"""Company lifecycle (M1-07): create, suspend, resume, delete to trash/.
+"""Company lifecycle: create, suspend, resume, delete to trash/.
 One test per state, through HTTP with real sessions."""
 
 from __future__ import annotations
@@ -307,7 +307,7 @@ def test_delete_needs_the_short_name_typed(
 def test_a_deleted_companys_short_name_stays_taken(
     client: TestClient, google: FakeGoogle, admin: User, acme: Org
 ) -> None:
-    # the row keeps the slug so the folder in trash can be restored by hand (D35)
+    # the row keeps the slug so the folder in trash can be restored by hand
     as_(client, google, admin)
     call(client, "DELETE", "/admin/api/companies/acme", {"confirm": "acme"})
 

@@ -1,17 +1,7 @@
-"""Handles to exactly one company's file and folder. No org_id anywhere.
+"""Handles to exactly one company's file and folder (data/orgs/<slug>/).
 
-data/orgs/<slug>/tazko.db and data/orgs/<slug>/files/. A slug is checked
-before any path is built from it, so a request can never name a folder
-outside data/orgs.
-
-Membership is not checked here; tazko.modules.orgs.service.open_company
-does that and is the only way handlers reach a Tenant.
-
-Ordered rows (lists, cards) take their ranks from tazko.db.rank (M2-01).
-
-Every service change writes an events row in the same transaction, from M2-02 (D38);
-M2-05 adds the activity log that reads them.
-TODO(M3-01): after commit, the event is published to the realtime hub.
+A slug is checked before any path is built from it. Membership is checked by
+orgs.service.open_company, the only way handlers reach a Tenant.
 """
 
 from __future__ import annotations
@@ -99,7 +89,7 @@ class Tenants:
 
     def trash(self, slug: str, stamp: str) -> Path:
         """Close the company's file and move its folder to data/trash/<slug>-<stamp>/.
-        Trash older than 30 days is removed by the nightly job (M1-08, D35)."""
+        Trash older than 30 days is removed by the nightly job."""
         if not STAMP.fullmatch(stamp):
             raise ValueError(f"invalid trash stamp: {stamp!r}")
         folder = self.folder(slug)

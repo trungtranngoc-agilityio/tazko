@@ -1,4 +1,4 @@
-"""deploy/backend/restore-pre-release.sh on a temp folder (D36, D37): the newest
+"""deploy/backend/restore-pre-release.sh on a temp folder: the newest
 recent snapshot replaces the data, after `tazko check` accepts it; the replaced
 data and its trash are kept."""
 

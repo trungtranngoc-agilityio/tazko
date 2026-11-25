@@ -1,4 +1,4 @@
-"""Super admin console, second part (M1-06): People, Audit log, Server page and
+"""Super admin console, second part: People, Audit log, Server page and
 Workspace domains. Through HTTP with real sessions."""
 
 from __future__ import annotations
@@ -297,7 +297,7 @@ def test_server_page_shows_version_uptime_size_and_email(
     assert body["version"] == __version__
     assert body["uptime_seconds"] >= 0
     assert body["data_bytes"] > 0  # control.db at least
-    assert body["last_backup"] is None  # backups arrive with M1-08
+    assert body["last_backup"] is None  # not read from the backup folder yet
     assert body["email"] == {"enabled": False, "host": None, "port": None, "sender": None}
     assert body["public_url"] == "https://testserver"
 
@@ -326,7 +326,7 @@ def test_server_page_never_shows_the_smtp_login(tmp_path: Path) -> None:
     assert "mailer" not in body
 
 
-# --- workspace domains (D26) -----------------------------------------------------------
+# --- workspace domains -----------------------------------------------------------
 
 
 def test_super_admin_lists_and_removes_a_workspace_domain(

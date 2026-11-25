@@ -1,4 +1,4 @@
-"""API contract for projects and project members (M2-02)."""
+"""API contract for projects and project members."""
 
 from __future__ import annotations
 

@@ -1,2 +1,2 @@
-"""Company invites: one email, one company, 14 days, used once (M1-05).
-Routes for owners arrive with the members page (M1-06)."""
+"""Invites: to a company (service.py) or to one of its projects (projects.py).
+Each names one email, lasts 14 days and is used once."""

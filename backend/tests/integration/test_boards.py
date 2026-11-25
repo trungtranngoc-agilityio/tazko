@@ -1,5 +1,5 @@
-"""Boards in a project over HTTP (M2-02 part 2, D40): who sees and changes
-them, restricted boards (KNOWN-DEVIATIONS #1) and stars. Fixtures:
+"""Boards in a project over HTTP: who sees and changes
+them, restricted boards and stars. Fixtures:
 conftest.py (acme, boss, pia, max_, launch); helpers: company.py."""
 
 from __future__ import annotations
@@ -159,7 +159,7 @@ def test_a_board_is_found_only_under_its_own_project(
     assert write(client, "PATCH", f"{boards_of(other)}/{board}", {"name": "X"}).status_code == 404
 
 
-# --- restricted boards (KNOWN-DEVIATIONS #1) ------------------------------------------------
+# --- restricted boards ------------------------------------------------
 
 
 def restrict(client: TestClient, project: int, board: int, people: list[int]) -> Any:
@@ -174,7 +174,7 @@ def restrict(client: TestClient, project: int, board: int, people: list[int]) ->
 def test_a_restricted_board_is_hidden_from_project_members_not_on_its_list(
     client: TestClient, google: FakeGoogle, tenants: Tenants, pia: User, max_: User, team: int
 ) -> None:
-    """KNOWN-DEVIATIONS #1: not listed, and every route answers 404, never 403."""
+    """Not listed, and every route answers 404, never 403."""
     as_(client, google, pia)
     board = make_board(client, team, "Secret")
     make_board(client, team, "Open")
@@ -332,7 +332,7 @@ def test_boards_of_an_archived_project_are_read_only(
     assert write(client, "PUT", f"{boards_of(launch)}/{board}/star").status_code == 204  # personal
 
 
-# --- review findings (part 2) -------------------------------------------------------------------
+# --- review findings -------------------------------------------------------------------
 
 
 def test_a_company_owner_promoting_themselves_is_audit_logged(

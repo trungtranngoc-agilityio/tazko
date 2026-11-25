@@ -6,7 +6,7 @@ import { when } from "@/shared/lib/when";
 import type { CompanySummary } from "../api";
 import { box, StatusPill, tableHead } from "./parts";
 
-/** Companies page table (prototype admin-companies). Boards are counted from M2. */
+/** Companies page table (prototype admin-companies). */
 export function CompaniesTable({ companies }: { companies: CompanySummary[] }) {
   if (companies.length === 0) {
     return <p className="text-muted">{t("admin.noCompanies")}</p>;

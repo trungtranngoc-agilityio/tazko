@@ -31,7 +31,7 @@ export default defineConfig({
   build: {
     outDir: "dist",
     emptyOutDir: true,
-    // Budget: initial JS under 200 KB gzip (checked in M2-09).
+    // Budget: initial JS under 200 KB gzip.
     chunkSizeWarningLimit: 600,
   },
   test: {

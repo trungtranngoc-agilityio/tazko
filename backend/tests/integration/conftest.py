@@ -58,7 +58,7 @@ def control(client: TestClient) -> Database:
     return db
 
 
-# --- a company with people, for the project and board tests (M2-02) -----------------
+# --- a company with people, for the project and board tests -----------------
 # test_members.py and others define their own `tenants` and `acme`; theirs win there.
 
 

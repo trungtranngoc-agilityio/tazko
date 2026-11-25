@@ -112,7 +112,7 @@ def test_deleting_a_project_removes_everything_on_its_boards(company: Database) 
 
 
 def test_the_release_before_the_board_tables_still_opens_the_file(tmp_path: Path) -> None:
-    """D21: 0002 only adds tables, so a rollback to the release that knew only
+    """0002 only adds tables, so a rollback to the release that knew only
     0001 keeps running on a file that a newer release migrated."""
     path = tmp_path / "tazko.db"
     Database(path, "tenant").close()

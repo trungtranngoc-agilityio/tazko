@@ -1,8 +1,8 @@
 import { expect, test } from "@playwright/test";
 import { SUPER_ADMIN, signIn, unique } from "./accounts";
 
-// The whole round trip through the browser: Google sign-in (stand-in, D32),
-// session cookie, web app, console API (M1-06 "Done when").
+// The whole round trip through the browser: Google sign-in (stand-in),
+// session cookie, web app, console API.
 
 test("the super admin made with `tazko admin` signs in and reaches the console", async ({
   page,

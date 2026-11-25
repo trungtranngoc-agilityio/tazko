@@ -11,7 +11,7 @@ import {
 import { t } from "@/shared/i18n";
 import { useAsync } from "@/shared/lib/useAsync";
 
-// Console: Server (prototype admin-server) and Workspace domains (D26, D31).
+// Console: Server (prototype admin-server) and Workspace domains.
 export function ServerPage() {
   const [info, reloadInfo] = useAsync(server, "admin:server");
   const [domains, reloadDomains] = useAsync(workspaceDomains, "admin:domains");

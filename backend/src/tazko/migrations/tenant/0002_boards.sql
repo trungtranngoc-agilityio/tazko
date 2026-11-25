@@ -1,7 +1,7 @@
 -- readers: 1
--- Projects, boards, lists and cards (M2-01). Only adds tables, indexes and
+-- Projects, boards, lists and cards. Only adds tables, indexes and
 -- triggers on new tables, so the release before it (tenant migration 0001
--- only) still runs on the file after it (D21).
+-- only) still runs on the file after it.
 --
 -- Ordered rows carry a fractional rank (tazko.db.rank): digits 0-9A-Za-z,
 -- compared as text (BINARY), never ending in "0" so a key always fits below.
@@ -11,9 +11,9 @@
 -- Times are UTC ISO 8601 text, as in control.db. people.id is users.id there.
 -- Projects, boards, lists, cards and labels use AUTOINCREMENT: events and share
 -- links name them by id, so a deleted row's id is never given to a new one.
--- Rules that need the actor or several tables stay in the services (M2-02):
+-- Rules that need the actor or several tables stay in the services:
 -- a project keeps an owner; board_access, card_members and card_watchers name
--- project members only and are cleared when someone leaves the project (D6).
+-- project members only and are cleared when someone leaves the project.
 
 CREATE TABLE projects (
     id                        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -44,7 +44,7 @@ CREATE TABLE boards (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     project_id  INTEGER NOT NULL REFERENCES projects (id) ON DELETE CASCADE,
     name        TEXT    NOT NULL CHECK (trim(name) <> '' AND length(name) <= 100),
-    background  TEXT    CHECK (length(background) BETWEEN 1 AND 64),  -- preset key; uploads in M3
+    background  TEXT    CHECK (length(background) BETWEEN 1 AND 64),  -- preset key
     restricted  INTEGER NOT NULL DEFAULT 0 CHECK (restricted IN (0, 1)),
     created_by  INTEGER REFERENCES people (id) ON DELETE SET NULL,
     created_at  TEXT    NOT NULL,
@@ -84,13 +84,13 @@ CREATE TABLE cards (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     list_id     INTEGER NOT NULL REFERENCES lists (id) ON DELETE CASCADE,
     title       TEXT    NOT NULL CHECK (trim(title) <> '' AND length(title) <= 512),
-    description TEXT    NOT NULL DEFAULT '',      -- rich-text HTML, sanitized and capped by the server (M2-04)
+    description TEXT    NOT NULL DEFAULT '',      -- rich-text HTML, sanitized and capped by the server
     rank        TEXT    NOT NULL COLLATE BINARY CHECK (length(rank) BETWEEN 1 AND 32
                                         AND rank NOT GLOB '*[^0-9A-Za-z]*'
                                         AND rank NOT GLOB '*0'),
     due_at      TEXT,
     done_at     TEXT,
-    cover_color TEXT    CHECK (length(cover_color) BETWEEN 1 AND 32),  -- picture covers in M3
+    cover_color TEXT    CHECK (length(cover_color) BETWEEN 1 AND 32),  -- a colour key
     created_by  INTEGER REFERENCES people (id) ON DELETE SET NULL,
     created_at  TEXT    NOT NULL,
     updated_at  TEXT    NOT NULL,                 -- last activity, for card aging

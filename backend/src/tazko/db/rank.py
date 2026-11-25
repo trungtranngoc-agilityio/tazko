@@ -1,17 +1,10 @@
 """Fractional ranks for ordered rows: lists on a board, cards in a list.
 
-A rank is a fraction 0.d1d2d3... written in base 62 with the digits 0-9A-Za-z,
-so ranks sort as plain text (SQLite's BINARY collation and Python's `str`
-agree). A rank never ends in "0", so there is always room below it.
-
-A move writes one row: the item gets a key between its new neighbours. Moves
-into the same gap make keys longer (about one character per six moves); when a
-new key would pass REBALANCE_AT characters, every other row of that list or
-board is spread evenly again, in the same transaction, before the key is picked.
-
-Ranks stay unique per list or board without a UNIQUE index: every write runs
-on the company's one writer thread, and a new key sorts strictly between two
-existing ones. Call these functions only inside `Database.write`.
+A rank is a base-62 fraction (0-9A-Za-z) that sorts as plain text and never
+ends in "0". A move writes one row; when keys grow past REBALANCE_AT, the
+list is spread again in the same transaction. No UNIQUE index is needed: all
+writes run on the company's one writer thread, and a new key always sorts
+strictly between two existing ones. Call only inside `Database.write`.
 """
 
 from __future__ import annotations

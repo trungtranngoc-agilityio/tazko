@@ -1,17 +1,10 @@
-"""Backups, checks and trash cleanup for a data folder (M1-08, build plan "Backups").
+"""`tazko backup`, `tazko check` and `tazko purge-trash` for a data folder.
 
-`backup` copies every database with SQLite's online backup API, so it runs
-while the server does; WAL commits are included. A snapshot is written under
-`.tmp-<stamp>` and renamed when complete, so a half-written one never counts.
-
-`check` opens every database read-only and runs `PRAGMA integrity_check`; it
-never changes the data (SQLite may leave -wal/-shm files beside a live
-database), so it is safe on a live data folder too.
-
-Databases are copied one after another, not at one instant: a company created
-or deleted during the backup can make the snapshot fail `check`; run it again.
-
-A data folder: control.db, secret, orgs/<slug>/{tazko.db,files/}, trash/.
+Backups use SQLite's online backup API, so they run while the server does, and
+are written under `.tmp-<stamp>` then renamed, so a half-written one never
+counts. `check` opens everything read-only and is safe on a live folder.
+Databases are copied one after another, not at one instant: a company made
+or deleted during a backup can make that snapshot fail `check`; run it again.
 """
 
 from __future__ import annotations
@@ -142,9 +135,7 @@ def newest(folder: Path) -> Path | None:
 
 def check(path: Path) -> tuple[Path, list[str], int]:
     """Check a data folder or snapshot, or the newest snapshot of a backup
-    folder. Returns (what was checked, problems, databases checked).
-
-    TODO(M3-02): verify each attachment file against its hash once files exist."""
+    folder. Returns (what was checked, problems, databases checked)."""
     if not (path / "control.db").exists() and path.is_dir():
         path = newest(path) or path
     problems: list[str] = []
@@ -182,7 +173,7 @@ def _latest(schema: str) -> int:
 
 def _integrity(db: Path, name: str, schema: str) -> list[str]:
     """integrity_check, then whether this release can use the file: a newer
-    file is fine only if its migrations allow this release (D36). release.sh
+    file is fine only if its migrations allow this release. release.sh
     runs check after a rollback, since /health opens only control.db."""
     try:
         conn = _open_ro(db)
@@ -206,7 +197,7 @@ def _integrity(db: Path, name: str, schema: str) -> list[str]:
 
 def purge_trash(data: Path, *, older_than_days: int, now: datetime) -> list[Path]:
     """Remove data/trash/<slug>-<stamp> folders whose stamp is older than the
-    limit (D35). Anything else in trash/ is left alone."""
+    limit. Anything else in trash/ is left alone."""
     trash = data / "trash"
     if not trash.is_dir():
         return []

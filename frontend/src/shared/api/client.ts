@@ -1,6 +1,6 @@
 // The only fetch wrapper for the API server; features call it through "@/shared/api".
 //
-// The web app and the API are deployed separately (docs/decisions.md D13):
+// The web app and the API are deployed separately:
 // production calls VITE_API_URL cross-origin with the session cookie
 // (credentials: "include"). In development VITE_API_URL is empty and Vite
 // proxies the API paths, so requests stay same-origin.
@@ -18,7 +18,7 @@ export interface ErrorDetail {
 }
 
 /**
- * A failed API call. `code` is stable (D19): translate it with the i18n key
+ * A failed API call. `code` is stable: translate it with the i18n key
  * `error.<code>` and fall back to `message`, which is English and for logs.
  */
 export class ApiError extends Error {
@@ -34,7 +34,7 @@ export class ApiError extends Error {
 }
 
 interface ErrorBody {
-  // A string is the shape before D19; still read for one release.
+  // An older server sent a plain string; still read for one release.
   error?: string | { code?: string; message?: string; details?: ErrorDetail[] };
 }
 

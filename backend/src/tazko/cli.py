@@ -1,6 +1,4 @@
-"""Command line. Server commands now; the client commands (`auth`, `project`,
-`board`, `card`, `my`, `search`, `token`, `webhook`, `api`, `config`,
-`completion`, `update`) are added in M6-04.
+"""Command line: the server commands.
 
 Exit codes (build plan): 0 success, 1 failure, 2 wrong usage, 4 not signed in.
 """
@@ -151,7 +149,7 @@ def run(args: argparse.Namespace, settings: Settings) -> None:
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)  # wrong usage exits with 2
     try:
-        # Only `serve` needs the Google client and public URLs (D16).
+        # Only `serve` needs the Google client and public URLs.
         settings = load_settings(serving=args.command == "serve")
         setup_logging(settings.log)
         run(args, settings)

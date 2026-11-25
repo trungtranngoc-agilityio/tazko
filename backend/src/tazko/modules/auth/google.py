@@ -63,7 +63,7 @@ class GoogleProvider:
         base_url: str = "",
     ) -> None:
         """`base_url` points every call at a stand-in Google for e2e tests
-        (TAZKO_GOOGLE_URL, D32); empty means Google itself. Whoever controls
+        (TAZKO_GOOGLE_URL); empty means Google itself. Whoever controls
         it can sign in as anyone, so this trusts its caller: Settings allows
         only a loopback URL, and never in production."""
         base = base_url.rstrip("/")

@@ -6,7 +6,7 @@ import { deleteCompany, type CompanySummary } from "../api";
 /**
  * Delete company (prototype dDelete): the short name must be typed before the
  * button works, and the server checks it again. The folder moves to trash for
- * 30 days (D35). Escape or Cancel closes it.
+ * 30 days. Escape or Cancel closes it.
  */
 export function DeleteCompanyDialog({
   company,

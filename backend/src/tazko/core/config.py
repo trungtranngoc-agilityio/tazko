@@ -1,13 +1,8 @@
-"""Settings from the environment (`TAZKO_*`), validated once at startup.
+"""Settings from `TAZKO_*` environment variables, checked once at start.
 
-Production values live in /etc/tazko/tazko.env (set by the owner), which must
-say TAZKO_ENV=production; then no `.env` file is read. Otherwise a `.env` in
-the working directory is read too (real environment variables win). See
-.env.example for the list.
-
-`TAZKO_ENV` defaults to production, which requires https URLs and the Google
-client (D16). Development (local runs, tests, e2e) relaxes those checks.
-Every error names the environment variable to fix.
+Production reads only the environment (/etc/tazko/tazko.env) and requires
+https URLs and the Google client; development also reads `.env` and relaxes
+those checks. Every error names the variable to fix (see .env.example).
 """
 
 from __future__ import annotations
@@ -40,7 +35,7 @@ class Settings(BaseSettings):
     # Public base URL of this API; OAuth redirect addresses start with it.
     # Empty means http://<host>:<port>.
     public_url: str = ""
-    # Origin of the separately deployed web app (D13). The only origin allowed
+    # Origin of the separately deployed web app. The only origin allowed
     # by CORS and by the Origin check on writes and WebSockets.
     web_origin: str = "http://localhost:5173"
     data_dir: Path = Path("./data")
@@ -49,7 +44,7 @@ class Settings(BaseSettings):
     # Google OIDC web client (P0-2). Required in production.
     google_client_id: str = ""
     google_client_secret: SecretStr = SecretStr("")
-    # A stand-in Google on this machine for end-to-end tests (D32): its
+    # A stand-in Google on this machine for end-to-end tests: its
     # /authorize, /token and /certs replace Google's, and only its issuer is
     # accepted. Empty means Google. Refused in production.
     google_url: str = ""
@@ -57,7 +52,7 @@ class Settings(BaseSettings):
     # folder, made on first start (tazko.core.secret).
     secret: SecretStr = SecretStr("")
 
-    # Email (optional, M6). Off unless TAZKO_SMTP_HOST is set.
+    # Email (optional). Off unless TAZKO_SMTP_HOST is set.
     smtp_host: str = ""
     smtp_port: Port = 587
     smtp_user: str = ""

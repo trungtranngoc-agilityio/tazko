@@ -5,8 +5,8 @@ import { when } from "@/shared/lib/when";
 import { forgetWorkspaceDomain, type WorkspaceDomain } from "../api";
 import { tableHead } from "./parts";
 
-/** Recorded Google Workspace domains (D26), with Forget for a company that
- * left Workspace. Not in the prototype; placed on the Server page (D31). */
+/** Recorded Google Workspace domains, with Forget for a company that
+ * left Workspace. Not in the prototype; placed on the Server page. */
 export function WorkspaceDomains({
   domains,
   onChanged,

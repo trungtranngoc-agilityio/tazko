@@ -1,5 +1,5 @@
 """Company settings for owners: members, roles and invites, and the company
-switcher (M1-06). Every route goes through HTTP with a real session."""
+switcher. Every route goes through HTTP with a real session."""
 
 from __future__ import annotations
 
@@ -266,7 +266,7 @@ def test_last_owner_cannot_be_demoted(
 def test_last_owner_cannot_be_removed(
     client: TestClient, google: FakeGoogle, ana: User, bo: User
 ) -> None:
-    # KNOWN-DEVIATIONS #5: the prototype lets the only owner remove themselves.
+    # The prototype lets the only owner remove themselves; the API never does.
     as_(client, google, ana)
 
     response = write(client, "DELETE", f"/api/orgs/acme/members/{ana.id}")
@@ -435,7 +435,7 @@ def test_another_companys_invite_cannot_be_revoked(
     assert write(client, "DELETE", f"/api/orgs/acme/invites/{theirs.id}").status_code == 404
 
 
-# --- services check the actor (carried from M1-05) ----------------------------------------
+# --- services check the actor ----------------------------------------
 
 
 def test_add_member_checks_the_actor(

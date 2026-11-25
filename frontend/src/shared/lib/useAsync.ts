@@ -8,7 +8,7 @@ export type Async<T> =
 
 type Held<T> = { key: string; state: Async<T> };
 
-/** A failed load as the screens show it: the API error code (D19) and status. */
+/** A failed load as the screens show it: the API error code and status. */
 export function toFailure(error: unknown): { code: string; status: number } {
   const api = error instanceof ApiError ? error : null;
   return { code: api?.code ?? "UNKNOWN", status: api?.status ?? 0 };
@@ -18,7 +18,7 @@ export function toFailure(error: unknown): { code: string; status: number } {
  * Load something once per `key`, and again on `reload()`. A reload keeps the
  * shown value until the new one arrives; a new `key` (another company) starts
  * from loading, so one company's data is never shown under another. A failure
- * keeps the API error code (D19) for errorText(code).
+ * keeps the API error code for errorText(code).
  */
 export function useAsync<T>(load: () => Promise<T>, key: string): [Async<T>, () => void] {
   const [held, setHeld] = useState<Held<T>>({ key, state: { kind: "loading" } });

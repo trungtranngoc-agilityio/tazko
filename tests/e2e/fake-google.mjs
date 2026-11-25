@@ -1,4 +1,4 @@
-// A stand-in Google for end-to-end tests (D32). The API reaches it through
+// A stand-in Google for end-to-end tests. The API reaches it through
 // TAZKO_GOOGLE_URL; production refuses that setting. It speaks the part of
 // OpenID Connect the API uses: /authorize shows an account chooser, /token
 // turns a code into an RS256 ID token after checking the PKCE verifier, and
@@ -57,7 +57,7 @@ function idToken({ email, name, nonce }) {
     iat: now,
     exp: now + 600,
     nonce,
-    // Workspace accounts carry hd; personal Gmail accounts do not (D26).
+    // Workspace accounts carry hd; personal Gmail accounts do not.
     ...(PERSONAL.has(domain) ? {} : { hd: domain }),
   };
   const head = b64url(

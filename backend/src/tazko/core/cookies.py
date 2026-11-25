@@ -1,6 +1,6 @@
 """The one way to set and clear cookies. Every Tazko cookie is host-only on the
 API host (no Domain, `__Host-` names), HttpOnly, Secure and SameSite=Lax:
-web and API are same-site (D13), and the Google callback is a top-level
+web and API are same-site, and the Google callback is a top-level
 navigation, which Lax still sends cookies with.
 
 Browsers treat http://localhost as secure, so Secure cookies also work in

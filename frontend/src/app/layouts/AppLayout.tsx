@@ -2,7 +2,7 @@ import { Outlet } from "react-router";
 import { RequireSession, SignOutButton } from "@/features/auth";
 import { t } from "@/shared/i18n";
 
-// App shell: header with company switcher (M1-06), then the routed page.
+// App shell: header with company switcher, then the routed page.
 export function AppLayout() {
   return (
     <RequireSession>

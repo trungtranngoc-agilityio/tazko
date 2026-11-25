@@ -19,6 +19,7 @@ docs/decisions.md overrides the build plan where they differ (D13 replaces "the 
 - A module is router.py (HTTP only, no SQL) + schemas.py (Pydantic contract) + service.py (rules, permission checks) + repository.py (its SQL); a large service is split by sub-feature beside it (orgs/console.py, invites/projects.py). Shape and list: backend/src/tazko/modules/__init__.py; modules/health is the example.
 - Modules import core, db and other modules' services only. Routes reach settings and databases through core/deps.py (Depends), not app.state.
 - Errors are raised as tazko.core.errors.AppError subclasses. mypy strict covers src and tests.
+- Comments and docstrings say why in a sentence or two, in plain words: no decision, milestone or deviation ids (D41, M3-01, KNOWN-DEVIATIONS #5) and no TODOs. Open work goes in docs/milestones/Mx.md; the reasons for a choice in docs/decisions.md.
 - No deprecated APIs: ESLint runs `@typescript-eslint/no-deprecated`; for Python, mypy and the tests show none.
 - backend/src/tazko/migrations/control and .../tenant (shipped in the wheel). backend/tests/unit and tests/integration; fixtures in tests/conftest.py.
 - frontend/src: app/ (providers, router, layouts, styles) -> pages/<screen>/ -> features/<name>/ (components, api.ts, hooks; public index.ts) -> shared/ (api, i18n, ui, lib). ESLint blocks upward and deep imports; see frontend/src/shared/README.md.

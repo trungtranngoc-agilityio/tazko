@@ -152,7 +152,7 @@ def use_project_invites(control: Database, company: Company, user: User) -> None
 
     Each invite is checked again now (projects.join_by_invite): its maker must
     still be allowed to make it, or it is revoked; on an archived project it
-    waits. A personal account on a Workspace address uses none (D26), as at
+    waits. A personal account on a Workspace address uses none, as at
     sign-in."""
     org = company.org
 

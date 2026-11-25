@@ -1,7 +1,7 @@
-"""Projects and project members (M2-02). Every rule is asked of access.decide
+"""Projects and project members. Every rule is asked of access.decide
 inside the write transaction, so a check and its change cannot be split by
 another request (one writer thread per company). Every change writes one
-events row in the same transaction (D38)."""
+events row in the same transaction."""
 
 from __future__ import annotations
 
@@ -244,7 +244,7 @@ def add_member(
     return added
 
 
-# --- project invites (part 3, D41): the invite lives in control.db ---------------------------
+# --- project invites: the invite lives in control.db ---------------------------
 
 
 def _invite_action(role: ProjectRole) -> Action:
@@ -281,7 +281,7 @@ def check_reader(company: Company, *, actor_id: int, project_id: int) -> None:
 
 # What using an invite came to: "joined"; "in_project" already; "gone", the
 # project was deleted; "waiting", it is archived (used once restored); "void",
-# the inviter may no longer invite as that role (D41).
+# the inviter may no longer invite as that role.
 JoinOutcome = Literal["joined", "in_project", "gone", "waiting", "void"]
 
 
@@ -391,7 +391,7 @@ def _audit(
     detail: dict[str, object],
     ip: str | None,
 ) -> None:
-    """After the company file committed: logged, not failed, if it cannot be written (D39)."""
+    """After the company file committed: logged, not failed, if it cannot be written."""
 
     def run(conn: sqlite3.Connection) -> None:
         audit.record(
@@ -421,7 +421,7 @@ def change_role(
     ip: str | None,
 ) -> Member:
     """A company owner making themselves a project owner is audit-logged: a
-    project owner sees every restricted board (D40)."""
+    project owner sees every restricted board."""
 
     def run(conn: sqlite3.Connection) -> tuple[Member, str, bool]:
         found = _target(conn, company, actor_id, project_id, user_id, also=role)
@@ -453,12 +453,12 @@ def change_role(
 def remove_member(
     control: Database, company: Company, *, actor_id: int, project_id: int, user_id: int
 ) -> None:
-    """D6: they come off the project's card assignees, watchers and restricted
+    """They come off the project's card assignees, watchers and restricted
     boards; what they made stays. A pending invite to the project goes too,
-    so it cannot bring them back (D41)."""
+    so it cannot bring them back."""
 
     def run(conn: sqlite3.Connection) -> None:
-        if user_id == actor_id:  # leaving: anyone in the project may; the UI asks first (D4)
+        if user_id == actor_id:  # leaving: anyone in the project may; the UI asks first
             found = _require_member(conn, company, actor_id, project_id, user_id)
         else:
             found = _target(conn, company, actor_id, project_id, user_id, also=None)
@@ -492,7 +492,7 @@ def _target(
 def _keep_an_owner(
     conn: sqlite3.Connection, project_id: int, found: Member, role: ProjectRole | None
 ) -> None:
-    """KNOWN-DEVIATIONS #5: a project always keeps an owner."""
+    """A project always keeps an owner (the prototype let the last one go)."""
     if found.role == "owner" and role != "owner" and repo.owner_count(conn, project_id) == 1:
         raise Conflict("the project needs at least one owner", code="LAST_OWNER")
 
@@ -509,8 +509,8 @@ def _require_member(
 
 def leave_company(conn: sqlite3.Connection, *, person_id: int, actor_id: int | None) -> None:
     """Inside the caller's transaction on the company file: someone removed
-    from the company leaves each of its projects (D6), one event per project.
-    A project they owned alone keeps no owner; company owners add one (D39)."""
+    from the company leaves each of its projects, one event per project.
+    A project they owned alone keeps no owner; company owners add one."""
     for project_id in repo.projects_of_any_state(conn, person_id):
         repo.remove_member(conn, project_id=project_id, person_id=person_id)
         events.add(

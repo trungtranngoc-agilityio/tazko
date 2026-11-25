@@ -1,11 +1,8 @@
 """Companies and memberships, and the only way to reach a company's file.
 
-`open_company` checks membership in control.db before it hands out a Tenant,
-so a handler can never touch a company the caller is not in. Unknown,
-suspended and not-a-member all answer NotFound: the caller learns nothing
-about companies they are not in.
-
-Super admins suspend, resume and delete companies through Console (M1-07).
+`open_company` checks membership before it hands out a Tenant; unknown,
+suspended and not-a-member all answer NotFound, so nothing leaks about other
+companies. The super admin console lives in console.py.
 """
 
 from __future__ import annotations
@@ -108,7 +105,7 @@ def add_member(
 ) -> None:
     """Add a member and copy the person into the company file. An existing
     member is a conflict: role changes go through change_role, which keeps the
-    last owner (KNOWN-DEVIATIONS #5)."""
+    last owner."""
 
     def membership(conn: sqlite3.Connection) -> None:
         require_manager(conn, org_id=org.id, actor_id=actor_id)
@@ -233,7 +230,7 @@ def remove_member(
     control: Database, company: Company, *, user_id: int, actor_id: int | None, ip: str | None
 ) -> None:
     """Take a person out of the company. Never the last owner (409 LAST_OWNER,
-    KNOWN-DEVIATIONS #5). Their copy in the company file stays, so their name
+    the prototype allowed it). Their copy in the company file stays, so their name
     still shows on what they did."""
     org = company.org
 
@@ -247,7 +244,7 @@ def remove_member(
         if found.role == "owner" and repo.owner_count(conn, org.id) == 1:
             raise Conflict("the company needs at least one owner", code="LAST_OWNER")
         repo.delete_member(conn, org_id=org.id, user_id=user_id)
-        # A pending project invite would let them back in at the next sign-in (D41).
+        # A pending project invite would let them back in at the next sign-in.
         from tazko.modules.invites import service as invites  # it imports this module
 
         revoked = invites.revoke_for_leaver(conn, org_id=org.id, email=found.email)
@@ -267,7 +264,7 @@ def remove_member(
 
 def _left_company(company: Company, actor_id: int | None, user_id: int) -> None:
     """In the company file: the removal's event, and the person leaves every
-    project there (D6), so no stale owner or role outlives the membership."""
+    project there, so no stale owner or role outlives the membership."""
     # Imported here: the projects service imports this module.
     from tazko.modules.projects import service as projects
 
@@ -285,7 +282,7 @@ def _left_company(company: Company, actor_id: int | None, user_id: int) -> None:
 def _company_event(company: Company, kind: str, actor_id: int | None, **payload: object) -> None:
     """The company file's own record of a membership change (a second file, so a
     second transaction, after the control.db change committed). The actor may be
-    a super admin who is not in the company's people (D28)."""
+    a super admin who is not in the company's people."""
 
     def run(conn: sqlite3.Connection) -> None:
         events.add(conn, kind, actor_id, board_id=None, **payload)
@@ -391,7 +388,7 @@ def open_company(control: Database, tenants: Tenants, *, user_id: int, slug: str
     if not tenant.db.read(lambda c: repo.has_person(c, user_id)):
         # Joined through an invite (control.db only) or a crash between the two
         # writes of add_member: copy the person in now. The one case where a GET
-        # writes (D25): it only repairs the copy, never changes what they see.
+        # writes: it only repairs the copy, never changes what they see.
         user = users.get(control, user_id)
         if user is None:
             raise NotFound()

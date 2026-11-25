@@ -54,7 +54,7 @@ class ProjectInviteIn(BaseModel):
 
 class ProjectInviteOut(BaseModel):
     """A pending invite to one project. `role` is the role in the project;
-    in the company the person is always a plain member (D41)."""
+    in the company the person is always a plain member."""
 
     id: int
     email: str
