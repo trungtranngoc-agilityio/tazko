@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import { invite } from "@/features/orgs";
 import { ApiError } from "@/shared/api";
 import { errorText, t } from "@/shared/i18n";
@@ -41,7 +41,7 @@ export function NewCompanyDialog({
 
   useEffect(() => first.current?.focus(), []);
 
-  async function submit(event: FormEvent) {
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!name.trim()) {
       setProblem(t("admin.nameNeeded"));

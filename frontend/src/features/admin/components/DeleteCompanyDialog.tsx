@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type SubmitEvent } from "react";
 import { ApiError } from "@/shared/api";
 import { errorText, t } from "@/shared/i18n";
 import { deleteCompany, type CompanySummary } from "../api";
@@ -24,7 +24,7 @@ export function DeleteCompanyDialog({
 
   useEffect(() => input.current?.focus(), []);
 
-  async function submit(event: FormEvent) {
+  async function submit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (typed !== company.slug) return;
     setBusy(true);
