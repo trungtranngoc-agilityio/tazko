@@ -245,3 +245,51 @@ def projects_of_any_state(conn: sqlite3.Connection, person_id: int) -> list[int]
     """Every project the person is in, archived and in trash included."""
     rows = conn.execute("SELECT project_id FROM project_members WHERE person_id = ?", (person_id,))
     return [row[0] for row in rows]
+
+
+@dataclass(frozen=True)
+class CardExtras:
+    """What a project card on Your projects shows besides the project."""
+
+    members: int
+    people: list[tuple[int, str]]  # the first PEOPLE_ON_CARD members, by name
+    boards: int  # open boards this person may see
+
+
+PEOPLE_ON_CARD = 4
+
+
+def card_extras(conn: sqlite3.Connection, person_id: int) -> dict[int, CardExtras]:
+    """For every project the person is in, in three queries whatever their number."""
+    counts = dict(
+        conn.execute(
+            "SELECT project_id, count(*) FROM project_members WHERE project_id IN"
+            " (SELECT project_id FROM project_members WHERE person_id = ?) GROUP BY project_id",
+            (person_id,),
+        ).fetchall()
+    )
+    people: dict[int, list[tuple[int, str]]] = {}
+    for project_id, user_id, name in conn.execute(
+        "SELECT project_id, person_id, name FROM ("
+        " SELECT m.project_id, m.person_id, pe.name, row_number() OVER ("
+        "  PARTITION BY m.project_id ORDER BY pe.name COLLATE NOCASE, pe.id) AS n"
+        " FROM project_members m JOIN people pe ON pe.id = m.person_id"
+        " WHERE m.project_id IN (SELECT project_id FROM project_members WHERE person_id = ?))"
+        " WHERE n <= ? ORDER BY project_id, n",
+        (person_id, PEOPLE_ON_CARD),
+    ):
+        people.setdefault(project_id, []).append((user_id, name))
+    boards = dict(
+        conn.execute(
+            "SELECT b.project_id, count(*) FROM boards b"
+            " JOIN project_members me ON me.project_id = b.project_id AND me.person_id = ?"
+            " WHERE b.archived_at IS NULL AND (b.restricted = 0 OR me.role = 'owner' OR EXISTS"
+            "  (SELECT 1 FROM board_access a WHERE a.board_id = b.id AND a.person_id = ?))"
+            " GROUP BY b.project_id",
+            (person_id, person_id),
+        ).fetchall()
+    )
+    return {
+        project_id: CardExtras(count, people.get(project_id, []), boards.get(project_id, 0))
+        for project_id, count in counts.items()
+    }

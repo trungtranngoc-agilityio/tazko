@@ -619,3 +619,26 @@ def test_a_project_takes_at_most_500_pending_invites(
 
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "TOO_MANY_INVITES"
+
+
+def test_an_invite_from_someone_removed_from_the_company_lets_nobody_in(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    boss: User,
+    pia: User,
+    max_: User,
+    launch: int,
+) -> None:
+    join(client, google, launch, max_, "member", by=pia)
+    write(client, "PATCH", f"{BASE}/{launch}", {"members_can_invite": True})
+    as_(client, google, max_)
+    assert invite(client, launch).status_code == 201
+    as_(client, google, boss)
+    assert write(client, "DELETE", f"/api/orgs/acme/members/{max_.id}").status_code == 204
+
+    client.cookies.clear()
+    refused = sign_in(client, google, sub="sub-new", email=NEW, name="New")
+
+    assert "refused" in refused.headers["location"]
+    assert company_role(control, NEW) is None

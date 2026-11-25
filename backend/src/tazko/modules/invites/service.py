@@ -227,7 +227,12 @@ def accept_usable(conn: sqlite3.Connection, user: User, *, ip: str | None) -> li
     return used
 
 
-def revoke_for_leaver(conn: sqlite3.Connection, *, org_id: int, email: str) -> int:
+def revoke_for_leaver(conn: sqlite3.Connection, *, org_id: int, email: str, user_id: int) -> int:
     """Inside the company removal's control.db transaction: their unused
-    invites to the company go too. Returns how many."""
-    return repo.revoke_unused_for_email(conn, org_id=org_id, email=email, now=clock.now_iso())
+    invites to the company go, and so do the ones they made, which could
+    otherwise bring someone into a company they no longer belong to. Returns
+    how many."""
+    now = clock.now_iso()
+    return repo.revoke_unused_for_email(
+        conn, org_id=org_id, email=email, now=now
+    ) + repo.revoke_unused_by_creator(conn, org_id=org_id, user_id=user_id, now=now)

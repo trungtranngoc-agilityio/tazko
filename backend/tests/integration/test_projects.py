@@ -572,3 +572,95 @@ def test_archiving_an_archived_project_changes_nothing(
 
     assert again.json()["archived_at"] == first
     assert company_rows(tenants, "SELECT count(*) FROM events")[0][0] == before
+
+
+# --- what the screens show (part 4) ------------------------------------------------------
+
+
+def test_your_projects_lists_people_and_the_boards_you_can_open(
+    client: TestClient, google: FakeGoogle, pia: User, max_: User, launch: int
+) -> None:
+    join(client, google, launch, max_, "member", by=pia)
+    boards = f"{BASE}/{launch}/boards"
+    open_board = write(client, "POST", boards, {"name": "Open"}).json()["id"]
+    hidden = write(client, "POST", boards, {"name": "Hidden"}).json()["id"]
+    closed = write(client, "POST", boards, {"name": "Closed"}).json()["id"]
+    write(client, "PUT", f"{boards}/{hidden}/access", {"restricted": True, "people": [pia.id]})
+    write(client, "PATCH", f"{boards}/{closed}", {"archived": True})
+    assert open_board
+
+    as_(client, google, max_)
+    (card,) = client.get(BASE).json()
+
+    assert card["members"] == 2
+    assert card["people"] == [
+        {"user_id": max_.id, "name": "Max"},
+        {"user_id": pia.id, "name": "Pia"},
+    ]
+    assert card["boards"] == 1  # the restricted and the closed one do not count
+
+
+def test_project_members_show_their_account_and_last_activity(
+    client: TestClient, google: FakeGoogle, pia: User, max_: User, launch: int
+) -> None:
+    join(client, google, launch, max_, "member", by=pia)
+
+    listed = client.get(f"{BASE}/{launch}/members").json()
+
+    by_name = {m["name"]: m for m in listed}
+    assert by_name["Pia"]["account"] == "personal"  # signed in, no Workspace domain
+    assert by_name["Pia"]["last_seen_at"] is not None
+    assert (by_name["Max"]["account"], by_name["Max"]["last_seen_at"]) == (
+        None,
+        None,
+    )  # never signed in
+
+
+def test_project_owners_and_listed_members_count_restricted_boards(
+    client: TestClient, google: FakeGoogle, pia: User, max_: User, launch: int
+) -> None:
+    join(client, google, launch, max_, "member", by=pia)
+    boards = f"{BASE}/{launch}/boards"
+    write(client, "POST", boards, {"name": "Open"})
+    hidden = write(client, "POST", boards, {"name": "Hidden"}).json()["id"]
+    write(client, "PUT", f"{boards}/{hidden}/access", {"restricted": True, "people": [pia.id]})
+    assert client.get(BASE).json()[0]["boards"] == 2  # Pia owns the project
+
+    write(client, "PUT", f"{boards}/{hidden}/access", {"restricted": True, "people": [max_.id]})
+    as_(client, google, max_)
+
+    assert client.get(BASE).json()[0]["boards"] == 2  # Max is on the list now
+
+
+def test_a_card_shows_at_most_four_people_by_name(
+    client: TestClient,
+    google: FakeGoogle,
+    control: Database,
+    tenants: Tenants,
+    acme: Org,
+    pia: User,
+    launch: int,
+) -> None:
+    for name in ("eve", "dan", "cy", "bo", "al"):
+        join(
+            client, google, launch, person(control, tenants, acme, name, "member"), "member", by=pia
+        )
+
+    (card,) = client.get(BASE).json()
+
+    assert card["members"] == 6
+    assert [p["name"] for p in card["people"]] == ["Al", "Bo", "Cy", "Dan"]
+
+
+def test_only_owners_see_when_members_last_signed_in(
+    client: TestClient, google: FakeGoogle, boss: User, pia: User, max_: User, launch: int
+) -> None:
+    join(client, google, launch, max_, "observer", by=pia)
+    as_(client, google, max_)
+
+    as_observer = client.get(f"{BASE}/{launch}/members").json()
+    as_(client, google, boss)  # a company owner outside the project
+    as_company_owner = client.get(f"{BASE}/{launch}/members").json()
+
+    assert {(m["account"], m["last_seen_at"]) for m in as_observer} == {(None, None)}
+    assert all(m["last_seen_at"] for m in as_company_owner)

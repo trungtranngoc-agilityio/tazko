@@ -7,6 +7,8 @@ from typing import Literal, cast
 from pydantic import BaseModel, ConfigDict, model_validator
 
 from tazko.core.fields import Background, Description, Id, Key, Name
+from tazko.modules.orgs import service as orgs
+from tazko.modules.orgs.service import MemberRow
 from tazko.modules.projects import service
 
 ProjectRole = Literal["owner", "member", "observer"]
@@ -92,6 +94,24 @@ class OwnerOut(BaseModel):
     name: str
 
 
+class ProjectCardOut(ProjectOut):
+    """A project on Your projects: `people` are its first four members by name,
+    `boards` the open boards the signed-in person may see."""
+
+    members: int
+    people: list[OwnerOut]
+    boards: int
+
+    @classmethod
+    def of_card(cls, card: service.Card) -> ProjectCardOut:
+        return cls(
+            **ProjectOut.of(card.seen).model_dump(),
+            members=card.extras.members,
+            people=[OwnerOut(user_id=i, name=n) for i, n in card.extras.people],
+            boards=card.extras.boards,
+        )
+
+
 class ProjectSummaryOut(BaseModel):
     """A row of Manage projects (company owners): no boards are opened."""
 
@@ -131,18 +151,26 @@ class RoleIn(BaseModel):
 
 
 class ProjectMemberOut(BaseModel):
+    """`account` and `last_seen_at` come from the company membership and are
+    shown to project and company owners only: None for anyone else, until the
+    person first signs in, and in the answers to adding or changing a member."""
+
     user_id: int
     name: str
     email: str
     avatar_url: str | None
     role: ProjectRole
+    account: Literal["workspace", "personal"] | None = None
+    last_seen_at: str | None = None
 
     @classmethod
-    def of(cls, member: service.Member) -> ProjectMemberOut:
+    def of(cls, member: service.Member, row: MemberRow | None = None) -> ProjectMemberOut:
         return cls(
             user_id=member.user_id,
             name=member.name,
             email=member.email,
             avatar_url=member.avatar_url,
             role=cast(ProjectRole, member.role),  # project_members.role CHECK
+            account=orgs.account_kind(row) if row else None,
+            last_seen_at=row.last_seen_at if row else None,
         )

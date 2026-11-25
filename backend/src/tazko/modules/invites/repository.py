@@ -259,6 +259,18 @@ def revoke_unused_for_email(conn: sqlite3.Connection, *, org_id: int, email: str
     return cursor.rowcount
 
 
+def revoke_unused_by_creator(
+    conn: sqlite3.Connection, *, org_id: int, user_id: int, now: str
+) -> int:
+    """Revoke every unused invite this person made in this company."""
+    cursor = conn.execute(
+        "UPDATE invites SET revoked_at = ?"
+        " WHERE org_id = ? AND created_by = ? AND accepted_at IS NULL AND revoked_at IS NULL",
+        (now, org_id, user_id),
+    )
+    return cursor.rowcount
+
+
 def revoke_unused_for_project(
     conn: sqlite3.Connection, *, org_id: int, email: str, project_id: int, now: str
 ) -> int:
