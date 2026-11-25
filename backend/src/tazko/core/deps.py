@@ -17,7 +17,9 @@ from tazko.core.config import Settings
 from tazko.core.cookies import set_cookie
 from tazko.core.errors import Forbidden, Unauthorized
 from tazko.db import Database
+from tazko.modules.invites import projects as project_invites
 from tazko.modules.orgs import service as orgs
+from tazko.modules.orgs.console import Console
 from tazko.modules.orgs.service import Company
 from tazko.modules.users.service import User
 
@@ -103,25 +105,24 @@ def get_company(slug: str, user: CurrentUser, request: Request, control: Control
     The only route to a company's file. There is deliberately no dependency
     for the company cache itself; tests/unit/test_architecture.py guards this.
     """
-    # Imported here: the invites module's router imports this file.
-    from tazko.modules.invites import service as invites
-
     company = orgs.open_company(control, request.app.state.tenants, user_id=user.id, slug=slug)
-    invites.use_project_invites(control, company, user)  # D41: their pending project invites
+    project_invites.use_project_invites(
+        control, company, user
+    )  # D41: their pending project invites
     return company
 
 
 CompanyDep = Annotated[Company, Depends(get_company)]
 
 
-def get_console(user: CurrentUser, request: Request, control: ControlDep) -> orgs.Console:
+def get_console(user: CurrentUser, request: Request, control: ControlDep) -> Console:
     """The super admin console, or 403. modules/admin puts this on every route."""
     if not user.is_super_admin:
         raise Forbidden("super admins only")
-    return orgs.Console(control, request.app.state.tenants, actor_id=user.id)
+    return Console(control, request.app.state.tenants, actor_id=user.id)
 
 
-ConsoleDep = Annotated[orgs.Console, Depends(get_console)]
+ConsoleDep = Annotated[Console, Depends(get_console)]
 
 
 def get_console_company(slug: str, console: ConsoleDep) -> Company:

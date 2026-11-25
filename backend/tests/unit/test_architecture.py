@@ -11,6 +11,7 @@ SRC = Path(__file__).resolve().parents[2] / "src" / "tazko"
 TENANT_ACCESS = {
     "db/tenant.py",
     "modules/orgs/service.py",
+    "modules/orgs/console.py",
     "main.py",
     # CompanyDep (open_company for the signed-in person) and the console (super admins only)
     "core/deps.py",

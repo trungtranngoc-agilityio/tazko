@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter, useLocation, useRoutes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { apiError, fakeApi } from "@/test/fakeApi";
-import { routes } from "../router";
+import { routes } from "@/app/router";
 
 // Names, emails and audit targets come from Google profiles that anyone can
 // set (M1.md, security review): they must show as text, never as markup.

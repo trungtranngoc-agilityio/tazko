@@ -9,10 +9,9 @@ import pytest
 from fastapi.testclient import TestClient
 
 from tazko.core.errors import Conflict, Forbidden
-from tazko.db import Database
+from tazko.db import Database, events
 from tazko.db.tenant import Tenants
 from tazko.modules.invites import service as invites
-from tazko.modules.orgs import repository as orgs_repo
 from tazko.modules.orgs import service as orgs
 from tazko.modules.orgs.service import Org
 from tazko.modules.users import service as users
@@ -217,7 +216,7 @@ def test_a_failed_company_file_event_does_not_undo_the_change(
     def broken(*args: object, **kwargs: object) -> None:
         raise OSError("disk full")
 
-    monkeypatch.setattr(orgs_repo, "add_event", broken)
+    monkeypatch.setattr(events, "add", broken)
     as_(client, google, ana)
 
     response = write(client, "PATCH", f"/api/orgs/acme/members/{bo.id}", {"role": "owner"})

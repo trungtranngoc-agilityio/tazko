@@ -17,6 +17,7 @@ from tazko.db.tenant import Tenants
 from tazko.modules.audit import service as audit_service
 from tazko.modules.invites import service as invites
 from tazko.modules.orgs import service as orgs
+from tazko.modules.orgs.console import Console
 from tazko.modules.orgs.service import Org
 from tazko.modules.users import service as users
 from tazko.modules.users.service import User
@@ -382,7 +383,7 @@ def test_a_failed_delete_puts_the_folder_back_and_keeps_the_company(
     monkeypatch.setattr(audit_service, "record", failing)
 
     with pytest.raises(RuntimeError):
-        orgs.Console(control, tenants, admin.id).delete("acme", confirm="acme")
+        Console(control, tenants, admin.id).delete("acme", confirm="acme")
 
     # then the folder is back and the company still works
     assert tenants.exists("acme")

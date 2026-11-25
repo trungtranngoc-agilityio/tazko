@@ -7,6 +7,7 @@ from typing import Annotated
 from fastapi import APIRouter, Path, Response
 
 from tazko.core.deps import ClientIp, CompanyDep, ControlDep, CurrentUser
+from tazko.modules.invites import projects as project_invites
 from tazko.modules.invites import service
 from tazko.modules.invites.schemas import InviteIn, InviteOut, ProjectInviteIn, ProjectInviteOut
 
@@ -60,7 +61,9 @@ def project_pending(
     project_id: ProjectId, company: CompanyDep, user: CurrentUser, control: ControlDep
 ) -> list[ProjectInviteOut]:
     """At most 500 pending invites to the project, newest first."""
-    found = service.list_project_invites(control, company, project_id=project_id, actor_id=user.id)
+    found = project_invites.list_project_invites(
+        control, company, project_id=project_id, actor_id=user.id
+    )
     return [ProjectInviteOut.from_pending(i) for i in found]
 
 
@@ -74,7 +77,7 @@ def project_invite(
     control: ControlDep,
     ip: ClientIp,
 ) -> ProjectInviteOut:
-    made = service.create_project_invite(
+    made = project_invites.create_project_invite(
         control,
         company,
         project_id=project_id,
@@ -98,7 +101,7 @@ def project_revoke(
     control: ControlDep,
     ip: ClientIp,
 ) -> Response:
-    service.revoke_project_invite(
+    project_invites.revoke_project_invite(
         control, company, project_id=project_id, invite_id=invite_id, actor_id=user.id, ip=ip
     )
     return Response(status_code=204)
