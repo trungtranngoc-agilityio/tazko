@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-time host setup for the Tazko API (build plan "Deployment", D13, D36).
+# One-time host setup for the Tazko API (build plan "Deployment").
 # RUN BY THE OWNER as root, from a copy of this deploy/backend folder on the host,
 # after reading it. Safe to run again: it creates what is missing and replaces only
 # Tazko's own units, sudoers file and helper scripts. It never touches the other

@@ -5,7 +5,7 @@ Description=Tazko: check every database is sound and usable by the current relea
 Type=oneshot
 User=tazko
 Group=tazko
-# No tazko.env: these commands need no Google settings, only no .env reading (D16).
+# No tazko.env: these commands need no Google settings, only no .env reading.
 Environment=TAZKO_ENV=production
 WorkingDirectory=/var/lib/tazko
 UMask=0077
@@ -18,5 +18,5 @@ PrivateTmp=true
 PrivateDevices=true
 RestrictSUIDSGID=true
 CapabilityBoundingSet=
-# Writable data: SQLite needs the WAL index (-shm) to read a WAL database (D37).
+# Writable data: SQLite needs the WAL index (-shm) to read a WAL database.
 ReadWritePaths=/var/lib/tazko
