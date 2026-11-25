@@ -13,6 +13,11 @@ export {
   type ProjectRole,
   type ProjectSummary,
 } from "./api";
+export { editsSettings, inviteRoles, managesMembers } from "./access";
 export { ManageProjectsTable } from "./components/ManageProjectsTable";
 export { NewProjectDialog } from "./components/NewProjectDialog";
 export { ProjectCard } from "./components/ProjectCard";
+export { ProjectHeader } from "./components/ProjectHeader";
+export { ProjectInviteForm } from "./components/ProjectInviteForm";
+export { ProjectInvitesTable } from "./components/ProjectInvitesTable";
+export { ProjectMembersTable } from "./components/ProjectMembersTable";

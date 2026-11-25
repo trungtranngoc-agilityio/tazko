@@ -1,4 +1,4 @@
-import { Navigate, NavLink, Outlet, useParams } from "react-router";
+import { Navigate, NavLink, Outlet, useLocation, useParams } from "react-router";
 import { RequireSession, SignOutButton, useMe } from "@/features/auth";
 import { CompanySwitcher, Initials, myCompanies, type CompanyContext } from "@/features/orgs";
 import { errorText, t } from "@/shared/i18n";
@@ -19,6 +19,7 @@ export function CompanyLayout() {
 function CompanyShell() {
   const { slug = "" } = useParams();
   const me = useMe();
+  const { pathname } = useLocation();
   const [companies, reloadCompanies] = useAsync(myCompanies, "companies");
 
   if (companies.kind === "loading") {
@@ -58,7 +59,14 @@ function CompanyShell() {
           superAdmin={me.is_super_admin}
         />
         <nav className="flex flex-col gap-1 text-sm">
-          <NavLink end to={`/c/${company.slug}`} className={link}>
+          {/* Projects stays lit inside a project, as in the prototype. */}
+          <NavLink
+            end
+            to={`/c/${company.slug}`}
+            className={({ isActive }) =>
+              link({ isActive: isActive || pathname.startsWith(`/c/${company.slug}/p/`) })
+            }
+          >
             <Icon name="grid" />
             {t("nav.projects")}
           </NavLink>

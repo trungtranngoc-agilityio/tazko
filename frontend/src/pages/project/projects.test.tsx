@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CompanyLayout } from "@/app/layouts/CompanyLayout";
 import { CompanyHomePage } from "@/pages/company/CompanyHomePage";
 import { ManageProjectsPage } from "@/pages/company/ManageProjectsPage";
+import { ProjectMembersPage } from "@/pages/project/ProjectMembersPage";
 import { apiError, fakeApi, type Reply } from "@/test/fakeApi";
 
 const ANA = {
@@ -41,6 +42,18 @@ const person = (user_id: number, name: string, role: string) => ({
   last_seen_at: null,
 });
 const PEOPLE = [person(1, "Ana Tran", "owner"), person(2, "Bo Le", "member")];
+const INVITES = [
+  {
+    id: 9,
+    email: "cy@gmail.com",
+    role: "owner",
+    account: "personal",
+    invited_by: "Ana Tran",
+    created_at: "2026-11-05T10:00:00.000Z",
+    expires_at: "2026-11-19T10:00:00.000Z",
+  },
+];
+
 function signedIn(
   company = HARBOR,
   routes: Record<string, Reply | ((body: unknown) => Reply)> = {},
@@ -59,6 +72,7 @@ function show(path: string) {
         <Route path="/c/:slug" element={<CompanyLayout />}>
           <Route index element={<CompanyHomePage />} />
           <Route path="manage" element={<ManageProjectsPage />} />
+          <Route path="p/:projectId/members" element={<ProjectMembersPage />} />
         </Route>
       </Routes>
     </MemoryRouter>,
@@ -179,5 +193,145 @@ describe("manage projects", () => {
       await screen.findByText("Only owners of the company can manage projects."),
     ).toBeInTheDocument();
     expect(calls.some((c) => c.path === P)).toBe(false);
+  });
+});
+
+describe("project members", () => {
+  const MEMBER_CO = { ...HARBOR, role: "member" };
+  const members = (
+    p: ReturnType<typeof project>,
+    more: Record<string, Reply | ((body: unknown) => Reply)> = {},
+    company = HARBOR,
+  ) =>
+    signedIn(company, {
+      [`GET ${P}/5`]: { status: 200, body: p },
+      [`GET ${P}/5/members`]: { status: 200, body: PEOPLE },
+      [`GET ${P}/5/invites`]: { status: 200, body: INVITES },
+      ...more,
+    });
+
+  it("lets a project owner invite as member, observer or owner and change roles", async () => {
+    members(project());
+    show("/c/harbor/p/5/members");
+
+    const role = await screen.findByRole("combobox", { name: "Role" });
+    expect([...role.querySelectorAll("option")].map((o) => o.value)).toEqual([
+      "member",
+      "observer",
+      "owner",
+    ]);
+    expect(screen.getByRole("combobox", { name: "Role of Bo Le" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Revoke cy@gmail.com" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.getByText("Ana Tran (you)")).toBeInTheDocument();
+  });
+
+  it("shows an observer the roles as text and why they cannot invite", async () => {
+    members(project({ role: "observer", members_can_invite: true }), {}, MEMBER_CO);
+    show("/c/harbor/p/5/members");
+
+    expect(await screen.findByText(/Only project owners can invite people/)).toBeInTheDocument();
+    expect(screen.queryByRole("combobox")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Remove/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Revoke/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Settings" })).not.toBeInTheDocument();
+    // they may leave, and do not see when others last signed in
+    expect(screen.getByRole("button", { name: "Leave" })).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Last active" })).not.toBeInTheDocument();
+  });
+
+  it("tells a member why they cannot invite when the project does not allow it", async () => {
+    members(project({ role: "member", members_can_invite: false }), {}, MEMBER_CO);
+    show("/c/harbor/p/5/members");
+
+    expect(await screen.findByText(/Only project owners can invite people/)).toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("name@example.com")).not.toBeInTheDocument();
+  });
+
+  it("lets a company owner who only observes the project invite owners", async () => {
+    members(project({ role: "observer" }));
+    show("/c/harbor/p/5/members");
+
+    const role = await screen.findByRole("combobox", { name: "Role" });
+    expect([...role.querySelectorAll("option")].map((o) => o.value)).toEqual(["owner"]);
+    expect(screen.getByRole("button", { name: "Revoke cy@gmail.com" })).toBeInTheDocument();
+  });
+
+  it("changes a role, and says why when the server keeps the last owner", async () => {
+    const calls = members(project(), {
+      [`PATCH ${P}/5/members/2`]: { status: 200, body: person(2, "Bo Le", "observer") },
+      [`PATCH ${P}/5/members/1`]: { status: 409, body: apiError("LAST_OWNER") },
+    });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    show("/c/harbor/p/5/members");
+
+    fireEvent.change(await screen.findByRole("combobox", { name: "Role of Bo Le" }), {
+      target: { value: "observer" },
+    });
+    await waitFor(() =>
+      expect(calls.find((c) => c.path.endsWith("/members/2"))?.body).toEqual({ role: "observer" }),
+    );
+    fireEvent.change(screen.getByRole("combobox", { name: "Role of Ana Tran" }), {
+      target: { value: "member" },
+    });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "A project needs at least one owner.",
+    );
+  });
+
+  it("asks before an owner gives up their own ownership", async () => {
+    const calls = members(project());
+    vi.spyOn(window, "confirm").mockReturnValue(false);
+    show("/c/harbor/p/5/members");
+
+    fireEvent.change(await screen.findByRole("combobox", { name: "Role of Ana Tran" }), {
+      target: { value: "member" },
+    });
+
+    expect(window.confirm).toHaveBeenCalledWith(expect.stringContaining("Stop being an owner"));
+    expect(calls.some((c) => c.method === "PATCH")).toBe(false);
+  });
+
+  it("lets a member invite members and observers when the project allows it, and revoke only those", async () => {
+    members(project({ role: "member", members_can_invite: true }), {}, MEMBER_CO);
+    show("/c/harbor/p/5/members");
+
+    const role = await screen.findByRole("combobox", { name: "Role" });
+    expect([...role.querySelectorAll("option")].map((o) => o.value)).toEqual([
+      "member",
+      "observer",
+    ]);
+    expect(screen.queryByRole("button", { name: "Revoke cy@gmail.com" })).not.toBeInTheDocument();
+  });
+
+  it("invites and shows the new invite", async () => {
+    let pending: unknown[] = [];
+    const calls = members(project(), {
+      [`GET ${P}/5/invites`]: () => ({ status: 200, body: pending }),
+      [`POST ${P}/5/invites`]: (body) => {
+        pending = [{ ...INVITES[0], email: "new@gmail.com", role: "member" }];
+        return { status: 201, body: { ...INVITES[0], ...(body as object) } };
+      },
+    });
+    show("/c/harbor/p/5/members");
+
+    fireEvent.change(await screen.findByPlaceholderText("name@example.com"), {
+      target: { value: " new@gmail.com " },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+
+    expect(await screen.findByRole("cell", { name: "new@gmail.com" })).toBeInTheDocument();
+    expect(calls.find((c) => c.method === "POST")?.body).toEqual({
+      email: "new@gmail.com",
+      role: "member",
+    });
+  });
+
+  it("says why when the project is not found", async () => {
+    signedIn(HARBOR);
+    show("/c/harbor/p/5/members");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("This no longer exists");
   });
 });
