@@ -173,6 +173,12 @@ def account_kind(row: MemberRow) -> Literal["workspace", "personal"] | None:
     return "workspace" if row.hd else "personal"
 
 
+def member_rows(control: Database, company: Company) -> dict[int, MemberRow]:
+    """The company's members by id, without a permission check: for callers that
+    already checked what the actor may see (a project's members page)."""
+    return {row.user_id: row for row in control.read(lambda c: repo.members(c, company.org.id))}
+
+
 def list_members(control: Database, company: Company, *, actor_id: int) -> list[MemberRow]:
     def run(conn: sqlite3.Connection) -> list[MemberRow]:
         require_manager(conn, org_id=company.org.id, actor_id=actor_id)
@@ -247,7 +253,7 @@ def remove_member(
         # A pending project invite would let them back in at the next sign-in.
         from tazko.modules.invites import service as invites  # it imports this module
 
-        revoked = invites.revoke_for_leaver(conn, org_id=org.id, email=found.email)
+        revoked = invites.revoke_for_leaver(conn, org_id=org.id, email=found.email, user_id=user_id)
         audit.record(
             conn,
             "member.removed",

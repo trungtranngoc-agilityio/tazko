@@ -22,10 +22,20 @@ const SIZES = {
   xl: "size-11 rounded-lg text-base",
 } as const;
 
-/** The initials badge the prototype uses for people (round) and companies
- * (square: lg and xl). Tone classes `tone-c0`..`tone-c4` are in index.css. */
-export function Initials({ name, size = "md" }: { name: string; size?: keyof typeof SIZES }) {
-  const toneName = tone(name);
+/** The initials badge the prototype uses for people (round), companies and
+ * projects (square: lg and xl). `tone` sets the colour (a project's chosen
+ * one); otherwise the name picks it. Tone classes `tone-c0`..`tone-c4` are in
+ * index.css. */
+export function Initials({
+  name,
+  size = "md",
+  tone: chosen,
+}: {
+  name: string;
+  size?: keyof typeof SIZES;
+  tone?: string;
+}) {
+  const toneName = chosen ?? tone(name);
   return (
     <span
       aria-hidden="true"

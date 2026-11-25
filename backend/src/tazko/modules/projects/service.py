@@ -18,9 +18,9 @@ from tazko.modules.orgs import service as orgs
 from tazko.modules.orgs.service import Company, MemberRow
 from tazko.modules.projects import repository as repo
 from tazko.modules.projects.access import Action, Decision, ProjectRole, Standing, decide
-from tazko.modules.projects.repository import Member, Project, Summary
+from tazko.modules.projects.repository import CardExtras, Member, Project, Summary
 
-__all__ = ["Member", "Project", "ProjectRole", "Summary"]
+__all__ = ["Card", "CardExtras", "Member", "Project", "ProjectRole", "Summary"]
 
 log = logging.getLogger(__name__)
 
@@ -119,9 +119,26 @@ def create(
     return seen
 
 
-def mine(company: Company, *, actor_id: int) -> list[Seen]:
-    rows = company.tenant.db.read(lambda c: repo.of_person(c, actor_id))
-    return [Seen(project, cast(ProjectRole, role)) for project, role in rows]
+@dataclass(frozen=True)
+class Card:
+    """A project on Your projects: the project as the person sees it, its
+    people and the open boards they may see."""
+
+    seen: Seen
+    extras: CardExtras
+
+
+def mine(company: Company, *, actor_id: int) -> list[Card]:
+    def run(conn: sqlite3.Connection) -> list[Card]:
+        extras = repo.card_extras(conn, actor_id)
+        return [
+            Card(
+                Seen(project, cast(ProjectRole, role)), extras.get(project.id, CardExtras(0, [], 0))
+            )
+            for project, role in repo.of_person(conn, actor_id)
+        ]
+
+    return company.tenant.db.read(run)
 
 
 def manage_view(company: Company) -> list[Summary]:
@@ -191,12 +208,22 @@ def delete(company: Company, *, actor_id: int, project_id: int) -> None:
 # --- members ------------------------------------------------------------------------
 
 
-def members(company: Company, *, actor_id: int, project_id: int) -> list[Member]:
-    def run(conn: sqlite3.Connection) -> list[Member]:
-        require(conn, company, actor_id, project_id, "list_members")
-        return repo.members(conn, project_id)
+def members(
+    control: Database, company: Company, *, actor_id: int, project_id: int
+) -> list[tuple[Member, MemberRow | None]]:
+    """Each member with their company row (account, last sign-in) for project
+    and company owners; None for everyone else, and for someone who left the
+    company a moment ago."""
 
-    return company.tenant.db.read(run)
+    def run(conn: sqlite3.Connection) -> tuple[list[Member], bool]:
+        seen = require(conn, company, actor_id, project_id, "list_members")
+        return repo.members(conn, project_id), seen.role == "owner" or company.role == "owner"
+
+    found, owner = company.tenant.db.read(run)
+    if not owner:  # when someone last signed in is for the people who manage them
+        return [(member, None) for member in found]
+    rows = orgs.member_rows(control, company)
+    return [(member, rows.get(member.user_id)) for member in found]
 
 
 def add_member(

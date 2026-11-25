@@ -11,6 +11,7 @@ from tazko.core.deps import ClientIp, CompanyDep, ControlDep, CurrentUser
 from tazko.modules.projects import service
 from tazko.modules.projects.schemas import (
     MemberIn,
+    ProjectCardOut,
     ProjectIn,
     ProjectMemberOut,
     ProjectOut,
@@ -32,12 +33,12 @@ def projects(
     company: CompanyDep,
     user: CurrentUser,
     view: Annotated[Literal["mine", "manage"], Query()] = "mine",
-) -> list[ProjectOut] | list[ProjectSummaryOut]:
+) -> list[ProjectCardOut] | list[ProjectSummaryOut]:
     """`mine`: the projects you are in. `manage`: every project, for company
     owners (Manage projects). At most 500, by name."""
     if view == "manage":
         return [ProjectSummaryOut.of(s) for s in service.manage_view(company)]
-    return [ProjectOut.of(seen) for seen in service.mine(company, actor_id=user.id)]
+    return [ProjectCardOut.of_card(card) for card in service.mine(company, actor_id=user.id)]
 
 
 @router.post("", status_code=201)
@@ -84,11 +85,11 @@ def delete(project_id: ProjectId, company: CompanyDep, user: CurrentUser) -> Res
 
 @router.get("/{project_id}/members")
 def members(
-    project_id: ProjectId, company: CompanyDep, user: CurrentUser
+    project_id: ProjectId, company: CompanyDep, user: CurrentUser, control: ControlDep
 ) -> list[ProjectMemberOut]:
     """At most 500, by name."""
-    rows = service.members(company, actor_id=user.id, project_id=project_id)
-    return [ProjectMemberOut.of(row) for row in rows]
+    rows = service.members(control, company, actor_id=user.id, project_id=project_id)
+    return [ProjectMemberOut.of(member, row) for member, row in rows]
 
 
 @router.post("/{project_id}/members", status_code=201)
