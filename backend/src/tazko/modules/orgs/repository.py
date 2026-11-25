@@ -123,6 +123,15 @@ def has_member_email(conn: sqlite3.Connection, *, org_id: int, email: str) -> bo
     )
 
 
+def member_id_by_email(conn: sqlite3.Connection, *, org_id: int, email: str) -> int | None:
+    row = conn.execute(
+        "SELECT m.user_id FROM org_members m JOIN users u ON u.id = m.user_id"
+        " WHERE m.org_id = ? AND u.email = ?",
+        (org_id, email),
+    ).fetchone()
+    return int(row[0]) if row else None
+
+
 def set_status(conn: sqlite3.Connection, org_id: int, status: str) -> None:
     conn.execute("UPDATE orgs SET status = ? WHERE id = ?", (status, org_id))
 

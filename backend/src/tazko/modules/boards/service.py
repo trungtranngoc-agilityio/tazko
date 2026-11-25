@@ -9,7 +9,7 @@ import json
 import logging
 import sqlite3
 from dataclasses import dataclass
-from typing import cast
+from typing import Literal, cast
 
 from tazko.core.clock import now_iso
 from tazko.core.errors import Conflict, Forbidden, Invalid, NotFound
@@ -21,7 +21,7 @@ from tazko.modules.boards.repository import Board, Member, Project, Summary
 from tazko.modules.orgs import service as orgs
 from tazko.modules.orgs.service import Company, MemberRow
 
-__all__ = ["Board", "Member", "Project", "Summary"]
+__all__ = ["Board", "Member", "Project", "ProjectRole", "Summary"]
 
 log = logging.getLogger(__name__)
 
@@ -256,10 +256,121 @@ def add_member(
     return added
 
 
+# --- project invites (part 3, D41): the invite lives in control.db ---------------------------
+
+
+def _invite_action(role: ProjectRole) -> Action:
+    """Inviting someone as `role` needs the same right as adding them."""
+    return "manage_owners" if role == "owner" else "add_member"
+
+
+def check_inviter(
+    company: Company, *, actor_id: int, project_id: int, role: ProjectRole, member_id: int | None
+) -> str:
+    """May the actor invite someone as `role`? `member_id`: the company member
+    with that email, if any, who must not be in the project already. Returns
+    the project's name."""
+
+    def run(conn: sqlite3.Connection) -> str:
+        seen = _require(conn, company, actor_id, project_id, _invite_action(role))
+        if member_id is not None and repo.role_of(conn, project_id, member_id) is not None:
+            raise Conflict("already in the project", code="ALREADY_PROJECT_MEMBER", field="email")
+        return seen.project.name
+
+    return company.tenant.db.read(run)
+
+
+def check_revoker(company: Company, *, actor_id: int, project_id: int, role: ProjectRole) -> None:
+    company.tenant.db.read(
+        lambda c: _require(c, company, actor_id, project_id, _invite_action(role))
+    )
+
+
+def check_reader(company: Company, *, actor_id: int, project_id: int) -> None:
+    """Pending invites show to everyone in the project, as its members do."""
+    company.tenant.db.read(lambda c: _require(c, company, actor_id, project_id, "list_members"))
+
+
+# What using an invite came to: "joined"; "in_project" already; "gone", the
+# project was deleted; "waiting", it is archived (used once restored); "void",
+# the inviter may no longer invite as that role (D41).
+JoinOutcome = Literal["joined", "in_project", "gone", "waiting", "void"]
+
+
+def _inviter_still_may(
+    conn: sqlite3.Connection,
+    project: Project,
+    inviter: MemberRow | None,
+    role: ProjectRole,
+) -> bool:
+    """The invite is only as good as its maker's right today: still in the
+    company, still allowed to add someone as `role`, switches included."""
+    if inviter is None:
+        return False
+    standing = Standing(
+        "owner" if inviter.role == "owner" else "member",
+        cast(ProjectRole | None, repo.role_of(conn, project.id, inviter.user_id)),
+    )
+    verdict = decide(
+        standing,
+        _invite_action(role),
+        members_can_invite=project.members_can_invite,
+        members_can_create_boards=project.members_can_create_boards,
+    )
+    return verdict == "allow"
+
+
+def join_by_invite(
+    control: Database,
+    company: Company,
+    *,
+    user_id: int,
+    project_id: int,
+    role: ProjectRole,
+    invited_by: int | None,
+) -> tuple[JoinOutcome, str | None]:
+    """The invited company member joins the project. Returns what happened and
+    the project's name. A company owner joining is audit-logged as being added
+    by the inviter."""
+    target = orgs.company_member(control, company, user_id)
+    inviter = orgs.company_member(control, company, invited_by) if invited_by else None
+    if target is None:
+        return "gone", None
+
+    def run(conn: sqlite3.Connection) -> tuple[JoinOutcome, str | None]:
+        project = repo.get(conn, project_id)
+        if project is None:
+            return "gone", None
+        if repo.role_of(conn, project_id, user_id) is not None:
+            return "in_project", project.name
+        if project.archived_at is not None:
+            return "waiting", project.name
+        if not _inviter_still_may(conn, project, inviter, role):
+            return "void", project.name
+        orgs.copy_person(conn, target)
+        repo.add_member(conn, project_id=project_id, person_id=user_id, role=role, now=now_iso())
+        _event(
+            conn,
+            "project.member_added",
+            user_id,
+            project_id=project_id,
+            user_id=user_id,
+            role=role,
+            via="invite",
+            invited_by=invited_by,
+        )
+        return "joined", project.name
+
+    outcome, name = company.tenant.db.write(run)
+    if outcome == "joined" and name is not None:
+        _audit_company_owner(control, company, invited_by, target, name, role, None)
+    return outcome, name
+
+
 def _audit_company_owner(
     control: Database,
     company: Company,
-    actor_id: int,
+    actor_id: int | None,
     target: MemberRow,
     project: str,
     role: str,
@@ -287,7 +398,7 @@ def _audit(
     control: Database,
     company: Company,
     action: str,
-    actor_id: int,
+    actor_id: int | None,
     target: str,
     detail: dict[str, object],
     ip: str | None,
@@ -351,9 +462,12 @@ def change_role(
     return changed
 
 
-def remove_member(company: Company, *, actor_id: int, project_id: int, user_id: int) -> None:
+def remove_member(
+    control: Database, company: Company, *, actor_id: int, project_id: int, user_id: int
+) -> None:
     """D6: they come off the project's card assignees, watchers and restricted
-    boards; what they made stays."""
+    boards; what they made stays. A pending invite to the project goes too,
+    so it cannot bring them back (D41)."""
 
     def run(conn: sqlite3.Connection) -> None:
         if user_id == actor_id:  # leaving: anyone in the project may; the UI asks first (D4)
@@ -365,6 +479,9 @@ def remove_member(company: Company, *, actor_id: int, project_id: int, user_id: 
         _event(conn, "project.member_removed", actor_id, project_id=project_id, user_id=user_id)
 
     company.tenant.db.write(run)
+    from tazko.modules.invites import service as invites  # it imports this module
+
+    invites.revoke_on_project_exit(control, company, project_id=project_id, user_id=user_id)
 
 
 def _target(

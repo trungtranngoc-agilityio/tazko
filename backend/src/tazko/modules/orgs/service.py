@@ -149,6 +149,11 @@ def has_member_email(conn: sqlite3.Connection, *, org_id: int, email: str) -> bo
     return repo.has_member_email(conn, org_id=org_id, email=email)
 
 
+def member_id_by_email(conn: sqlite3.Connection, *, org_id: int, email: str) -> int | None:
+    """The id of the company member with this (normalized) email, or None."""
+    return repo.member_id_by_email(conn, org_id=org_id, email=email)
+
+
 def require_manager(conn: sqlite3.Connection, *, org_id: int, actor_id: int | None) -> None:
     """The actor may manage this company's people: a super admin or an owner.
     None is the command line or the system. A member gets Forbidden; anyone
@@ -248,13 +253,17 @@ def remove_member(
         if found.role == "owner" and repo.owner_count(conn, org.id) == 1:
             raise Conflict("the company needs at least one owner", code="LAST_OWNER")
         repo.delete_member(conn, org_id=org.id, user_id=user_id)
+        # A pending project invite would let them back in at the next sign-in (D41).
+        from tazko.modules.invites import service as invites  # it imports this module
+
+        revoked = invites.revoke_for_leaver(conn, org_id=org.id, email=found.email)
         audit.record(
             conn,
             "member.removed",
             actor_id=actor_id,
             org_id=org.id,
             target=found.email,
-            detail={"role": found.role},
+            detail={"role": found.role, **({"invites_revoked": revoked} if revoked else {})},
             ip=ip,
         )
 

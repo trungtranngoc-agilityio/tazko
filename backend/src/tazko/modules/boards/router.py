@@ -144,9 +144,15 @@ def change_role(
 
 @router.delete("/{project_id}/members/{user_id}", status_code=204)
 def remove_member(
-    project_id: ProjectId, user_id: UserId, company: CompanyDep, user: CurrentUser
+    project_id: ProjectId,
+    user_id: UserId,
+    company: CompanyDep,
+    user: CurrentUser,
+    control: ControlDep,
 ) -> Response:
-    service.remove_member(company, actor_id=user.id, project_id=project_id, user_id=user_id)
+    service.remove_member(
+        control, company, actor_id=user.id, project_id=project_id, user_id=user_id
+    )
     return Response(status_code=204)
 
 

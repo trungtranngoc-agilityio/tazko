@@ -16,6 +16,16 @@ class Invite:
     expires_at: str
     accepted_at: str | None
     revoked_at: str | None
+    # A project invite (D41): the project's id in the company file, and the role there.
+    project_id: int | None = None
+    project_role: str | None = None
+    created_by: int | None = None
+
+
+INVITE_SELECT = (
+    "SELECT i.id, i.org_id, i.email, i.role, i.created_at, i.expires_at,"
+    " i.accepted_at, i.revoked_at, i.project_id, i.project_role, i.created_by"
+)
 
 
 def _invite(row: sqlite3.Row) -> Invite:
@@ -28,16 +38,14 @@ def _invite(row: sqlite3.Row) -> Invite:
         expires_at=row["expires_at"],
         accepted_at=row["accepted_at"],
         revoked_at=row["revoked_at"],
+        project_id=row["project_id"],
+        project_role=row["project_role"],
+        created_by=row["created_by"],
     )
 
 
 def by_id(conn: sqlite3.Connection, invite_id: int) -> Invite | None:
-    row = conn.execute(
-        "SELECT i.id, i.org_id, i.email, i.role, i.created_at, i.expires_at,"
-        " i.accepted_at, i.revoked_at"
-        " FROM invites i WHERE i.id = ?",
-        (invite_id,),
-    ).fetchone()
+    row = conn.execute(INVITE_SELECT + " FROM invites i WHERE i.id = ?", (invite_id,)).fetchone()
     return _invite(row) if row else None
 
 
@@ -50,11 +58,13 @@ def insert(
     created_by: int | None,
     now: str,
     expires_at: str,
+    project_id: int | None = None,
+    project_role: str | None = None,
 ) -> Invite:
     cursor = conn.execute(
-        "INSERT INTO invites (org_id, email, role, created_by, created_at, expires_at)"
-        " VALUES (?, ?, ?, ?, ?, ?)",
-        (org_id, email, role, created_by, now, expires_at),
+        "INSERT INTO invites (org_id, email, role, project_id, project_role, created_by,"
+        " created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+        (org_id, email, role, project_id, project_role, created_by, now, expires_at),
     )
     invite = by_id(conn, int(cursor.lastrowid or 0))
     if invite is None:
@@ -62,14 +72,16 @@ def insert(
     return invite
 
 
-def pending(conn: sqlite3.Connection, *, org_id: int, email: str, now: str) -> Invite | None:
+def pending(
+    conn: sqlite3.Connection, *, org_id: int, email: str, now: str, project_id: int | None = None
+) -> Invite | None:
+    """The usable invite for this email to the company itself (project_id
+    None), or to that one project of it."""
     row = conn.execute(
-        "SELECT i.id, i.org_id, i.email, i.role, i.created_at, i.expires_at,"
-        " i.accepted_at, i.revoked_at"
-        " FROM invites i"
-        " WHERE i.org_id = ? AND i.email = ? AND i.accepted_at IS NULL"
+        INVITE_SELECT + " FROM invites i"
+        " WHERE i.org_id = ? AND i.email = ? AND i.project_id IS ? AND i.accepted_at IS NULL"
         " AND i.revoked_at IS NULL AND i.expires_at > ?",
-        (org_id, email, now),
+        (org_id, email, project_id, now),
     ).fetchone()
     return _invite(row) if row else None
 
@@ -83,20 +95,22 @@ class PendingInvite:
     created_at: str
     expires_at: str
     workspace: bool
+    project_role: str | None = None
 
 
 PENDING_CAP = 500
 
 
 PENDING_COLUMNS = (
-    "SELECT i.id, i.email, i.role, i.created_at, i.expires_at, u.name AS invited_by,"
-    " w.domain IS NOT NULL AS workspace"
+    "SELECT i.id, i.email, i.role, i.project_role, i.created_at, i.expires_at,"
+    " u.name AS invited_by, w.domain IS NOT NULL AS workspace"
 )
 PENDING_FROM = (
     " FROM invites i LEFT JOIN users u ON u.id = i.created_by"
     " LEFT JOIN workspace_domains w ON w.domain = substr(i.email, instr(i.email, '@') + 1)"
 )
 PENDING_SELECT = PENDING_COLUMNS + PENDING_FROM
+USABLE = " AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?"
 
 
 def _pending(row: sqlite3.Row) -> PendingInvite:
@@ -108,16 +122,34 @@ def _pending(row: sqlite3.Row) -> PendingInvite:
         created_at=row["created_at"],
         expires_at=row["expires_at"],
         workspace=bool(row["workspace"]),
+        project_role=row["project_role"],
     )
 
 
 def pending_for_org(conn: sqlite3.Connection, org_id: int, *, now: str) -> list[PendingInvite]:
-    """Unused, unrevoked, unexpired invites of one company, newest first, at
-    most PENDING_CAP. `workspace`: the address's domain is a known Workspace."""
+    """Usable invites to the company itself (not to one of its projects),
+    newest first, at most PENDING_CAP. `workspace`: the address's domain is a
+    known Workspace."""
     rows = conn.execute(
-        PENDING_SELECT + " WHERE i.org_id = ? AND i.accepted_at IS NULL AND i.revoked_at IS NULL"
-        " AND i.expires_at > ? ORDER BY i.id DESC LIMIT ?",
+        PENDING_SELECT
+        + " WHERE i.org_id = ? AND i.project_id IS NULL"
+        + USABLE
+        + " ORDER BY i.id DESC LIMIT ?",
         (org_id, now, PENDING_CAP),
+    ).fetchall()
+    return [_pending(row) for row in rows]
+
+
+def pending_for_project(
+    conn: sqlite3.Connection, org_id: int, project_id: int, *, now: str
+) -> list[PendingInvite]:
+    """Usable invites to one project, newest first, at most PENDING_CAP."""
+    rows = conn.execute(
+        PENDING_SELECT
+        + " WHERE i.org_id = ? AND i.project_id = ?"
+        + USABLE
+        + " ORDER BY i.id DESC LIMIT ?",
+        (org_id, project_id, now, PENDING_CAP),
     ).fetchall()
     return [_pending(row) for row in rows]
 
@@ -130,14 +162,15 @@ class PendingAnywhere:
 
 
 def pending_everywhere(conn: sqlite3.Connection, *, now: str) -> list[PendingAnywhere]:
-    """Usable invites of every company not deleted, newest first, at most PENDING_CAP."""
+    """Usable invites to every company not deleted (not to their projects),
+    newest first, at most PENDING_CAP."""
     rows = conn.execute(
         PENDING_COLUMNS
         + ", o.slug AS org_slug, o.name AS org_name"
         + PENDING_FROM
-        + " JOIN orgs o ON o.id = i.org_id"
-        " WHERE i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?"
-        " AND o.status != 'deleted' ORDER BY i.id DESC LIMIT ?",
+        + " JOIN orgs o ON o.id = i.org_id WHERE i.project_id IS NULL"
+        + USABLE
+        + " AND o.status != 'deleted' ORDER BY i.id DESC LIMIT ?",
         (now, PENDING_CAP),
     ).fetchall()
     return [
@@ -156,15 +189,29 @@ def pending_by_id(conn: sqlite3.Connection, invite_id: int) -> PendingInvite:
 
 def usable(conn: sqlite3.Connection, email: str, *, now: str) -> list[Invite]:
     """Invites this email can use now: not used, not revoked, not expired, for
-    an active company. Uses the partial index invites_pending_by_email."""
+    an active company. Owner invites first, so someone invited to a company as
+    an owner and to one of its projects (a plain member, D41) joins as an
+    owner. Uses the partial index invites_pending_by_email."""
     rows = conn.execute(
-        "SELECT i.id, i.org_id, i.email, i.role, i.created_at, i.expires_at,"
-        " i.accepted_at, i.revoked_at"
-        " FROM invites i JOIN orgs o ON o.id = i.org_id"
-        " WHERE i.email = ? AND i.accepted_at IS NULL AND i.revoked_at IS NULL"
-        " AND i.expires_at > ? AND o.status = 'active'"
-        " ORDER BY i.id",
+        INVITE_SELECT + " FROM invites i JOIN orgs o ON o.id = i.org_id"
+        " WHERE i.email = ?" + USABLE + " AND o.status = 'active'"
+        " ORDER BY i.role = 'owner' DESC, i.id",
         (email, now),
+    ).fetchall()
+    return [_invite(row) for row in rows]
+
+
+def project_invites_to_use(
+    conn: sqlite3.Connection, *, org_id: int, email: str, now: str
+) -> list[Invite]:
+    """Usable invites to projects of one company for this email, oldest first.
+    Uses invites_pending_by_email: almost always nothing is found."""
+    rows = conn.execute(
+        INVITE_SELECT + " FROM invites i"
+        " WHERE i.email = ? AND i.org_id = ? AND i.project_id IS NOT NULL"
+        + USABLE
+        + " ORDER BY i.id",
+        (email, org_id, now),
     ).fetchall()
     return [_invite(row) for row in rows]
 
@@ -174,9 +221,7 @@ def latest_unused(conn: sqlite3.Connection, email: str) -> Invite | None:
     revoked ones included), to say why a sign-in was refused. Uses the
     partial index invites_unused_by_email (migration 0002_signin_lookups)."""
     row = conn.execute(
-        "SELECT i.id, i.org_id, i.email, i.role, i.created_at, i.expires_at,"
-        " i.accepted_at, i.revoked_at"
-        " FROM invites i WHERE i.email = ? AND i.accepted_at IS NULL"
+        INVITE_SELECT + " FROM invites i WHERE i.email = ? AND i.accepted_at IS NULL"
         " ORDER BY i.id DESC LIMIT 1",
         (email,),
     ).fetchone()
@@ -202,3 +247,37 @@ def mark_revoked(conn: sqlite3.Connection, invite_id: int, *, org_id: int, now: 
         (now, invite_id, org_id),
     )
     return cursor.rowcount == 1
+
+
+def revoke_unused_for_email(conn: sqlite3.Connection, *, org_id: int, email: str, now: str) -> int:
+    """Revoke every unused invite of this company for this email (invites_pending_by_email)."""
+    cursor = conn.execute(
+        "UPDATE invites SET revoked_at = ?"
+        " WHERE email = ? AND org_id = ? AND accepted_at IS NULL AND revoked_at IS NULL",
+        (now, email, org_id),
+    )
+    return cursor.rowcount
+
+
+def revoke_unused_for_project(
+    conn: sqlite3.Connection, *, org_id: int, email: str, project_id: int, now: str
+) -> int:
+    """Revoke this email's unused invites to one project (invites_pending_by_email)."""
+    cursor = conn.execute(
+        "UPDATE invites SET revoked_at = ?"
+        " WHERE email = ? AND org_id = ? AND project_id = ?"
+        " AND accepted_at IS NULL AND revoked_at IS NULL",
+        (now, email, org_id, project_id),
+    )
+    return cursor.rowcount
+
+
+def pending_count_for_project(
+    conn: sqlite3.Connection, *, org_id: int, project_id: int, now: str
+) -> int:
+    row = conn.execute(
+        "SELECT count(*) FROM invites i WHERE i.org_id = ? AND i.project_id = ?"
+        " AND i.accepted_at IS NULL AND i.revoked_at IS NULL AND i.expires_at > ?",
+        (org_id, project_id, now),
+    ).fetchone()
+    return int(row[0])
