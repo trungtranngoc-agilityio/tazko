@@ -5,13 +5,13 @@ import {
   AuditList,
   LoadFailed,
   Loading,
+  MoreButton,
   PageHead,
   auditLog,
   usePages,
   type AuditKind,
 } from "@/features/admin";
 import { t } from "@/shared/i18n";
-import { MoreButton } from "./MoreButton";
 
 // Console: Audit log (prototype admin-audit), filtered by kind on the server.
 export function AuditPage() {

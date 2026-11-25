@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from tazko.modules.admin import service as admin
 from tazko.modules.invites.schemas import InviteOut
-from tazko.modules.orgs import service as orgs
+from tazko.modules.orgs.console import CompanySummary
 from tazko.modules.users import service as users
 
 
@@ -35,7 +35,7 @@ class CompanySummaryOut(BaseModel):
     last_activity_at: str | None
 
     @classmethod
-    def from_summary(cls, summary: orgs.CompanySummary) -> CompanySummaryOut:
+    def from_summary(cls, summary: CompanySummary) -> CompanySummaryOut:
         return cls(
             slug=summary.org.slug,
             name=summary.org.name,

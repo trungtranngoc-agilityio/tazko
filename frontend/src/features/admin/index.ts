@@ -24,3 +24,4 @@ export { PeopleTable } from "./components/PeopleTable";
 export { ServerPanel } from "./components/ServerPanel";
 export { WorkspaceDomains } from "./components/WorkspaceDomains";
 export { LoadFailed, Loading, PageHead, StatusPill } from "./components/parts";
+export { MoreButton } from "./components/MoreButton";

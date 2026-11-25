@@ -5,8 +5,8 @@ import { CompanyHomePage } from "@/pages/company/CompanyHomePage";
 import { CompanySettingsPage } from "@/pages/company/CompanySettingsPage";
 import { HomePage } from "@/pages/home/HomePage";
 import { apiError as error, fakeApi } from "@/test/fakeApi";
-import { AppLayout } from "./AppLayout";
-import { CompanyLayout } from "./CompanyLayout";
+import { AppLayout } from "@/app/layouts/AppLayout";
+import { CompanyLayout } from "@/app/layouts/CompanyLayout";
 
 const ANA = {
   id: 1,

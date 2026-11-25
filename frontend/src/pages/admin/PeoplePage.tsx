@@ -1,8 +1,15 @@
 import { useState } from "react";
 import { Navigate } from "react-router";
-import { LoadFailed, Loading, PageHead, PeopleTable, people, usePages } from "@/features/admin";
+import {
+  LoadFailed,
+  Loading,
+  MoreButton,
+  PageHead,
+  PeopleTable,
+  people,
+  usePages,
+} from "@/features/admin";
 import { t } from "@/shared/i18n";
-import { MoreButton } from "./MoreButton";
 
 // Console: People (prototype admin-people). The search runs on the server,
 // since only one page of people is loaded at a time.

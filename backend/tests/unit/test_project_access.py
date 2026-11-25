@@ -11,7 +11,7 @@ from typing import cast
 
 import pytest
 
-from tazko.modules.boards.access import ACTIONS, Action, ProjectRole, Standing, decide, sees_board
+from tazko.modules.projects.access import ACTIONS, Action, ProjectRole, Standing, decide, sees_board
 
 # (company role, project role) -> the standings the matrix covers.
 OWNER_OUTSIDE = Standing("owner", None)

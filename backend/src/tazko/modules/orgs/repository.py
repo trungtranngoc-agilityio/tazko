@@ -300,12 +300,3 @@ def upsert_person(
         " avatar_url = excluded.avatar_url, updated_at = excluded.updated_at",
         (user_id, name, email, avatar_url, now),
     )
-
-
-def add_event(
-    conn: sqlite3.Connection, *, type: str, actor_id: int | None, payload: str, now: str
-) -> None:
-    conn.execute(
-        "INSERT INTO events (type, actor_id, payload, created_at) VALUES (?, ?, ?, ?)",
-        (type, actor_id, payload, now),
-    )
