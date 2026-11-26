@@ -12,10 +12,17 @@ from tazko.modules.boards import service
 from tazko.modules.boards.schemas import AccessIn, BoardIn, BoardOut, BoardPatch
 
 router = APIRouter(prefix="/api/orgs/{slug}/projects")
+starred_router = APIRouter(prefix="/api/orgs/{slug}")
 
 # SQLite integers: a bigger id would crash the query instead of answering 404.
 ProjectId = Annotated[int, Path(ge=1, le=2**63 - 1)]
 BoardId = Annotated[int, Path(ge=1, le=2**63 - 1)]
+
+
+@starred_router.get("/starred-boards")
+def starred_boards(company: CompanyDep, user: CurrentUser) -> list[BoardOut]:
+    """The open boards you starred and may still open, across your projects; at most 500, by name."""
+    return [BoardOut.of(seen) for seen in service.starred(company, actor_id=user.id)]
 
 
 @router.get("/{project_id}/boards")

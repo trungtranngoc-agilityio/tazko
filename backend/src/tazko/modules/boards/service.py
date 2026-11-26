@@ -28,6 +28,8 @@ class SeenBoard:
     board: Board
     starred: bool
     access: list[int] | None
+    lists: int = 0  # open lists, and the open cards on them, for the board tile
+    cards: int = 0
 
 
 def require_board(
@@ -60,7 +62,8 @@ def _reload_board(conn: sqlite3.Connection, project_id: int, board_id: int) -> B
 
 def _seen_board(conn: sqlite3.Connection, seen: Seen, board: Board, actor_id: int) -> SeenBoard:
     access = repo.access_list(conn, board.id) if seen.role == "owner" and board.restricted else None
-    return SeenBoard(board, repo.starred(conn, board.id, actor_id), access)
+    lists, cards = repo.counts(conn, [board.id]).get(board.id, (0, 0))
+    return SeenBoard(board, repo.starred(conn, board.id, actor_id), access, lists, cards)
 
 
 def boards(company: Company, *, actor_id: int, project_id: int) -> list[SeenBoard]:
@@ -69,10 +72,29 @@ def boards(company: Company, *, actor_id: int, project_id: int) -> list[SeenBoar
         owner = seen.role == "owner"
         rows = repo.boards_seen(conn, project_id, actor_id, every_restricted=owner)
         lists = repo.access_lists(conn, project_id) if owner else {}
+        sizes = repo.counts(conn, [b.id for b, _ in rows])
         return [
-            SeenBoard(b, starred, lists.get(b.id, []) if owner and b.restricted else None)
+            SeenBoard(
+                b,
+                starred,
+                lists.get(b.id, []) if owner and b.restricted else None,
+                *sizes.get(b.id, (0, 0)),
+            )
             for b, starred in rows
         ]
+
+    return company.tenant.db.read(run)
+
+
+def starred(company: Company, *, actor_id: int) -> list[SeenBoard]:
+    """Your projects' Starred boards: across the company, only boards you may
+    still open, leaving out closed boards and archived or deleted projects.
+    No access lists here: they are managed from the project's own listing."""
+
+    def run(conn: sqlite3.Connection) -> list[SeenBoard]:
+        rows = repo.starred_boards(conn, actor_id)
+        sizes = repo.counts(conn, [b.id for b in rows])
+        return [SeenBoard(b, True, None, *sizes.get(b.id, (0, 0))) for b in rows]
 
     return company.tenant.db.read(run)
 

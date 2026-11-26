@@ -79,6 +79,42 @@ def boards_seen(
     return [(_board(row), bool(row["starred"])) for row in rows]
 
 
+def counts(conn: sqlite3.Connection, board_ids: list[int]) -> dict[int, tuple[int, int]]:
+    """Open lists and the open cards on them, per board, in one query.
+    A board with neither is missing from the answer."""
+    if not board_ids:
+        return {}
+    marks = ", ".join("?" for _ in board_ids)
+    rows = conn.execute(
+        f"SELECT l.board_id, count(DISTINCT l.id),"  # noqa: S608 (only "?" marks are built; values are bound)
+        " count(c.id) - count(c.archived_at)"
+        " FROM lists l LEFT JOIN cards c ON c.list_id = l.id"
+        f" WHERE l.board_id IN ({marks}) AND l.archived_at IS NULL"
+        " GROUP BY l.board_id",
+        board_ids,
+    )
+    return {row[0]: (row[1], row[2]) for row in rows}
+
+
+def starred_boards(conn: sqlite3.Connection, person_id: int) -> list[Board]:
+    """The open boards of open projects (not in trash) this person starred and may still see:
+    they are in the project, and the board is open to it, or they own the
+    project, or they are on its list."""
+    rows = conn.execute(
+        f"SELECT {BOARD_COLUMNS} FROM board_stars s"  # noqa: S608 (BOARD_COLUMNS is a constant; values are bound)
+        " JOIN boards b ON b.id = s.board_id"
+        " JOIN projects p ON p.id = b.project_id"
+        " JOIN project_members m ON m.project_id = b.project_id AND m.person_id = s.person_id"
+        " WHERE s.person_id = ? AND b.archived_at IS NULL"
+        " AND p.archived_at IS NULL AND p.deleted_at IS NULL"
+        " AND (b.restricted = 0 OR m.role = 'owner' OR EXISTS"
+        "  (SELECT 1 FROM board_access a WHERE a.board_id = b.id AND a.person_id = s.person_id))"
+        " ORDER BY b.name COLLATE NOCASE, b.id LIMIT ?",
+        (person_id, BOARDS_CAP),
+    ).fetchall()
+    return [_board(row) for row in rows]
+
+
 def listed(conn: sqlite3.Connection, board_id: int, person_id: int) -> bool:
     row = conn.execute(
         "SELECT 1 FROM board_access WHERE board_id = ? AND person_id = ?", (board_id, person_id)

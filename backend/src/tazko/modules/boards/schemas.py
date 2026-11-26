@@ -47,7 +47,8 @@ class AccessIn(BaseModel):
 
 
 class BoardOut(BaseModel):
-    """`access` is the restricted list, shown to project owners only."""
+    """`access` is the restricted list, shown to project owners only.
+    `lists` and `cards` count the open lists and the open cards on them."""
 
     id: int
     project_id: int
@@ -56,6 +57,8 @@ class BoardOut(BaseModel):
     restricted: bool
     starred: bool
     access: list[int] | None
+    lists: int
+    cards: int
     created_at: str
     archived_at: str | None
 
@@ -70,6 +73,8 @@ class BoardOut(BaseModel):
             restricted=b.restricted,
             starred=seen.starred,
             access=seen.access,
+            lists=seen.lists,
+            cards=seen.cards,
             created_at=b.created_at,
             archived_at=b.archived_at,
         )
