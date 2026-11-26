@@ -11,6 +11,7 @@ from fastapi.testclient import TestClient
 
 from tazko.db import Database
 from tazko.db.tenant import Tenants
+from tazko.modules.orgs import service as orgs
 from tazko.modules.orgs.service import Org
 from tazko.modules.users.service import User
 from tests.integration.company import BASE, as_, company_rows, join, person, write
@@ -409,3 +410,117 @@ def test_project_owners_get_every_restricted_list_in_one_listing(
 
     assert listed == {"A": [max_.id], "B": None, "C": []}
     assert open_
+
+
+# --- board tiles ---------------------------------------------------------------------------
+
+STARRED = "/api/orgs/acme/starred-boards"
+
+
+def tiles(client: TestClient, path: str) -> list[tuple[str, int, int]]:
+    got = client.get(path)
+    assert got.status_code == 200, got.text
+    return [(b["name"], b["lists"], b["cards"]) for b in got.json()]
+
+
+def test_a_board_tile_counts_its_open_lists_and_cards(
+    client: TestClient, google: FakeGoogle, pia: User, launch: int
+) -> None:
+    as_(client, google, pia)
+    board = f"{boards_of(launch)}/{make_board(client, launch)}"
+    todo = write(client, "POST", f"{board}/lists", {"name": "To do"}).json()["id"]
+    old = write(client, "POST", f"{board}/lists", {"name": "Old"}).json()["id"]
+    for title in ("A", "B", "Gone"):
+        write(client, "POST", f"{board}/lists/{todo}/cards", {"title": title})
+    gone = client.get(f"{board}/lists/{todo}").json()["cards"][2]["id"]
+    write(client, "PATCH", f"{board}/cards/{gone}", {"archived": True})
+    write(client, "POST", f"{board}/lists/{old}/cards", {"title": "Hidden"})
+    write(client, "PATCH", f"{board}/lists/{old}", {"archived": True})
+    make_board(client, launch, "Empty")
+
+    assert tiles(client, boards_of(launch)) == [("Empty", 0, 0), ("Sprint", 1, 2)]
+
+
+def test_starred_boards_are_the_open_ones_you_starred_and_still_see(
+    client: TestClient, google: FakeGoogle, boss: User, pia: User, max_: User, team: int
+) -> None:
+    as_(client, google, boss)
+    other = write(client, "POST", BASE, {"name": "Other", "owner_id": pia.id}).json()["id"]
+    as_(client, google, pia)
+    kept, closed, secret = (make_board(client, team, n) for n in ("Kept", "Closed", "Secret"))
+    shelved = make_board(client, other, "Shelved")
+    unstarred = make_board(client, team, "Unstarred")
+    for project, board in [(team, kept), (team, closed), (team, secret), (other, shelved)]:
+        assert write(client, "PUT", f"{boards_of(project)}/{board}/star").status_code == 204
+    write(client, "PATCH", f"{boards_of(team)}/{closed}", {"archived": True})
+    as_(client, google, max_)
+    write(client, "PUT", f"{boards_of(team)}/{kept}/star")
+    write(client, "PUT", f"{boards_of(team)}/{unstarred}/star")
+    as_(client, google, boss)
+    write(client, "PATCH", f"{BASE}/{other}", {"archived": True})
+    as_(client, google, pia)
+    restrict(client, team, secret, [])
+
+    assert tiles(client, STARRED) == [("Kept", 0, 0), ("Secret", 0, 0)]
+    first = client.get(STARRED).json()[0]
+    assert (first["project_id"], first["starred"]) == (team, True)
+    as_(client, google, max_)
+    assert [name for name, _, _ in tiles(client, STARRED)] == ["Kept", "Unstarred"]
+    as_(client, google, boss)
+    assert tiles(client, STARRED) == []
+
+
+def test_starred_boards_leave_out_a_project_you_left(
+    client: TestClient, google: FakeGoogle, pia: User, max_: User, team: int
+) -> None:
+    as_(client, google, pia)
+    board = make_board(client, team)
+    as_(client, google, max_)
+    write(client, "PUT", f"{boards_of(team)}/{board}/star")
+    as_(client, google, pia)
+    assert write(client, "DELETE", f"{BASE}/{team}/members/{max_.id}").status_code == 204
+    as_(client, google, max_)
+
+    assert tiles(client, STARRED) == []
+
+
+def test_a_restricted_board_stays_starred_only_for_people_on_its_list(
+    client: TestClient, google: FakeGoogle, pia: User, max_: User, team: int
+) -> None:
+    as_(client, google, pia)
+    secret = make_board(client, team, "Secret")
+    as_(client, google, max_)
+    write(client, "PUT", f"{boards_of(team)}/{secret}/star")
+    as_(client, google, pia)
+    restrict(client, team, secret, [max_.id])
+    as_(client, google, max_)
+    assert [name for name, _, _ in tiles(client, STARRED)] == ["Secret"]
+
+    as_(client, google, pia)
+    restrict(client, team, secret, [])
+    as_(client, google, max_)
+
+    assert tiles(client, STARRED) == []
+
+
+def test_starred_boards_leave_out_a_deleted_project(
+    client: TestClient, google: FakeGoogle, boss: User, pia: User, team: int
+) -> None:
+    as_(client, google, pia)
+    board = make_board(client, team)
+    write(client, "PUT", f"{boards_of(team)}/{board}/star")
+    as_(client, google, boss)
+    assert write(client, "DELETE", f"{BASE}/{team}").status_code == 204
+    as_(client, google, pia)
+
+    assert tiles(client, STARRED) == []
+
+
+def test_starred_boards_of_another_company_answer_404(
+    client: TestClient, google: FakeGoogle, control: Database, tenants: Tenants, pia: User
+) -> None:
+    orgs.create_company(control, tenants, slug="other", name="Other", actor_id=None)
+    as_(client, google, pia)
+
+    assert client.get("/api/orgs/other/starred-boards").status_code == 404
+    assert client.get("/api/orgs/nowhere/starred-boards").status_code == 404
