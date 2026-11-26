@@ -124,6 +124,15 @@ MATRIX: dict[Action, dict[str, str]] = {
         "company owner, project member": "allow",
         "company owner, observer": "forbid",
     },
+    "edit_cards": {  # add, rename, move, archive and restore lists and cards
+        "company owner, not in project": "forbid",
+        "company member, not in project": "hide",
+        "project owner": "allow",
+        "project member": "allow",
+        "observer": "forbid",
+        "company owner, project member": "allow",
+        "company owner, observer": "forbid",
+    },
     "restrict_board": {  # restrict a board and choose who may open it
         "company owner, not in project": "forbid",
         "company member, not in project": "hide",

@@ -28,4 +28,5 @@ Rules:
 | `admin`    | Console pages that read across modules (`/admin/api`)        |
 | `projects` | Projects, members, roles and the permission matrix           |
 | `boards`   | Boards in a project, restricted boards, stars                |
+| `cards`    | Lists and cards on a board: add, rename, move, archive       |
 """
