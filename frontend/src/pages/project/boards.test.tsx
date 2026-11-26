@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CompanyLayout } from "@/app/layouts/CompanyLayout";
+import { CompanyHomePage } from "@/pages/company/CompanyHomePage";
 import { ProjectBoardsPage } from "@/pages/project/ProjectBoardsPage";
 import { apiError, fakeApi, type Reply } from "@/test/fakeApi";
 
@@ -62,6 +63,7 @@ function show(path: string) {
     <MemoryRouter initialEntries={[path]}>
       <Routes>
         <Route path="/c/:slug" element={<CompanyLayout />}>
+          <Route index element={<CompanyHomePage />} />
           <Route path="p/:projectId/boards" element={<ProjectBoardsPage />} />
         </Route>
       </Routes>
@@ -238,5 +240,67 @@ describe("project boards", () => {
     show("/c/harbor/p/5/boards");
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/add yourself/i);
+  });
+});
+
+describe("starred boards on your projects", () => {
+  const card = {
+    ...project(),
+    members: 2,
+    people: [{ user_id: 1, name: "Ana Tran" }],
+    boards: 2,
+  };
+
+  it("shows the boards you starred above your projects, and drops one you unstar", async () => {
+    signedIn({
+      [`GET ${P}`]: { status: 200, body: [card] },
+      "GET /api/orgs/harbor/starred-boards": {
+        status: 200,
+        body: [board(1, "Launch plan", { starred: true, lists: 2, cards: 5 })],
+      },
+      [`DELETE ${B}/1/star`]: { status: 204 },
+    });
+    show("/c/harbor");
+
+    const starred = await screen.findByRole("region", { name: "Starred boards" });
+    expect(within(starred).getByText("2 lists · 5 cards")).toBeInTheDocument();
+    fireEvent.click(within(starred).getByRole("button", { name: "Star board" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("region", { name: "Starred boards" })).toBeNull(),
+    );
+    expect(screen.getByRole("region", { name: "Your projects" })).toBeInTheDocument();
+  });
+
+  it("says when the starred boards could not be loaded, and tries again", async () => {
+    let fail = true;
+    signedIn({
+      [`GET ${P}`]: { status: 200, body: [card] },
+      "GET /api/orgs/harbor/starred-boards": () =>
+        fail
+          ? { status: 500, body: apiError("INTERNAL") }
+          : { status: 200, body: [board(1, "Launch plan", { starred: true })] },
+    });
+    show("/c/harbor");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Your starred boards could not be loaded.",
+    );
+    expect(screen.getByRole("region", { name: "Your projects" })).toBeInTheDocument();
+    fail = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+
+    expect(await screen.findByRole("region", { name: "Starred boards" })).toBeInTheDocument();
+  });
+
+  it("leaves the section out when nothing is starred", async () => {
+    signedIn({
+      [`GET ${P}`]: { status: 200, body: [card] },
+      "GET /api/orgs/harbor/starred-boards": { status: 200, body: [] },
+    });
+    show("/c/harbor");
+
+    expect(await screen.findByRole("region", { name: "Your projects" })).toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Starred boards" })).toBeNull();
   });
 });

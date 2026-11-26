@@ -29,6 +29,10 @@ export function projectBoards(slug: string, projectId: number): Promise<Board[]>
   return api<Board[]>(boards(slug, projectId));
 }
 
+export function starredBoards(slug: string): Promise<Board[]> {
+  return api<Board[]>(`${org(slug)}/starred-boards`);
+}
+
 export function createBoard(
   slug: string,
   projectId: number,

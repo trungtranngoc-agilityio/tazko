@@ -1,4 +1,6 @@
+import { useId } from "react";
 import { Link, Navigate } from "react-router";
+import { StarredBoards, starredBoards } from "@/features/boards";
 import { useCompany } from "@/features/orgs";
 import { ProjectCard, myProjects } from "@/features/projects";
 import { errorText, t } from "@/shared/i18n";
@@ -10,6 +12,11 @@ import { Icon } from "@/shared/ui/Icon";
 export function CompanyHomePage() {
   const { company } = useCompany();
   const [projects, reload] = useAsync(() => myProjects(company.slug), `projects:${company.slug}`);
+  const [starred, reloadStarred] = useAsync(
+    () => starredBoards(company.slug),
+    `starred:${company.slug}`,
+  );
+  const yours = useId();
   const owner = company.role === "owner";
 
   if (projects.kind === "failed" && projects.status === 401) {
@@ -52,9 +59,26 @@ export function CompanyHomePage() {
       {projects.kind === "ready" && projects.value.length === 0 && (
         <Empty owner={owner} company={company.name} />
       )}
+      {projects.kind === "ready" && projects.value.length > 0 && starred.kind === "ready" && (
+        <div className="mt-8">
+          <StarredBoards key={company.slug} slug={company.slug} boards={starred.value} />
+        </div>
+      )}
+      {projects.kind === "ready" && projects.value.length > 0 && starred.kind === "failed" && (
+        <div className="mt-8 flex items-center gap-3 text-sm">
+          <p role="alert">{t("boards.starredFailed")}</p>
+          <button
+            type="button"
+            onClick={reloadStarred}
+            className="h-8 rounded-md border border-line bg-surface px-3 font-semibold hover:bg-sunken"
+          >
+            {t("session.retry")}
+          </button>
+        </div>
+      )}
       {projects.kind === "ready" && projects.value.length > 0 && (
-        <section className="mt-8">
-          <h2 className="mb-3 flex items-center gap-2 font-semibold">
+        <section aria-labelledby={yours} className="mt-8">
+          <h2 id={yours} className="mb-3 flex items-center gap-2 font-semibold">
             <Icon name="folder" />
             {t("projects.yours")}
           </h2>
