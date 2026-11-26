@@ -5,6 +5,7 @@ What people and API callers can notice, per release. Format: [Keep a Changelog](
 ## [Unreleased]
 
 ### Added
+- Your projects shows your Starred boards above the projects.
 - A project opens on its Boards tab: starred boards apart, every board as a tile with its open lists and cards, Create board (title and background), stars, and closed boards with Reopen.
 - Boards add `lists` and `cards` (the open lists and the open cards on them); `GET /api/orgs/{slug}/starred-boards` lists the open boards you starred and may still open, across your projects.
 - Lists and cards on a board under `/api/orgs/{slug}/projects/{id}/boards/{board_id}`: `GET .../lists` returns the open lists in order with their open cards; add, rename, archive and restore lists and cards; move a list (`PUT .../lists/{id}/position`) or a card within or across the board's lists (`PUT .../cards/{id}/position`). Observers only read; a closed board takes no changes (409 `BOARD_CLOSED`); nothing goes into an archived list (409 `LIST_ARCHIVED`) and an archived card is restored before it moves (409 `CARD_ARCHIVED`). A board holds at most 200 open lists and 5000 open cards (409 `TOO_MANY_LISTS`, `TOO_MANY_CARDS`).

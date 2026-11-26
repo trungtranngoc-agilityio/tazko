@@ -81,7 +81,7 @@ test("project settings keep their changes, and an observer only reads", async ({
   await dialog.getByRole("button", { name: "Create project" }).click();
   await expect(ownerPage).toHaveURL(/\/boards$/);
 
-  // boards: a new board, starred, stays starred after a reload
+  // boards: a new board, starred, stays starred after a reload and shows on Your projects
   await ownerPage.getByRole("button", { name: "Create new board" }).click();
   const boardDialog = ownerPage.getByRole("dialog", { name: "Create board" });
   await boardDialog.getByLabel("Board title").fill("Sprint 1");
@@ -96,6 +96,13 @@ test("project settings keep their changes, and an observer only reads", async ({
       .getByRole("region", { name: "Starred" })
       .getByRole("button", { name: "Star board" }),
   ).toHaveAttribute("aria-pressed", "true");
+  await ownerPage.goto(`/c/${slug}`);
+  await expect(
+    ownerPage
+      .getByRole("region", { name: "Starred boards" })
+      .getByRole("article", { name: "Sprint 1" }),
+  ).toBeVisible();
+  await ownerPage.getByRole("link", { name: /Mobile app/ }).click();
 
   // settings: a switch and the description stay after a reload
   await ownerPage.getByRole("link", { name: "Settings", exact: true }).click();
