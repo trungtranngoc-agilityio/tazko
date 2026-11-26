@@ -2,24 +2,11 @@ import { useState, type ReactNode, type SubmitEvent } from "react";
 import { Link } from "react-router";
 import { ApiError } from "@/shared/api";
 import { errorText, t } from "@/shared/i18n";
+import { BOARD_BACKGROUNDS } from "@/shared/lib/backgrounds";
 import { Switch } from "@/shared/ui/Switch";
 import { updateProject, type AgingDays, type Project, type ProjectChanges } from "../api";
 import { PROJECT_COLORS } from "./ProjectBadge";
 
-/** The keys of the board backgrounds (index.css .board-bg-*), prototype order. */
-export const BOARD_BACKGROUNDS = [
-  "dusk",
-  "sea",
-  "sand",
-  "meadow",
-  "rose",
-  "slate",
-  "mist",
-  "ink",
-  "leaf",
-  "coral",
-  "ocean",
-] as const;
 const AGING_DAYS: AgingDays[] = [3, 7, 14, 30];
 
 /** Project settings for project owners (prototype Project settings): General

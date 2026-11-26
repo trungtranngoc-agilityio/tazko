@@ -6,7 +6,7 @@ import { ProjectBadge } from "./ProjectBadge";
 
 /** The top of a project's pages (prototype): breadcrumb, badge, name and
  * description, the person's role, and the tabs. Settings is a project
- * owner's tab. The Boards tab arrives with the board screens. */
+ * owner's tab. */
 export function ProjectHeader({
   slug,
   project,
@@ -47,6 +47,9 @@ export function ProjectHeader({
         </div>
       </div>
       <nav aria-label={t("project.tabs")} className="mt-5 flex border-b border-line text-sm">
+        <NavLink to={`${base}/boards`} className={tab}>
+          {t("project.boards")}
+        </NavLink>
         <NavLink to={`${base}/members`} className={tab}>
           {members === null ? t("project.members") : t("project.membersCount", { count: members })}
         </NavLink>
