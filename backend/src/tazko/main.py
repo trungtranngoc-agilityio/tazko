@@ -26,6 +26,7 @@ from tazko.modules import auth, health
 from tazko.modules.admin import router as admin_router
 from tazko.modules.auth.google import GoogleProvider
 from tazko.modules.boards import router as boards_router
+from tazko.modules.cards import router as cards_router
 from tazko.modules.invites import router as invites_router
 from tazko.modules.orgs import router as orgs_router
 from tazko.modules.projects import router as projects_router
@@ -97,4 +98,5 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(admin_router.router)  # /admin/api
     app.include_router(projects_router.router)  # /api/orgs/{slug}/projects
     app.include_router(boards_router.router)  # .../projects/{id}/boards
+    app.include_router(cards_router.router)  # .../boards/{id}/lists and /cards
     return app

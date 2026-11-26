@@ -27,6 +27,7 @@ Action = Literal[
     "add_member",  # add a member or observer
     "create_board",
     "edit_board",  # rename, background, close and reopen a board
+    "edit_cards",  # add, rename, move, archive and restore lists and cards
     "restrict_board",  # restrict a board and choose who may open it
 ]
 ACTIONS: tuple[Action, ...] = (
@@ -40,6 +41,7 @@ ACTIONS: tuple[Action, ...] = (
     "add_member",
     "create_board",
     "edit_board",
+    "edit_cards",
     "restrict_board",
 )
 # Still allowed on an archived project.
@@ -95,7 +97,7 @@ def _allowed(
     if role == "owner":
         return True
     if role == "member":
-        return action in ("open_boards", "edit_board") or (
+        return action in ("open_boards", "edit_board", "edit_cards") or (
             (action == "add_member" and members_can_invite)
             or (action == "create_board" and members_can_create_boards)
         )

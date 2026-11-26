@@ -17,7 +17,7 @@ from tazko.modules.projects import service as projects
 from tazko.modules.projects.access import Action, sees_board
 from tazko.modules.projects.service import Seen
 
-__all__ = ["Board", "SeenBoard"]
+__all__ = ["Board", "SeenBoard", "require_board"]
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,7 @@ class SeenBoard:
     access: list[int] | None
 
 
-def _require_board(
+def require_board(
     conn: sqlite3.Connection,
     company: Company,
     actor_id: int,
@@ -102,7 +102,7 @@ def create_board(
 
 def get_board(company: Company, *, actor_id: int, project_id: int, board_id: int) -> SeenBoard:
     def run(conn: sqlite3.Connection) -> SeenBoard:
-        seen, board = _require_board(conn, company, actor_id, project_id, board_id, "open_boards")
+        seen, board = require_board(conn, company, actor_id, project_id, board_id, "open_boards")
         return _seen_board(conn, seen, board, actor_id)
 
     return company.tenant.db.read(run)
@@ -121,7 +121,7 @@ def update_board(
     owners and members."""
 
     def run(conn: sqlite3.Connection) -> SeenBoard:
-        seen, board = _require_board(conn, company, actor_id, project_id, board_id, "edit_board")
+        seen, board = require_board(conn, company, actor_id, project_id, board_id, "edit_board")
         if changes:
             repo.update_board(conn, board_id, changes)
             events.add(conn, "board.updated", actor_id, board_id=board_id, fields=sorted(changes))
@@ -155,9 +155,7 @@ def set_access(
     listed = sorted(set(people))
 
     def run(conn: sqlite3.Connection) -> SeenBoard:
-        seen, board = _require_board(
-            conn, company, actor_id, project_id, board_id, "restrict_board"
-        )
+        seen, board = require_board(conn, company, actor_id, project_id, board_id, "restrict_board")
         outside = [p for p in listed if projects.role_of(conn, project_id, p) is None]
         if outside:
             raise Invalid(
@@ -186,7 +184,7 @@ def star(company: Company, *, actor_id: int, project_id: int, board_id: int, on:
     archived project. Starring twice changes nothing."""
 
     def run(conn: sqlite3.Connection) -> None:
-        _require_board(conn, company, actor_id, project_id, board_id, "open_boards")
+        require_board(conn, company, actor_id, project_id, board_id, "open_boards")
         if repo.set_star(conn, board_id, actor_id, on=on, now=now_iso()):
             events.add(
                 conn, "board.starred" if on else "board.unstarred", actor_id, board_id=board_id
