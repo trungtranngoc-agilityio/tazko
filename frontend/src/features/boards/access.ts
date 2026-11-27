@@ -22,3 +22,9 @@ export function editsBoards(project: Project): boolean {
 export function editsCards(project: Project, board: Board): boolean {
   return editsBoards(project) && !board.archived_at;
 }
+
+/** Restrict a board and choose who opens it: project owners, while the
+ * board is open and the project is not archived. */
+export function restrictsBoards(project: Project, board: Board): boolean {
+  return !project.archived_at && !board.archived_at && project.role === "owner";
+}

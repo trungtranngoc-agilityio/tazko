@@ -3,15 +3,17 @@ import { t } from "@/shared/i18n";
 import { Icon } from "@/shared/ui/Icon";
 
 /**
- * The board menu (prototype drawer), on the right under the top bar. For now
- * it holds Close board, for owners and members (the parent shows the menu only
- * to them). Escape closes it.
+ * The board menu (prototype drawer), on the right under the bars. For now it
+ * holds Board access for project owners and Close board for owners and
+ * members; the parent passes only what the person may do. Escape closes it.
  */
 export function BoardMenu({
+  onAccess,
   onCloseBoard,
   onClose,
 }: {
-  onCloseBoard: () => void;
+  onAccess: (() => void) | null;
+  onCloseBoard: (() => void) | null;
   onClose: () => void;
 }) {
   const first = useRef<HTMLButtonElement>(null);
@@ -40,10 +42,18 @@ export function BoardMenu({
         </button>
       </header>
       <div className="flex flex-col p-2.5 text-sm">
-        <button type="button" onClick={onCloseBoard} className={`${item} text-danger`}>
-          <Icon name="archive" />
-          {t("board.close")}
-        </button>
+        {onAccess && (
+          <button type="button" onClick={onAccess} className={item}>
+            <Icon name="lock" />
+            {t("access.title")}
+          </button>
+        )}
+        {onCloseBoard && (
+          <button type="button" onClick={onCloseBoard} className={`${item} text-danger`}>
+            <Icon name="archive" />
+            {t("board.close")}
+          </button>
+        )}
       </div>
     </aside>
   );

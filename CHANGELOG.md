@@ -5,6 +5,7 @@ What people and API callers can notice, per release. Format: [Keep a Changelog](
 ## [Unreleased]
 
 ### Added
+- On the board, the access chip says who sees it; project owners restrict it to chosen members there or from the board menu, or open it to the whole project again.
 - On the board, anyone who opens it stars it, and owners and members close it from the board menu; it then stays open read-only with Reopen.
 - On the board, owners and members archive a list from its menu, and Undo on the note brings it back.
 - On the board, owners and members add lists and cards and rename the board and its lists in place.

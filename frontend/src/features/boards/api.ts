@@ -60,3 +60,17 @@ export function setStar(slug: string, board: Board, on: boolean): Promise<void> 
     method: on ? "PUT" : "DELETE",
   });
 }
+
+/** Restrict the board to project owners and `people`, or open it to the whole
+ * project (`people` then empty). Project owners only. */
+export function setAccess(
+  slug: string,
+  board: Board,
+  restricted: boolean,
+  people: number[],
+): Promise<Board> {
+  return api<Board>(
+    `${boards(slug, board.project_id)}/${board.id}/access`,
+    json("PUT", { restricted, people }),
+  );
+}

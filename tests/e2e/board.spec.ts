@@ -3,7 +3,7 @@ import { companyOwner, signIn, unique } from "./accounts";
 
 // A board through the browser: open it from its tile, add a list and a card,
 // rename the list, archive it and take it back, star the board, reload; then an
-// observer reads it without any way to change it.
+// observer reads it without any way to change it, until the board is restricted.
 
 test("a board keeps its lists and cards, and an observer only reads it", async ({
   page,
@@ -86,6 +86,17 @@ test("a board keeps its lists and cards, and an observer only reads it", async (
   await expect(watcherPage.getByRole("button", { name: "Add a card" })).toHaveCount(0);
   await expect(watcherPage.getByRole("button", { name: "Add another list" })).toHaveCount(0);
   await expect(watcherPage.getByRole("button", { name: "List actions" })).toHaveCount(0);
+
+  // restricted to its owners, the board is gone for the observer
+  await ownerPage.goto(boardUrl);
+  await ownerPage.getByRole("button", { name: "Whole project" }).click();
+  await ownerPage
+    .getByRole("dialog", { name: "Board access" })
+    .getByRole("switch", { name: "Restrict this board" })
+    .click();
+  await expect(ownerPage.getByRole("button", { name: "Restricted" })).toBeVisible();
+  await watcherPage.reload();
+  await expect(watcherPage.getByRole("heading", { name: "Board not found" })).toBeVisible();
   await other.close();
   await context.close();
 });
