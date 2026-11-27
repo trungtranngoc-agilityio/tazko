@@ -35,3 +35,6 @@ Thumbs.db
 .claude/settings.local.json
 .claude/launch.json
 CLAUDE.local.md
+
+# Visual check screenshots (prototype-compare) stay on the machine that took them.
+docs/screens/
