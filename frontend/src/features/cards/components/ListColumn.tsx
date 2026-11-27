@@ -2,12 +2,14 @@ import { useState } from "react";
 import { t } from "@/shared/i18n";
 import { Icon } from "@/shared/ui/Icon";
 import { InlineEdit } from "@/shared/ui/InlineEdit";
+import { Popover } from "@/shared/ui/Popover";
 import type { List } from "../api";
 import { CardTile } from "./CardTile";
 import { Composer } from "./Composer";
 
 /** One list on the board (prototype .ls): its name, card count, collapse,
- * the card tiles and Add a card. Collapsing stays on this page only. */
+ * the list menu, the card tiles and Add a card. Collapsing stays on this
+ * page only. */
 export function ListColumn({
   list,
   editable,
@@ -15,6 +17,7 @@ export function ListColumn({
   onCompose,
   onRename,
   onAddCard,
+  onArchive,
 }: {
   list: List;
   editable: boolean;
@@ -22,8 +25,10 @@ export function ListColumn({
   onCompose: (open: boolean) => void;
   onRename: (name: string) => void;
   onAddCard: (title: string) => Promise<boolean>;
+  onArchive: () => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
+  const [menu, setMenu] = useState(false);
   const count = list.cards.length;
 
   if (collapsed) {
@@ -69,6 +74,40 @@ export function ListColumn({
         >
           <Icon name="chev" className="size-4" />
         </button>
+        {editable && (
+          <span className="relative">
+            <button
+              type="button"
+              aria-label={t("lists.actions")}
+              aria-expanded={menu}
+              onClick={() => setMenu(!menu)}
+              className="grid size-7 place-items-center rounded-md text-muted hover:bg-sunken"
+            >
+              <Icon name="more" className="size-4" />
+            </button>
+            {menu && (
+              <Popover
+                title={t("lists.actions")}
+                closeLabel={t("lists.closeActions")}
+                onClose={() => setMenu(false)}
+                className="right-0 w-[290px]"
+              >
+                <button
+                  type="button"
+                  data-first
+                  onClick={() => {
+                    setMenu(false);
+                    onArchive();
+                  }}
+                  className="flex w-full items-center gap-2.5 rounded-lg px-2 py-[7px] text-left text-danger hover:bg-sunken"
+                >
+                  <Icon name="archive" />
+                  {t("lists.archive")}
+                </button>
+              </Popover>
+            )}
+          </span>
+        )}
       </header>
       <div
         className={`flex min-h-2.5 flex-col gap-2 overflow-y-auto px-2 pt-0.5 ${editable ? "pb-1" : "pb-2"}`}

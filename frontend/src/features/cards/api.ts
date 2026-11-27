@@ -56,6 +56,16 @@ export function renameList(
   return api<List>(`${at(slug, board)}/lists/${listId}`, json("PATCH", { name }));
 }
 
+/** Archive a list, or restore it to its place with its open cards. */
+export function archiveList(
+  slug: string,
+  board: BoardRef,
+  listId: number,
+  archived: boolean,
+): Promise<List> {
+  return api<List>(`${at(slug, board)}/lists/${listId}`, json("PATCH", { archived }));
+}
+
 export function createCard(
   slug: string,
   board: BoardRef,
