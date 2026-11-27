@@ -444,6 +444,91 @@ describe("board screen", () => {
   });
 });
 
+describe("board actions", () => {
+  it("a member archives a list and undoes it", async () => {
+    const calls = signedIn({
+      [`PATCH ${B}/lists/11`]: (body) => ({
+        status: 200,
+        body: (body as { archived: boolean }).archived
+          ? { ...LISTS[0], archived_at: "2026-11-27T10:00:00.000Z" }
+          : LISTS[0],
+      }),
+    });
+    show();
+
+    fireEvent.click(
+      within(await findColumn("To do")).getByRole("button", { name: "List actions" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Archive this list" }));
+
+    await screen.findByText("List archived");
+    expect(screen.queryByRole("region", { name: "To do" })).toBeNull();
+    fireEvent.click(within(screen.getByRole("status")).getByRole("button", { name: "Undo" }));
+
+    await waitFor(() =>
+      expect(screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual([
+        "To do",
+        "Done",
+      ]),
+    );
+    expect(within(column("To do")).getAllByRole("article")).toHaveLength(2);
+    expect(screen.queryByText("List archived")).toBeNull();
+    expect(writes(calls).map((c) => [c.method, c.path, c.body])).toEqual([
+      ["PATCH", `${B}/lists/11`, { archived: true }],
+      ["PATCH", `${B}/lists/11`, { archived: false }],
+    ]);
+  });
+
+  it("a refused undo says why and keeps the note", async () => {
+    signedIn({
+      [`PATCH ${B}/lists/11`]: (body) =>
+        (body as { archived: boolean }).archived
+          ? { status: 200, body: { ...LISTS[0], archived_at: "2026-11-27T10:00:00.000Z" } }
+          : { status: 409, body: apiError("TOO_MANY_LISTS") },
+    });
+    show();
+
+    fireEvent.click(
+      within(await findColumn("To do")).getByRole("button", { name: "List actions" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Archive this list" }));
+    await screen.findByText("List archived");
+    fireEvent.click(within(screen.getByRole("status")).getByRole("button", { name: "Undo" }));
+
+    expect(await screen.findByRole("alert")).toBeVisible();
+    expect(screen.getByText("List archived")).toBeVisible();
+    expect(screen.queryByRole("region", { name: "To do" })).toBeNull();
+  });
+
+  it("a refused archive says why and keeps the list", async () => {
+    signedIn({ [`PATCH ${B}/lists/11`]: { status: 403, body: apiError("FORBIDDEN") } });
+    show();
+
+    fireEvent.click(
+      within(await findColumn("To do")).getByRole("button", { name: "List actions" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Archive this list" }));
+
+    expect(await screen.findByRole("alert")).toBeVisible();
+    expect(column("To do")).toBeVisible();
+    expect(screen.queryByText("List archived")).toBeNull();
+  });
+
+  it("the list menu closes with escape", async () => {
+    signedIn();
+    show();
+
+    fireEvent.click(
+      within(await findColumn("To do")).getByRole("button", { name: "List actions" }),
+    );
+    fireEvent.keyDown(screen.getByRole("button", { name: "Archive this list" }), {
+      key: "Escape",
+    });
+
+    expect(screen.queryByRole("button", { name: "Archive this list" })).toBeNull();
+  });
+});
+
 async function findColumn(name: string) {
   return screen.findByRole("region", { name });
 }
@@ -454,4 +539,5 @@ function expectNoChangeControls() {
   const heading = screen.getByRole("heading", { level: 1 });
   expect(within(heading).queryByRole("button")).toBeNull();
   expect(within(column("To do")).queryByRole("button", { name: /To do/ })).toBeNull();
+  expect(screen.queryByRole("button", { name: "List actions" })).toBeNull();
 }

@@ -2,7 +2,8 @@ import { expect, test } from "@playwright/test";
 import { companyOwner, signIn, unique } from "./accounts";
 
 // A board through the browser: open it from its tile, add a list and a card,
-// rename the list, reload; then an observer reads it without any way to change it.
+// rename the list, archive it and take it back, reload; then an observer reads
+// it without any way to change it.
 
 test("a board keeps its lists and cards, and an observer only reads it", async ({
   page,
@@ -41,6 +42,16 @@ test("a board keeps its lists and cards, and an observer only reads it", async (
   await ownerPage.getByRole("textbox", { name: "List name" }).press("Enter");
   await expect(ownerPage.getByRole("region", { name: "Doing" })).toBeVisible();
 
+  // archived and taken back with Undo
+  await ownerPage
+    .getByRole("region", { name: "Doing" })
+    .getByRole("button", { name: "List actions" })
+    .click();
+  await ownerPage.getByRole("button", { name: "Archive this list" }).click();
+  await expect(ownerPage.getByRole("region", { name: "Doing" })).toHaveCount(0);
+  await ownerPage.getByRole("status").getByRole("button", { name: "Undo" }).click();
+  await expect(ownerPage.getByRole("region", { name: "Doing" })).toBeVisible();
+
   // all of it survives a reload
   await ownerPage.reload();
   const doing = ownerPage.getByRole("region", { name: "Doing" });
@@ -65,6 +76,7 @@ test("a board keeps its lists and cards, and an observer only reads it", async (
   await expect(watcherPage.getByText(/You are an observer on this project/)).toBeVisible();
   await expect(watcherPage.getByRole("button", { name: "Add a card" })).toHaveCount(0);
   await expect(watcherPage.getByRole("button", { name: "Add another list" })).toHaveCount(0);
+  await expect(watcherPage.getByRole("button", { name: "List actions" })).toHaveCount(0);
   await other.close();
   await context.close();
 });

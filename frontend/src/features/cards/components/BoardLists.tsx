@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { ApiError } from "@/shared/api";
 import { errorText, t } from "@/shared/i18n";
 import { Icon } from "@/shared/ui/Icon";
-import { createCard, createList, renameList, type BoardRef, type List } from "../api";
+import { Toast } from "@/shared/ui/Toast";
+import { archiveList, createCard, createList, renameList, type BoardRef, type List } from "../api";
 import { Composer } from "./Composer";
 import { ListColumn } from "./ListColumn";
 
@@ -10,7 +11,8 @@ import { ListColumn } from "./ListColumn";
 type Open = { kind: "card"; listId: number } | { kind: "list" } | null;
 
 /** The lists of a board side by side (prototype .lists), with Add another
- * list at the end. New lists and cards go last, where the server puts them. */
+ * list at the end. New lists and cards go last, where the server puts them;
+ * an archived list can be taken back from the note that says so. */
 export function BoardLists({
   slug,
   board,
@@ -25,6 +27,8 @@ export function BoardLists({
   const [lists, setLists] = useState(loaded);
   const [open, setOpen] = useState<Open>(null);
   const [problem, setProblem] = useState<string | null>(null);
+  const [archived, setArchived] = useState<{ note: number; listId: number } | null>(null);
+  const notes = useRef(0);
 
   async function attempt(action: () => Promise<void>): Promise<boolean> {
     setProblem(null);
@@ -55,6 +59,22 @@ export function BoardLists({
       change(listId, (l) => ({ ...l, name: renamed.name }));
     });
 
+  const archive = (listId: number) =>
+    void attempt(async () => {
+      await archiveList(slug, board, listId, true);
+      setLists((all) => all.filter((l) => l.id !== listId));
+      setOpen((now) => (now?.kind === "card" && now.listId === listId ? null : now));
+      notes.current += 1;
+      setArchived({ note: notes.current, listId });
+    });
+  // The note stays until the list is back, so a refused restore can be tried again.
+  const undo = (listId: number) =>
+    void attempt(async () => {
+      const back = await archiveList(slug, board, listId, false);
+      setLists((all) => inRankOrder([...all.filter((l) => l.id !== listId), back]));
+      setArchived(null);
+    });
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       {problem && (
@@ -72,6 +92,7 @@ export function BoardLists({
             onCompose={(on) => setOpen(on ? { kind: "card", listId: list.id } : null)}
             onRename={(name) => rename(list.id, name)}
             onAddCard={(title) => addCard(list.id, title)}
+            onArchive={() => archive(list.id)}
           />
         ))}
         {editable &&
@@ -98,6 +119,20 @@ export function BoardLists({
             </button>
           ))}
       </div>
+      {archived && (
+        <Toast
+          key={archived.note}
+          message={t("lists.archived")}
+          undoLabel={t("toast.undo")}
+          onUndo={() => undo(archived.listId)}
+          onDone={() => setArchived(null)}
+        />
+      )}
     </div>
   );
+}
+
+// Ranks sort as plain text, the way the server orders the lists.
+function inRankOrder(lists: List[]): List[] {
+  return lists.sort((a, b) => (a.rank < b.rank ? -1 : a.rank > b.rank ? 1 : 0));
 }
