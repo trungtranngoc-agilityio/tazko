@@ -2,8 +2,8 @@ import { expect, test } from "@playwright/test";
 import { companyOwner, signIn, unique } from "./accounts";
 
 // A board through the browser: open it from its tile, add a list and a card,
-// rename the list, archive it and take it back, reload; then an observer reads
-// it without any way to change it.
+// rename the list, archive it and take it back, star the board, reload; then an
+// observer reads it without any way to change it.
 
 test("a board keeps its lists and cards, and an observer only reads it", async ({
   page,
@@ -42,7 +42,7 @@ test("a board keeps its lists and cards, and an observer only reads it", async (
   await ownerPage.getByRole("textbox", { name: "List name" }).press("Enter");
   await expect(ownerPage.getByRole("region", { name: "Doing" })).toBeVisible();
 
-  // archived and taken back with Undo
+  // archived and taken back with Undo, and the board starred
   await ownerPage
     .getByRole("region", { name: "Doing" })
     .getByRole("button", { name: "List actions" })
@@ -51,11 +51,20 @@ test("a board keeps its lists and cards, and an observer only reads it", async (
   await expect(ownerPage.getByRole("region", { name: "Doing" })).toHaveCount(0);
   await ownerPage.getByRole("status").getByRole("button", { name: "Undo" }).click();
   await expect(ownerPage.getByRole("region", { name: "Doing" })).toBeVisible();
+  await ownerPage.getByRole("button", { name: "Star board" }).click();
+  await expect(ownerPage.getByRole("button", { name: "Star board" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 
   // all of it survives a reload
   await ownerPage.reload();
   const doing = ownerPage.getByRole("region", { name: "Doing" });
   await expect(doing.getByRole("article", { name: "Write the brief" })).toBeVisible();
+  await expect(ownerPage.getByRole("button", { name: "Star board" })).toHaveAttribute(
+    "aria-pressed",
+    "true",
+  );
 
   // an observer reads the board with no way to change it
   await ownerPage.goto(boardUrl.replace(/\/b\/\d+$/, "/members"));

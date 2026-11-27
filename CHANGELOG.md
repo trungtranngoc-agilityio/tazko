@@ -5,6 +5,7 @@ What people and API callers can notice, per release. Format: [Keep a Changelog](
 ## [Unreleased]
 
 ### Added
+- On the board, anyone who opens it stars it, and owners and members close it from the board menu; it then stays open read-only with Reopen.
 - On the board, owners and members archive a list from its menu, and Undo on the note brings it back.
 - On the board, owners and members add lists and cards and rename the board and its lists in place.
 - The board screen: a board tile opens it, full window on its background, with its lists side by side and their cards; a list collapses. Observers, a closed board (with Reopen for owners and members) and an archived project's boards say they are read-only.
