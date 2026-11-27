@@ -1,28 +1,8 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
-import { SUPER_ADMIN, signIn, unique } from "./accounts";
+import { expect, test } from "@playwright/test";
+import { companyOwner, signIn, unique } from "./accounts";
 
 // Projects through the browser: Manage projects, a project's boards, members and
 // invites, its settings, and what a new person invited to one project sees.
-
-/** A fresh company whose first owner is signed in on the returned page. */
-async function companyOwner(browser: Browser, page: Page) {
-  const slug = unique("proj");
-  const owner = `owner@${slug}.test`;
-  await signIn(page, SUPER_ADMIN, "Root Admin");
-  await page.goto("/admin");
-  await page.getByRole("button", { name: "New company" }).click();
-  const dialog = page.getByRole("dialog", { name: "New company" });
-  await dialog.getByLabel("Company name").fill(`Studio ${slug}`);
-  await dialog.getByLabel(/Short name/).fill(slug);
-  await dialog.getByLabel("First owner email").fill(owner);
-  await dialog.getByRole("button", { name: "Create company" }).click();
-  await expect(page).toHaveURL(`/admin/companies/${slug}`);
-
-  const context = await browser.newContext();
-  const ownerPage = await context.newPage();
-  await signIn(ownerPage, owner, "Olive Owner");
-  return { slug, ownerPage, context };
-}
 
 test("an owner creates a project, invites a new email, and that person sees only it", async ({
   page,
