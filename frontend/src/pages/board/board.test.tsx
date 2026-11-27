@@ -123,6 +123,210 @@ describe("board screen", () => {
     );
   });
 
+  it("a member adds a list", async () => {
+    const calls = signedIn({
+      [`POST ${B}/lists`]: (body) => ({
+        status: 201,
+        body: list(13, (body as { name: string }).name),
+      }),
+    });
+    show();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add another list" }));
+    const input = screen.getByRole("textbox", { name: "List title" });
+    fireEvent.change(input, { target: { value: "  Review " } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    await waitFor(() =>
+      expect(screen.getAllByRole("region").map((r) => r.getAttribute("aria-label"))).toEqual([
+        "To do",
+        "Done",
+        "Review",
+      ]),
+    );
+    expect(writes(calls)).toEqual([
+      expect.objectContaining({ method: "POST", path: `${B}/lists`, body: { name: "Review" } }),
+    ]);
+  });
+
+  it("a member adds cards one after another", async () => {
+    let next = 200;
+    const calls = signedIn({
+      [`POST ${B}/lists/11/cards`]: (body) => ({
+        status: 201,
+        body: card(next++, 11, (body as { title: string }).title),
+      }),
+    });
+    show();
+
+    fireEvent.click(
+      await within(await findColumn("To do")).findByRole("button", { name: "Add a card" }),
+    );
+    for (const title of ["Ship it", "Tell everyone"]) {
+      const box = within(column("To do")).getByRole("textbox", { name: "Card title" });
+      fireEvent.change(box, { target: { value: title } });
+      fireEvent.keyDown(box, { key: "Enter" });
+      await within(column("To do")).findByRole("article", { name: title });
+    }
+
+    expect(
+      within(column("To do"))
+        .getAllByRole("article")
+        .map((a) => a.textContent),
+    ).toEqual(["Write the brief", "Pick a date", "Ship it", "Tell everyone"]);
+    expect(within(column("To do")).getByRole("textbox", { name: "Card title" })).toHaveValue("");
+    expect(writes(calls).map((c) => c.body)).toEqual([
+      { title: "Ship it" },
+      { title: "Tell everyone" },
+    ]);
+  });
+
+  it("a blank title sends nothing", async () => {
+    const calls = signedIn();
+    show();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add another list" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add list" }));
+    fireEvent.click(within(column("To do")).getByRole("button", { name: "Add a card" }));
+    const box = within(column("To do")).getByRole("textbox", { name: "Card title" });
+    fireEvent.change(box, { target: { value: "   " } });
+    fireEvent.click(within(column("To do")).getByRole("button", { name: "Add card" }));
+
+    await new Promise((r) => setTimeout(r, 20));
+    expect(writes(calls)).toEqual([]);
+  });
+
+  it("a refused add says why", async () => {
+    signedIn({ [`POST ${B}/lists`]: { status: 409, body: apiError("TOO_MANY_LISTS") } });
+    show();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add another list" }));
+    const input = screen.getByRole("textbox", { name: "List title" });
+    fireEvent.change(input, { target: { value: "One more" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This board has 200 open lists. Archive some first.",
+    );
+    expect(screen.getAllByRole("region")).toHaveLength(2);
+  });
+
+  it("a refused card or rename says why and changes nothing", async () => {
+    signedIn({
+      [`POST ${B}/lists/12/cards`]: { status: 409, body: apiError("LIST_ARCHIVED") },
+      [`PATCH ${B}/lists/11`]: { status: 409, body: apiError("BOARD_CLOSED") },
+    });
+    show();
+
+    fireEvent.click(
+      await within(await findColumn("Done")).findByRole("button", { name: "Add a card" }),
+    );
+    const box = within(column("Done")).getByRole("textbox", { name: "Card title" });
+    fireEvent.change(box, { target: { value: "Late card" } });
+    fireEvent.keyDown(box, { key: "Enter" });
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "This list is archived. Restore it first.",
+    );
+    expect(box).toHaveValue("Late card");
+    expect(within(column("Done")).queryByRole("article")).toBeNull();
+
+    const todo = within(column("To do")).getByRole("heading", { name: "To do" });
+    fireEvent.click(within(todo).getByRole("button"));
+    const input = screen.getByRole("textbox", { name: "List name" });
+    fireEvent.change(input, { target: { value: "Later" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() =>
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "This board is closed. Reopen it to make changes.",
+      ),
+    );
+    expect(column("To do")).toBeVisible();
+  });
+
+  it("enter while an input method is composing sends nothing", async () => {
+    const calls = signedIn();
+    show();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Add another list" }));
+    const input = screen.getByRole("textbox", { name: "List title" });
+    fireEvent.change(input, { target: { value: "Vie" } });
+    fireEvent.keyDown(input, { key: "Enter", isComposing: true });
+    const heading = screen.getByRole("heading", { level: 1 });
+    fireEvent.click(within(heading).getByRole("button"));
+    const name = screen.getByRole("textbox", { name: "Board name" });
+    fireEvent.change(name, { target: { value: "Kế" } });
+    fireEvent.keyDown(name, { key: "Enter", isComposing: true });
+
+    await new Promise((r) => setTimeout(r, 20));
+    expect(writes(calls)).toEqual([]);
+    expect(screen.getByRole("textbox", { name: "Board name" })).toHaveValue("Kế");
+  });
+
+  it("a member renames the board", async () => {
+    const calls = signedIn({
+      [`PATCH ${B}`]: (body) => ({ status: 200, body: board(body as Record<string, unknown>) }),
+    });
+    show();
+
+    const heading = await screen.findByRole("heading", { level: 1 });
+    fireEvent.click(within(heading).getByRole("button"));
+    const input = screen.getByRole("textbox", { name: "Board name" });
+    fireEvent.change(input, { target: { value: "Launch week" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Launch week" })).toBeVisible();
+    expect(writes(calls)).toEqual([
+      expect.objectContaining({ method: "PATCH", path: B, body: { name: "Launch week" } }),
+    ]);
+  });
+
+  it("a member renames a list", async () => {
+    const calls = signedIn({
+      [`PATCH ${B}/lists/12`]: (body) => ({
+        status: 200,
+        body: list(12, (body as { name: string }).name),
+      }),
+    });
+    show();
+
+    const heading = within(await findColumn("Done")).getByRole("heading", { name: "Done" });
+    fireEvent.click(within(heading).getByRole("button"));
+    const input = screen.getByRole("textbox", { name: "List name" });
+    fireEvent.change(input, { target: { value: "Shipped" } });
+    fireEvent.blur(input);
+
+    expect(await screen.findByRole("region", { name: "Shipped" })).toBeVisible();
+    expect(writes(calls)).toEqual([
+      expect.objectContaining({
+        method: "PATCH",
+        path: `${B}/lists/12`,
+        body: { name: "Shipped" },
+      }),
+    ]);
+  });
+
+  it("escape or the same name sends nothing", async () => {
+    const calls = signedIn();
+    show();
+
+    const heading = await screen.findByRole("heading", { level: 1 });
+    fireEvent.click(within(heading).getByRole("button"));
+    const input = screen.getByRole("textbox", { name: "Board name" });
+    fireEvent.change(input, { target: { value: "Something else" } });
+    fireEvent.keyDown(input, { key: "Escape" });
+    expect(screen.getByRole("heading", { level: 1, name: "Launch plan" })).toBeVisible();
+
+    const todo = within(column("To do")).getByRole("heading", { name: "To do" });
+    fireEvent.click(within(todo).getByRole("button"));
+    const listName = screen.getByRole("textbox", { name: "List name" });
+    fireEvent.change(listName, { target: { value: " To do " } });
+    fireEvent.keyDown(listName, { key: "Enter" });
+
+    await new Promise((r) => setTimeout(r, 20));
+    expect(writes(calls)).toEqual([]);
+    expect(column("To do")).toBeVisible();
+  });
+
   it("a list collapses and opens again", async () => {
     signedIn();
     show();
@@ -164,9 +368,7 @@ describe("board screen", () => {
     expectNoChangeControls();
     fireEvent.click(screen.getByRole("button", { name: "Reopen board" }));
 
-    await waitFor(() =>
-      expect(screen.queryByText("This board is closed. Reopen it to make changes.")).toBeNull(),
-    );
+    expect(await screen.findByRole("button", { name: "Add another list" })).toBeVisible();
     expect(writes(calls)).toEqual([
       expect.objectContaining({ method: "PATCH", path: B, body: { archived: false } }),
     ]);
@@ -247,6 +449,9 @@ async function findColumn(name: string) {
 }
 
 function expectNoChangeControls() {
+  expect(screen.queryByRole("button", { name: "Add another list" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Add a card" })).toBeNull();
   const heading = screen.getByRole("heading", { level: 1 });
   expect(within(heading).queryByRole("button")).toBeNull();
+  expect(within(column("To do")).queryByRole("button", { name: /To do/ })).toBeNull();
 }

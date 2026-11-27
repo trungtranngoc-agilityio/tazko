@@ -33,8 +33,34 @@ export interface BoardRef {
 
 const at = (slug: string, board: BoardRef) =>
   `/api/orgs/${encodeURIComponent(slug)}/projects/${board.project_id}/boards/${board.id}`;
+const json = (method: string, body: unknown): RequestInit => ({
+  method,
+  body: JSON.stringify(body),
+});
 
 /** The whole open board: lists in order, each with its open cards. */
 export function boardLists(slug: string, board: BoardRef): Promise<List[]> {
   return api<List[]>(`${at(slug, board)}/lists`);
+}
+
+export function createList(slug: string, board: BoardRef, name: string): Promise<List> {
+  return api<List>(`${at(slug, board)}/lists`, json("POST", { name }));
+}
+
+export function renameList(
+  slug: string,
+  board: BoardRef,
+  listId: number,
+  name: string,
+): Promise<List> {
+  return api<List>(`${at(slug, board)}/lists/${listId}`, json("PATCH", { name }));
+}
+
+export function createCard(
+  slug: string,
+  board: BoardRef,
+  listId: number,
+  title: string,
+): Promise<Card> {
+  return api<Card>(`${at(slug, board)}/lists/${listId}/cards`, json("POST", { title }));
 }

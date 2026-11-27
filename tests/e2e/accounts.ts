@@ -1,4 +1,4 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Browser, type Page } from "@playwright/test";
 
 /** Made by `tazko admin --email` before the API starts (playwright.config.ts). */
 export const SUPER_ADMIN = "root@e2e.test";
@@ -26,4 +26,24 @@ export async function signIn(
   await page.waitForURL(
     (url) => url.port === "5173" && !url.pathname.startsWith("/auth/"),
   );
+}
+
+/** A fresh company whose first owner is signed in on the returned page. */
+export async function companyOwner(browser: Browser, page: Page) {
+  const slug = unique("proj");
+  const owner = `owner@${slug}.test`;
+  await signIn(page, SUPER_ADMIN, "Root Admin");
+  await page.goto("/admin");
+  await page.getByRole("button", { name: "New company" }).click();
+  const dialog = page.getByRole("dialog", { name: "New company" });
+  await dialog.getByLabel("Company name").fill(`Studio ${slug}`);
+  await dialog.getByLabel(/Short name/).fill(slug);
+  await dialog.getByLabel("First owner email").fill(owner);
+  await dialog.getByRole("button", { name: "Create company" }).click();
+  await expect(page).toHaveURL(`/admin/companies/${slug}`);
+
+  const context = await browser.newContext();
+  const ownerPage = await context.newPage();
+  await signIn(ownerPage, owner, "Olive Owner");
+  return { slug, ownerPage, context };
 }
