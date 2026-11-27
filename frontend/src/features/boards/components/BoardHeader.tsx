@@ -6,12 +6,14 @@ import { errorText, t } from "@/shared/i18n";
 import { Icon } from "@/shared/ui/Icon";
 import { InlineEdit } from "@/shared/ui/InlineEdit";
 import { editsBoards, editsCards } from "../access";
-import { updateBoard, type Board } from "../api";
+import { setStar, updateBoard, type Board } from "../api";
+import { BoardMenu } from "./BoardMenu";
 
 /**
  * The bars above a board's lists (prototype .bt, .bh and .ro-banner): the way
  * back to the company and the project, the board name (renamed in place by
- * owners and members), and one note when the board is read-only.
+ * owners and members), the star, the board menu, and one
+ * note when the board is read-only.
  */
 export function BoardHeader({
   slug,
@@ -24,23 +26,34 @@ export function BoardHeader({
   company: string;
   project: Project;
   board: Board;
-  onChange: (board: Board) => void;
+  onChange: (update: Board | ((board: Board) => Board)) => void;
 }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [panel, setPanel] = useState<"menu" | null>(null);
   const projectPath = `/c/${slug}/p/${project.id}/boards`;
 
-  async function save(changes: { name?: string; archived?: boolean }) {
+  async function attempt(action: () => Promise<Board | ((board: Board) => Board)>) {
     setProblem(null);
     setBusy(true);
     try {
-      onChange(await updateBoard(slug, board, changes));
+      onChange(await action());
     } catch (error) {
       setProblem(errorText(error instanceof ApiError ? error.code : "UNKNOWN"));
     } finally {
       setBusy(false);
     }
   }
+  const save = (changes: { name?: string; archived?: boolean }) =>
+    attempt(() => updateBoard(slug, board, changes));
+  const star = () =>
+    attempt(async () => {
+      const on = !board.starred;
+      await setStar(slug, board, on);
+      // Only the star changes: another change may have landed while this one ran.
+      return (latest: Board) => ({ ...latest, starred: on });
+    });
+  const closes = editsCards(project, board);
 
   return (
     <>
@@ -76,12 +89,43 @@ export function BoardHeader({
           className="min-w-0 py-1 text-[1.15rem] font-bold [text-shadow:0_1px_2px_rgb(0_0_0/0.25)]"
           inputClassName="h-9 w-72 text-[1.05rem] font-bold"
         />
+        <button
+          type="button"
+          aria-label={t("board.star")}
+          title={t("board.star")}
+          aria-pressed={board.starred}
+          disabled={busy}
+          onClick={() => void star()}
+          className={`grid size-8 place-items-center rounded-md hover:bg-white/20 ${board.starred ? "[&_svg]:fill-amber-400 [&_svg]:stroke-amber-400" : ""}`}
+        >
+          <Icon name="star" />
+        </button>
         {problem && (
           <p role="alert" className="rounded-md bg-surface px-2 py-1 text-sm text-danger">
             {problem}
           </p>
         )}
+        {closes && (
+          <button
+            type="button"
+            aria-label={t("board.menu")}
+            aria-expanded={panel === "menu"}
+            onClick={() => setPanel(panel === "menu" ? null : "menu")}
+            className="ml-auto grid size-8 place-items-center rounded-md hover:bg-white/20"
+          >
+            <Icon name="more" />
+          </button>
+        )}
       </div>
+      {panel === "menu" && (
+        <BoardMenu
+          onCloseBoard={() => {
+            setPanel(null);
+            void save({ archived: true });
+          }}
+          onClose={() => setPanel(null)}
+        />
+      )}
       <ReadOnlyNote
         project={project}
         board={board}

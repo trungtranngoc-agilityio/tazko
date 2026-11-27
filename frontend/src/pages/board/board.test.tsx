@@ -527,6 +527,47 @@ describe("board actions", () => {
 
     expect(screen.queryByRole("button", { name: "Archive this list" })).toBeNull();
   });
+
+  it("anyone who opens the board stars and unstars it", async () => {
+    const calls = signedIn({
+      [`GET ${P}`]: { status: 200, body: project({ role: "observer" }) },
+      [`PUT ${B}/star`]: { status: 204 },
+      [`DELETE ${B}/star`]: { status: 204 },
+    });
+    show();
+
+    const star = await screen.findByRole("button", { name: "Star board" });
+    expect(star).toHaveAttribute("aria-pressed", "false");
+    fireEvent.click(star);
+    await waitFor(() => expect(star).toHaveAttribute("aria-pressed", "true"));
+    fireEvent.click(star);
+    await waitFor(() => expect(star).toHaveAttribute("aria-pressed", "false"));
+
+    expect(writes(calls).map((c) => [c.method, c.path])).toEqual([
+      ["PUT", `${B}/star`],
+      ["DELETE", `${B}/star`],
+    ]);
+  });
+
+  it("a member closes the board from the board menu", async () => {
+    const calls = signedIn({
+      [`PATCH ${B}`]: { status: 200, body: board({ archived_at: "2026-11-27T10:00:00.000Z" }) },
+    });
+    show();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Board menu" }));
+    const menu = screen.getByRole("complementary", { name: "Board menu" });
+    fireEvent.click(within(menu).getByRole("button", { name: "Close board" }));
+
+    expect(
+      await screen.findByText("This board is closed. Reopen it to make changes."),
+    ).toBeVisible();
+    expect(screen.queryByRole("complementary", { name: "Board menu" })).toBeNull();
+    expectNoChangeControls();
+    expect(writes(calls)).toEqual([
+      expect.objectContaining({ method: "PATCH", path: B, body: { archived: true } }),
+    ]);
+  });
 });
 
 async function findColumn(name: string) {
@@ -540,4 +581,5 @@ function expectNoChangeControls() {
   expect(within(heading).queryByRole("button")).toBeNull();
   expect(within(column("To do")).queryByRole("button", { name: /To do/ })).toBeNull();
   expect(screen.queryByRole("button", { name: "List actions" })).toBeNull();
+  expect(screen.queryByRole("button", { name: "Board menu" })).toBeNull();
 }
