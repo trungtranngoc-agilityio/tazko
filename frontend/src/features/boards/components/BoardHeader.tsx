@@ -5,14 +5,16 @@ import { ApiError } from "@/shared/api";
 import { errorText, t } from "@/shared/i18n";
 import { Icon } from "@/shared/ui/Icon";
 import { InlineEdit } from "@/shared/ui/InlineEdit";
-import { editsBoards, editsCards } from "../access";
+import { Popover } from "@/shared/ui/Popover";
+import { editsBoards, editsCards, restrictsBoards } from "../access";
 import { setStar, updateBoard, type Board } from "../api";
+import { BoardAccess } from "./BoardAccess";
 import { BoardMenu } from "./BoardMenu";
 
 /**
  * The bars above a board's lists (prototype .bt, .bh and .ro-banner): the way
  * back to the company and the project, the board name (renamed in place by
- * owners and members), the star, the board menu, and one
+ * owners and members), the star, who sees the board, the board menu, and one
  * note when the board is read-only.
  */
 export function BoardHeader({
@@ -30,7 +32,7 @@ export function BoardHeader({
 }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [panel, setPanel] = useState<"menu" | null>(null);
+  const [panel, setPanel] = useState<"access" | "menu" | null>(null);
   const projectPath = `/c/${slug}/p/${project.id}/boards`;
 
   async function attempt(action: () => Promise<Board | ((board: Board) => Board)>) {
@@ -53,6 +55,7 @@ export function BoardHeader({
       // Only the star changes: another change may have landed while this one ran.
       return (latest: Board) => ({ ...latest, starred: on });
     });
+  const restricts = restrictsBoards(project, board);
   const closes = editsCards(project, board);
 
   return (
@@ -100,12 +103,32 @@ export function BoardHeader({
         >
           <Icon name="star" />
         </button>
+        <span className="relative">
+          <button
+            type="button"
+            onClick={() => setPanel(panel === "access" ? null : "access")}
+            className="inline-flex h-6 items-center gap-1.5 rounded-full bg-white/20 px-2.5 text-[0.78rem] font-semibold hover:bg-white/30"
+          >
+            <Icon name={board.restricted ? "lock" : "users"} className="size-3.5" />
+            {board.restricted ? t("board.restricted") : t("board.wholeProject")}
+          </button>
+          {panel === "access" && (
+            <Popover
+              title={t("access.title")}
+              closeLabel={t("access.close")}
+              onClose={() => setPanel(null)}
+              className="left-0 w-[340px]"
+            >
+              <BoardAccess slug={slug} project={project} board={board} onChange={onChange} />
+            </Popover>
+          )}
+        </span>
         {problem && (
           <p role="alert" className="rounded-md bg-surface px-2 py-1 text-sm text-danger">
             {problem}
           </p>
         )}
-        {closes && (
+        {(restricts || closes) && (
           <button
             type="button"
             aria-label={t("board.menu")}
@@ -119,10 +142,15 @@ export function BoardHeader({
       </div>
       {panel === "menu" && (
         <BoardMenu
-          onCloseBoard={() => {
-            setPanel(null);
-            void save({ archived: true });
-          }}
+          onAccess={restricts ? () => setPanel("access") : null}
+          onCloseBoard={
+            closes
+              ? () => {
+                  setPanel(null);
+                  void save({ archived: true });
+                }
+              : null
+          }
           onClose={() => setPanel(null)}
         />
       )}

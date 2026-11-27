@@ -71,7 +71,7 @@ const LISTS = [
   list(12, "Done"),
 ];
 
-type Routes = Record<string, Reply | ((body: unknown) => Reply)>;
+type Routes = Record<string, Reply | ((body: unknown) => Reply | Promise<Reply>)>;
 
 function signedIn(routes: Routes = {}): Call[] {
   return fakeApi({
@@ -444,6 +444,22 @@ describe("board screen", () => {
   });
 });
 
+const member = (id: number, name: string, role: string) => ({
+  user_id: id,
+  name,
+  email: `user${id}@harbor.vn`,
+  avatar_url: null,
+  role,
+  account: "active",
+  last_seen_at: null,
+});
+const MEMBERS = [
+  member(1, "Ana Tran", "owner"),
+  member(2, "Bao Le", "member"),
+  member(3, "Chi Vo", "observer"),
+];
+const asOwner = { [`GET ${P}`]: { status: 200, body: project({ role: "owner" }) } };
+
 describe("board actions", () => {
   it("a member archives a list and undoes it", async () => {
     const calls = signedIn({
@@ -549,6 +565,47 @@ describe("board actions", () => {
     ]);
   });
 
+  it("a star that answers late keeps an access change made meanwhile", async () => {
+    let answerStar: (reply: { status: number }) => void = () => {};
+    signedIn({
+      ...asOwner,
+      [`GET ${P}/members`]: { status: 200, body: MEMBERS },
+      [`PUT ${B}/star`]: () => new Promise<Reply>((resolve) => (answerStar = resolve)),
+      [`PUT ${B}/access`]: { status: 200, body: board({ restricted: true, access: [] }) },
+    });
+    show();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Star board" }));
+    fireEvent.click(screen.getByRole("button", { name: "Whole project" }));
+    const dialog = screen.getByRole("dialog", { name: "Board access" });
+    fireEvent.click(await within(dialog).findByRole("switch", { name: "Restrict this board" }));
+    await screen.findByRole("button", { name: "Restricted" });
+    answerStar({ status: 204 });
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: "Star board" })).toHaveAttribute(
+        "aria-pressed",
+        "true",
+      ),
+    );
+    expect(screen.getByRole("button", { name: "Restricted" })).toBeVisible();
+  });
+
+  it("a project owner on a closed board has no board menu and no access switch", async () => {
+    signedIn({
+      ...asOwner,
+      [`GET ${B}`]: { status: 200, body: board({ archived_at: "2026-11-20T10:00:00.000Z" }) },
+    });
+    show();
+
+    expect(await screen.findByRole("button", { name: "Reopen board" })).toBeVisible();
+    expectNoChangeControls();
+    fireEvent.click(screen.getByRole("button", { name: "Whole project" }));
+    const dialog = screen.getByRole("dialog", { name: "Board access" });
+    expect(within(dialog).getByText("Visible to the whole project.")).toBeVisible();
+    expect(within(dialog).queryByRole("switch")).toBeNull();
+  });
+
   it("a member closes the board from the board menu", async () => {
     const calls = signedIn({
       [`PATCH ${B}`]: { status: 200, body: board({ archived_at: "2026-11-27T10:00:00.000Z" }) },
@@ -557,6 +614,7 @@ describe("board actions", () => {
 
     fireEvent.click(await screen.findByRole("button", { name: "Board menu" }));
     const menu = screen.getByRole("complementary", { name: "Board menu" });
+    expect(within(menu).queryByRole("button", { name: "Board access" })).toBeNull();
     fireEvent.click(within(menu).getByRole("button", { name: "Close board" }));
 
     expect(
@@ -567,6 +625,105 @@ describe("board actions", () => {
     expect(writes(calls)).toEqual([
       expect.objectContaining({ method: "PATCH", path: B, body: { archived: true } }),
     ]);
+  });
+
+  it("the access chip tells a member who sees the board", async () => {
+    const calls = signedIn({ [`GET ${B}`]: { status: 200, body: board({ restricted: true }) } });
+    show();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Restricted" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Board access" });
+    expect(within(dialog).getByText("Restricted to chosen members.")).toBeVisible();
+    expect(within(dialog).queryByRole("switch")).toBeNull();
+    expect(calls.some((c) => c.path === `${P}/members`)).toBe(false);
+    fireEvent.keyDown(dialog, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Board access" })).toBeNull();
+  });
+
+  it("a project owner restricts the board to chosen members", async () => {
+    const calls = signedIn({
+      ...asOwner,
+      [`GET ${P}/members`]: { status: 200, body: MEMBERS },
+      [`PUT ${B}/access`]: (body) => {
+        const { restricted, people } = body as { restricted: boolean; people: number[] };
+        return { status: 200, body: board({ restricted, access: people }) };
+      },
+    });
+    show();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Whole project" }));
+    const dialog = screen.getByRole("dialog", { name: "Board access" });
+    fireEvent.click(await within(dialog).findByRole("switch", { name: "Restrict this board" }));
+
+    const bao = await within(dialog).findByRole("checkbox", { name: /Bao Le/ });
+    const ana = within(dialog).getByRole("checkbox", { name: /Ana Tran/ });
+    expect(ana).toBeChecked();
+    expect(ana).toBeDisabled();
+    expect(bao).not.toBeChecked();
+    fireEvent.click(bao);
+
+    await waitFor(() => expect(bao).toBeChecked());
+    expect(screen.getByRole("button", { name: "Restricted" })).toBeVisible();
+    expect(writes(calls).map((c) => c.body)).toEqual([
+      { restricted: true, people: [] },
+      { restricted: true, people: [2] },
+    ]);
+  });
+
+  it("a project owner opens the board to the whole project again", async () => {
+    const calls = signedIn({
+      ...asOwner,
+      [`GET ${B}`]: { status: 200, body: board({ restricted: true, access: [2] }) },
+      [`GET ${P}/members`]: { status: 200, body: MEMBERS },
+      [`PUT ${B}/access`]: { status: 200, body: board() },
+    });
+    show();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Board menu" }));
+    fireEvent.click(screen.getByRole("button", { name: "Board access" }));
+    const dialog = screen.getByRole("dialog", { name: "Board access" });
+    expect(await within(dialog).findByRole("checkbox", { name: /Bao Le/ })).toBeChecked();
+    fireEvent.click(within(dialog).getByRole("switch", { name: "Restrict this board" }));
+
+    await waitFor(() => expect(within(dialog).queryByRole("checkbox")).toBeNull());
+    expect(screen.getByRole("button", { name: "Whole project" })).toBeVisible();
+    expect(writes(calls).map((c) => c.body)).toEqual([{ restricted: false, people: [] }]);
+  });
+
+  it("escape closes board access after a change, wherever the focus went", async () => {
+    signedIn({
+      ...asOwner,
+      [`GET ${P}/members`]: { status: 200, body: MEMBERS },
+      [`PUT ${B}/access`]: { status: 200, body: board({ restricted: true, access: [] }) },
+    });
+    show();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Whole project" }));
+    const dialog = screen.getByRole("dialog", { name: "Board access" });
+    fireEvent.click(await within(dialog).findByRole("switch", { name: "Restrict this board" }));
+    await screen.findByRole("button", { name: "Restricted" });
+    fireEvent.keyDown(document.body, { key: "Escape" });
+
+    expect(screen.queryByRole("dialog", { name: "Board access" })).toBeNull();
+  });
+
+  it("a refused access change says why and changes nothing", async () => {
+    signedIn({
+      ...asOwner,
+      [`GET ${P}/members`]: { status: 200, body: MEMBERS },
+      [`PUT ${B}/access`]: { status: 422, body: apiError("NOT_A_PROJECT_MEMBER") },
+    });
+    show();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Whole project" }));
+    const dialog = screen.getByRole("dialog", { name: "Board access" });
+    const restrict = await within(dialog).findByRole("switch", { name: "Restrict this board" });
+    fireEvent.click(restrict);
+
+    expect(await within(dialog).findByRole("alert")).toBeVisible();
+    expect(restrict).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("button", { name: "Whole project" })).toBeVisible();
   });
 });
 
