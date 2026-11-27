@@ -4,13 +4,14 @@ import type { Project } from "@/features/projects";
 import { ApiError } from "@/shared/api";
 import { errorText, t } from "@/shared/i18n";
 import { Icon } from "@/shared/ui/Icon";
-import { editsBoards } from "../access";
+import { InlineEdit } from "@/shared/ui/InlineEdit";
+import { editsBoards, editsCards } from "../access";
 import { updateBoard, type Board } from "../api";
 
 /**
  * The bars above a board's lists (prototype .bt, .bh and .ro-banner): the way
- * back to the company and the project, the board name, and one note when the
- * board is read-only.
+ * back to the company and the project, the board name (renamed in place by
+ * owners and members), and one note when the board is read-only.
  */
 export function BoardHeader({
   slug,
@@ -29,7 +30,7 @@ export function BoardHeader({
   const [busy, setBusy] = useState(false);
   const projectPath = `/c/${slug}/p/${project.id}/boards`;
 
-  async function save(changes: { archived: boolean }) {
+  async function save(changes: { name?: string; archived?: boolean }) {
     setProblem(null);
     setBusy(true);
     try {
@@ -64,9 +65,17 @@ export function BoardHeader({
         </nav>
       </div>
       <div className="flex flex-wrap items-center gap-2.5 bg-[rgb(12_12_32/0.32)] px-4 py-2 text-white">
-        <h1 className="min-w-0 px-1 py-1 text-[1.15rem] font-bold [overflow-wrap:anywhere] [text-shadow:0_1px_2px_rgb(0_0_0/0.25)]">
-          {board.name}
-        </h1>
+        <InlineEdit
+          as="h1"
+          value={board.name}
+          label={t("board.nameLabel")}
+          title={t("board.rename")}
+          editable={editsCards(project, board)}
+          maxLength={100}
+          onSave={(name) => void save({ name })}
+          className="min-w-0 py-1 text-[1.15rem] font-bold [text-shadow:0_1px_2px_rgb(0_0_0/0.25)]"
+          inputClassName="h-9 w-72 text-[1.05rem] font-bold"
+        />
         {problem && (
           <p role="alert" className="rounded-md bg-surface px-2 py-1 text-sm text-danger">
             {problem}

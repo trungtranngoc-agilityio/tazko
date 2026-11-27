@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, Navigate, useParams } from "react-router";
-import { BoardHeader, getBoard, type Board } from "@/features/boards";
+import { BoardHeader, editsCards, getBoard, type Board } from "@/features/boards";
 import { BoardLists, boardLists, type List } from "@/features/cards";
 import { useCompany } from "@/features/orgs";
 import { project as loadProject, type Project } from "@/features/projects";
@@ -96,7 +96,7 @@ function Screen({
         board={board}
         onChange={setBoard}
       />
-      <BoardLists lists={lists} />
+      <BoardLists slug={slug} board={board} lists={lists} editable={editsCards(project, board)} />
     </div>
   );
 }
