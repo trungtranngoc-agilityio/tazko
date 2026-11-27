@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ApiError } from "@/shared/api";
 import { errorText, t } from "@/shared/i18n";
-import { setStar, type Board } from "../api";
+import { boardPath, setStar, type Board } from "../api";
 import { BoardTile } from "./BoardTile";
 import { Grid, Section } from "./Section";
 
@@ -31,7 +31,7 @@ export function StarredBoards({ slug, boards: loaded }: { slug: string; boards: 
       )}
       <Grid>
         {boards.map((b) => (
-          <BoardTile key={b.id} board={b} onStar={() => void unstar(b)} />
+          <BoardTile key={b.id} board={b} to={boardPath(slug, b)} onStar={() => void unstar(b)} />
         ))}
       </Grid>
     </Section>

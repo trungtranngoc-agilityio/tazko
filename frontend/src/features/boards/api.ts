@@ -25,6 +25,15 @@ const json = (method: string, body: unknown): RequestInit => ({
   body: JSON.stringify(body),
 });
 
+/** Where a board opens in the web app. */
+export function boardPath(slug: string, board: Pick<Board, "id" | "project_id">): string {
+  return `/c/${slug}/p/${board.project_id}/b/${board.id}`;
+}
+
+export function getBoard(slug: string, projectId: number, boardId: number): Promise<Board> {
+  return api<Board>(`${boards(slug, projectId)}/${boardId}`);
+}
+
 export function projectBoards(slug: string, projectId: number): Promise<Board[]> {
   return api<Board[]>(boards(slug, projectId));
 }

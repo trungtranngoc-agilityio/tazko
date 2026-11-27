@@ -4,7 +4,7 @@ import { ApiError } from "@/shared/api";
 import { errorText, t } from "@/shared/i18n";
 import { Icon } from "@/shared/ui/Icon";
 import { createsBoards, editsBoards } from "../access";
-import { setStar, updateBoard, type Board } from "../api";
+import { boardPath, setStar, updateBoard, type Board } from "../api";
 import { BoardTile } from "./BoardTile";
 import { NewBoardDialog } from "./NewBoardDialog";
 import { Grid, Section } from "./Section";
@@ -52,7 +52,9 @@ export function ProjectBoards({
   const reopen = (board: Board) =>
     run(async () => replace(await updateBoard(slug, board, { archived: false })));
   const tiles = (list: Board[]) =>
-    list.map((b) => <BoardTile key={b.id} board={b} onStar={(on) => void star(b, on)} />);
+    list.map((b) => (
+      <BoardTile key={b.id} board={b} to={boardPath(slug, b)} onStar={(on) => void star(b, on)} />
+    ));
 
   return (
     <div className="mt-6">
