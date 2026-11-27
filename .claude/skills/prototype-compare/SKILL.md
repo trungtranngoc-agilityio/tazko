@@ -6,7 +6,8 @@ description: Screenshot a Tazko screen next to the matching prototype screen in 
 2. For each screen in docs/milestones/<Mx>.md:
    - Open the prototype screen with tools/h.mjs (design/tazko-prototype.html, same route hash).
    - Open the same screen in the web app at http://localhost:5173 (`npm --prefix frontend run dev`, API on :8791).
-   - Take both screenshots at 1280x800, light and dark, into docs/screens/<Mx>/.
+   - Take both screenshots at 1280x800, light and dark, into docs/screens/<Mx>/. That folder is in .gitignore: the shots stay on this machine and are never committed.
 3. Compare: layout, spacing, text, icons, states (empty, loading, error, read-only), keys.
-4. Write a table in docs/milestones/<Mx>.md under "Visual check": screen, theme, difference, fixed?
+4. Write a table in docs/milestones/<Mx>.md under "Visual check": screen, theme, difference, fixed? The table carries the result in words; do not point to image paths.
+5. When the PR shows a screen, ask the owner whether to add a prototype and app pair to its description (dragged onto GitHub, not committed).
 Differences listed in design/KNOWN-DEVIATIONS.md are expected and must stay different.
