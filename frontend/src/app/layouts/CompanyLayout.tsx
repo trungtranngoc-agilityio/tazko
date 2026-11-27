@@ -1,4 +1,4 @@
-import { Navigate, NavLink, Outlet, useLocation, useParams } from "react-router";
+import { Navigate, NavLink, Outlet, useLocation, useMatch, useParams } from "react-router";
 import { RequireSession, SignOutButton, useMe } from "@/features/auth";
 import { CompanySwitcher, Initials, myCompanies, type CompanyContext } from "@/features/orgs";
 import { errorText, t } from "@/shared/i18n";
@@ -20,6 +20,8 @@ function CompanyShell() {
   const { slug = "" } = useParams();
   const me = useMe();
   const { pathname } = useLocation();
+  // A board fills the window without the sidebar, as in the prototype.
+  const onBoard = useMatch("/c/:slug/p/:projectId/b/:boardId") !== null;
   const [companies, reloadCompanies] = useAsync(myCompanies, "companies");
 
   if (companies.kind === "loading") {
@@ -50,6 +52,13 @@ function CompanyShell() {
   const link = ({ isActive }: { isActive: boolean }) =>
     `flex h-9 items-center gap-3 rounded-md px-3 ${isActive ? "bg-accent-soft font-semibold text-accent" : "hover:bg-sunken"}`;
 
+  if (onBoard) {
+    return (
+      <main className="min-h-screen bg-bg text-ink">
+        <Outlet context={context} />
+      </main>
+    );
+  }
   return (
     <div className="flex min-h-screen bg-bg text-ink">
       <aside className="flex w-64 shrink-0 flex-col gap-4 border-r border-line bg-surface p-4">

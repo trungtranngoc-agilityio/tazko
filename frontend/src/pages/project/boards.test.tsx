@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { CompanyLayout } from "@/app/layouts/CompanyLayout";
@@ -302,5 +302,36 @@ describe("starred boards on your projects", () => {
 
     expect(await screen.findByRole("region", { name: "Your projects" })).toBeInTheDocument();
     expect(screen.queryByRole("region", { name: "Starred boards" })).toBeNull();
+  });
+});
+
+describe("a board tile opens its board", () => {
+  it("links from the Boards tab and from Your projects", async () => {
+    signedIn({
+      [`GET ${P}/5`]: { status: 200, body: project() },
+      [`GET ${B}`]: { status: 200, body: [board(1, "Launch plan")] },
+      [`GET ${P}`]: {
+        status: 200,
+        body: [{ ...project(), members: 1, people: [], boards: 2 }],
+      },
+      "GET /api/orgs/harbor/starred-boards": {
+        status: 200,
+        body: [board(2, "Roadmap", { starred: true })],
+      },
+    });
+    show("/c/harbor/p/5/boards");
+    const onTab = within(await screen.findByRole("article", { name: "Launch plan" }));
+    expect(onTab.getByRole("link", { name: "Launch plan" })).toHaveAttribute(
+      "href",
+      "/c/harbor/p/5/b/1",
+    );
+
+    cleanup();
+    show("/c/harbor");
+    const starred = within(await screen.findByRole("article", { name: "Roadmap" }));
+    expect(starred.getByRole("link", { name: "Roadmap" })).toHaveAttribute(
+      "href",
+      "/c/harbor/p/5/b/2",
+    );
   });
 });

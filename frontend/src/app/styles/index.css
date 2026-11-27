@@ -15,6 +15,8 @@
   --color-sunken: var(--tz-sunken);
   --color-danger: var(--tz-danger);
   --color-warning: var(--tz-warning);
+  --color-warn: var(--tz-warn);
+  --color-warn-bg: var(--tz-warn-bg);
   --color-success: var(--tz-success);
   --radius-sm: var(--tz-radius-sm);
   --radius-md: var(--tz-radius-md);
@@ -38,6 +40,8 @@ body {
 :root {
   --tz-sunken: #eeeef6;
   --tz-glow: #e9e9fc; /* prototype --accent-soft */
+  --tz-warn: #9a6212;
+  --tz-warn-bg: #fbefd5;
   --tz-shadow: 0 8px 30px rgba(27, 27, 47, 0.12);
   /* avatar tones (prototype --c0..c4) */
   --tz-c0-bg: #e1e2fb;
@@ -55,6 +59,8 @@ body {
   :root:not([data-theme="light"]) {
     --tz-sunken: #151522;
     --tz-glow: #25264a;
+    --tz-warn: #e8b45c;
+    --tz-warn-bg: #3a2d12;
     --tz-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
     --tz-c0-bg: #2a2b5e;
     --tz-c0-fg: #b9bbfa;
@@ -71,6 +77,8 @@ body {
 :root[data-theme="dark"] {
   --tz-sunken: #151522;
   --tz-glow: #25264a;
+  --tz-warn: #e8b45c;
+  --tz-warn-bg: #3a2d12;
   --tz-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
   --tz-c0-bg: #2a2b5e;
   --tz-c0-fg: #b9bbfa;

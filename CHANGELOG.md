@@ -5,6 +5,7 @@ What people and API callers can notice, per release. Format: [Keep a Changelog](
 ## [Unreleased]
 
 ### Added
+- The board screen: a board tile opens it, full window on its background, with its lists side by side and their cards; a list collapses. Observers, a closed board (with Reopen for owners and members) and an archived project's boards say they are read-only.
 - Your projects shows your Starred boards above the projects.
 - A project opens on its Boards tab: starred boards apart, every board as a tile with its open lists and cards, Create board (title and background), stars, and closed boards with Reopen.
 - Boards add `lists` and `cards` (the open lists and the open cards on them); `GET /api/orgs/{slug}/starred-boards` lists the open boards you starred and may still open, across your projects.

@@ -1,5 +1,6 @@
 import { createBrowserRouter, Navigate, type RouteObject } from "react-router";
 import { AuditPage } from "@/pages/admin/AuditPage";
+import { BoardPage } from "@/pages/board/BoardPage";
 import { CompaniesPage } from "@/pages/admin/CompaniesPage";
 import { CompanyPage } from "@/pages/admin/CompanyPage";
 import { InvitesPage } from "@/pages/admin/InvitesPage";
@@ -42,6 +43,7 @@ export const routes: RouteObject[] = [
       { path: "p/:projectId/boards", element: <ProjectBoardsPage /> },
       { path: "p/:projectId/members", element: <ProjectMembersPage /> },
       { path: "p/:projectId/settings", element: <ProjectSettingsPage /> },
+      { path: "p/:projectId/b/:boardId", element: <BoardPage /> },
     ],
   },
   {
